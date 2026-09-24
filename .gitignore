@@ -1,0 +1,15 @@
+/Library/
+/Temp/
+/Obj/
+/Builds/
+/Logs/
+/UserSettings/
+/Tests/bin/
+/Tests/obj/
+*.csproj.user
+/*.csproj
+*.sln
+/.vs/
+/prototype-build.request
+/prototype-build.result
+/Assets/Resources/PerformanceTestRun*.json*
