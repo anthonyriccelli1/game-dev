@@ -64,6 +64,24 @@ namespace RestaurantCity {
         TextMesh standPlatesText, standSinkText;
         static readonly Vector3 StandFront = new Vector3(2.2f, 0, 5.9f);
         readonly List<GameObject> cleanStack = new List<GameObject>(), dirtyStack = new List<GameObject>();
+        GameObject standWorkerView; string standWorkerViewId; TextMesh standWorkerBubble;
+
+        // The worker running the stand stands behind the grill and works while there are orders.
+        void TickStandWorkerView(GameState s) {
+            var w = s.StandWorker;
+            if (w == null || !s.StandBuilt) { if (standWorkerView) standWorkerView.SetActive(false); return; }
+            if (!standWorkerView || standWorkerViewId != w.Id) {
+                if (standWorkerView) Destroy(standWorkerView);
+                standWorkerView = RestaurantArt.CreateCharacter(RestaurantCatalog.Worker(w.Id)?.ModelType ?? 8, Game.Stand.transform);
+                standWorkerView.name = "Stand worker"; standWorkerViewId = w.Id;
+                standWorkerView.transform.SetPositionAndRotation(new Vector3(-1.0f, 0, 9.35f), Quaternion.Euler(0, 180, 0));
+                standWorkerBubble = WorldCaption(standWorkerView.transform, "", new Vector3(0, 2.4f, 0), .016f);
+            }
+            standWorkerView.SetActive(true);
+            var motion = standWorkerView.GetComponent<CharacterMotion>();
+            if (motion) { motion.Working = s.StandQueue.Count > 0 && w.Energy > 2; motion.SetMood(w.Energy / 100f); }
+            SetBubble(standWorkerBubble, s.StandWorkerStatus + "\n<size=48>Energy " + (int)w.Energy + "  |  Earned $" + s.StandWorkerEarned + "</size>");
+        }
 
         // Visible plate stacks: clean plates on the plate counter, dirty ones piled on the sink.
         void SyncPlateStack(List<GameObject> stack, int stationId, int count, string kind, Vector3 basePos) {
@@ -88,6 +106,7 @@ namespace RestaurantCity {
             if (standPlatesText) { standPlatesText.text = "Clean plates: " + s.StandClean; standPlatesText.transform.rotation = Quaternion.identity; }
             if (standSinkText) { standSinkText.text = s.StandDirty > 0 ? "<color=#E8C34A>Dirty pile: " + s.StandDirty + "</color>" : "Sink"; standSinkText.transform.rotation = Quaternion.identity; }
             if (Game.Customer && Game.Customer.activeSelf) Game.Customer.SetActive(false);
+            TickStandWorkerView(s);
             SyncPlateStack(cleanStack, KitchenState.StandBase + 4, s.StandClean, "Plate", new Vector3(0, 1.0f, .05f));
             SyncPlateStack(dirtyStack, KitchenState.StandBase + 5, s.StandDirty, "DirtyPlate", new Vector3(.75f, 1.08f, .2f));
             var world = Game.Stand ? Game.Stand.transform.parent : transform;

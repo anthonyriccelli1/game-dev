@@ -5,7 +5,7 @@ using System.Linq;
 namespace RestaurantCity {
     public enum CatalogCategory { Kitchen, Seating, Finishes, Lighting, Decor, Exterior }
     public enum RestaurantOrderStage { Waiting, Cooking, Ready, Eating, Leaving }
-    public enum StaffJob { Off, Cook, Serve, Clean }
+    public enum StaffJob { Off, Cook, Serve, Clean, Stand }
 
     public class CatalogItem {
         public string Id, Name, Description;
@@ -326,7 +326,7 @@ namespace RestaurantCity {
         void UpdateRank(){if(Rank<2&&Served>=20&&Satisfaction>=75&&Ambience>=12)Rank=2;}
         public bool Clean(out string message) {if(!Owned)return Fail("Buy the restaurant first.",out message);if(Cleanliness>=100)return Fail("The restaurant is already spotless.",out message);Cleanliness=Math.Min(100,Cleanliness+25);message=$"Tables wiped. Cleanliness {Cleanliness:0}%.";return true;}
         public bool Hire(GameState wallet,string id,out string message) {
-            var d=RestaurantCatalog.Worker(id);if(!Owned||d==null)return Fail("Worker unavailable.",out message);
+            var d=RestaurantCatalog.Worker(id);if((!Owned&&!wallet.StandBuilt)||d==null)return Fail("Set up your food stand first.",out message);
             if(Workers.Exists(w=>w.Id==id))return Fail("This worker already works here.",out message);
             if(d.Special){
                 if(wallet.Flux<d.FluxCost)return Fail($"Recruiting {d.Name} costs {d.FluxCost} Flux. Earn Flux from the rival's stash at night.",out message);
@@ -338,7 +338,9 @@ namespace RestaurantCity {
         public bool Assign(string id,StaffJob job,out string message) {
             var w=Workers.Find(x=>x.Id==id);if(w==null)return Fail("Hire this worker first.",out message);
             if(!Enum.IsDefined(typeof(StaffJob),job))return Fail("Choose a valid job.",out message);
-            w.Job=job;message=$"{RestaurantCatalog.Worker(id).Name}: {job}.";return true;
+            // Only one worker can run the street stand at a time.
+            if(job==StaffJob.Stand)foreach(var other in Workers)if(other!=w&&other.Job==StaffJob.Stand)other.Job=StaffJob.Off;
+            w.Job=job;message=job==StaffJob.Stand?$"{RestaurantCatalog.Worker(id).Name} is running your food stand. They use your pantry and keep the money coming.":$"{RestaurantCatalog.Worker(id).Name}: {job}.";return true;
         }
         public float WorkerActionSeconds(StaffJob job) {
             var assigned=Workers.Where(w=>w.Job==job).ToList();if(assigned.Count==0)return 8;
