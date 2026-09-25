@@ -19,7 +19,21 @@ namespace RestaurantCity {
     public partial class RestaurantController : MonoBehaviour {
         public CityGame Game;
         public RestaurantState Data => Game.State.Restaurant;
-        public bool Inside => Game.Player.transform.position.x > -17 && Game.Player.transform.position.x < -3 && Game.Player.transform.position.z < -8;
+        public bool Inside => InRestaurant(Game.Player.transform.position);
+        static bool InRestaurant(Vector3 p) => p.x > -17 && p.x < -3 && p.z < -8;
+        bool anyoneInsideLastFrame = true;
+        // When the last player walks out mid-service, flash a 3-second warning for any job nobody covers.
+        void CheckLeavingStaffing() {
+            bool anyoneInside = Game.CoOp ? Game.CoOp.Players.Any(p => p && InRestaurant(p.transform.position)) : Inside;
+            if (!anyoneInside && anyoneInsideLastFrame && Data.Owned && ServiceInProgress) {
+                var missing = new List<string>();
+                if (!Data.Workers.Any(w => w.Job == StaffJob.Cook && w.Energy > 2)) missing.Add("cook");
+                if (!Data.Workers.Any(w => w.Job == StaffJob.Serve && w.Energy > 2)) missing.Add("server");
+                if (!Data.Workers.Any(w => w.Job == StaffJob.Clean && w.Energy > 2)) missing.Add("dishwasher");
+                if (missing.Count > 0) Game.Notify("Heads up: you're leaving without a " + string.Join(", ", missing) + ". Those jobs stop while you're gone.", 3);
+            }
+            anyoneInsideLastFrame = anyoneInside;
+        }
         public bool AtSupplier => Vector2.Distance(new Vector2(Game.Player.transform.position.x, Game.Player.transform.position.z), new Vector2(-12, 9)) < 4.5f;
         public bool PanelOpen { get; private set; }
         public string Panel { get; private set; } = "Catalog";
@@ -63,7 +77,7 @@ namespace RestaurantCity {
             if (!Game || !Room) return;
             hudTimer -= Time.unscaledDeltaTime;
             if (hudTimer <= 0) { hudTimer = .35f; UI.Refresh(); }
-            if (!Game.Paused && !ManagementPauses && !PlacementActive && !Game.SmokeMode) Advance(Time.deltaTime);
+            if (!Game.Paused && !ManagementPauses && !PlacementActive && !Game.SmokeMode) { Advance(Time.deltaTime); CheckLeavingStaffing(); }
             // "Phone": P opens your crew list from anywhere in the city.
             if (!Game.Paused && Game.Started && Keyboard.current != null && Keyboard.current.pKey.wasPressedThisFrame && !PlacementActive && (Data.Owned || Game.State.StandBuilt)) { if (PanelOpen) ClosePanel(); else ShowPanel("Staff"); }
         }
