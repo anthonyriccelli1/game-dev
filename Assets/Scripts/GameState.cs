@@ -28,9 +28,9 @@ namespace RestaurantCity {
             var def = RestaurantCatalog.Worker(w.Id); string name = def != null ? def.Name : w.Id;
             StandWorkerActive = false;
             if (w.Energy <= 2) { StandWorkerStatus = name + " is exhausted. Set them to Rest."; standWorkTimer = 0; return; }
-            StandOpen = true;
+            // The sign still controls arrivals: closing it lets the worker finish the line, then idle.
             bool washing = StandQueue.Count == 0 || StandClean == 0;
-            if (washing && StandDirty == 0) { StandWorkerStatus = name + " is waiting for customers."; standWorkTimer = 0; return; }
+            if (washing && StandDirty == 0) { StandWorkerStatus = name + (StandOpen ? " is waiting for customers." : ": stand is closed."); standWorkTimer = 0; return; }
             var front = StandQueue.Count > 0 ? StandQueue[0] : null;
             bool midnight = front != null && front.Dish == "midnight";
             if (!washing && (Restaurant.Protein < (midnight ? 2 : 1) || Restaurant.Produce < 1)) { StandWorkerStatus = name + " is out of ingredients! Restock at Milo's."; standWorkTimer = 0; return; }
