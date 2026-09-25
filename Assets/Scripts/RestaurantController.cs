@@ -80,6 +80,7 @@ namespace RestaurantCity {
             if (!Game.Paused && !ManagementPauses && !PlacementActive && !Game.SmokeMode) { Advance(Time.deltaTime); CheckLeavingStaffing(); }
             // "Phone": P opens your crew list from anywhere in the city.
             if (!Game.Paused && Game.Started && Keyboard.current != null && Keyboard.current.pKey.wasPressedThisFrame && !PlacementActive && (Data.Owned || Game.State.StandBuilt)) { if (PanelOpen) ClosePanel(); else ShowPanel("Staff"); }
+            if (!Game.Paused && Game.Started && Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame && !PlacementActive) { if (PanelOpen && Panel == "Map") ClosePanel(); else ShowPanel("Map"); }
         }
         public void Feedback(string message) { Hint = message; Game.Notify(message, 5); if (UI) UI.Refresh(); }
         public bool BuyRestaurant() => BuyRestaurant(Game.Player);
@@ -91,9 +92,9 @@ namespace RestaurantCity {
             return result;
         }
         public void ShowPanel(string panel) {
-            bool phone = panel == "Staff" && Game.State.StandBuilt;
+            bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map";
             if (!Data.Owned && !phone) { Feedback("Earn $150 and buy the restaurant at its front sign."); return; }
-            if (ServiceInProgress && panel != "Staff" && panel != "Service") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
+            if (ServiceInProgress && panel != "Staff" && panel != "Service" && panel != "Map") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
             if (PlacementActive) CancelPlacement(false);
             Panel = panel; PanelOpen = true;
             if (Game.CoOp) Game.CoOp.RefreshViews();

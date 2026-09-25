@@ -8,7 +8,7 @@ namespace RestaurantCity {
     }
     public enum FoodStage { Empty, Prepared, Cooking, Plated }
     [Serializable] public class GameState {
-        public int Version = 4, Cash = 30, Stock, Served, Missed, Health = 100, Day = 1, Flux, LastStashDay;
+        public int Version = 5, Cash = 30, Xp, Stock, Served, Missed, Health = 100, Day = 1, Flux, LastStashDay;
         public bool FluxResearch, FluxIntroduced;
         public KitchenState Kitchen = new KitchenState();
         public RestaurantState Restaurant = new RestaurantState();
@@ -17,6 +17,13 @@ namespace RestaurantCity {
         // Up to StandQueueMax customers line up at the stand. HasOrder/Patience/StandDish mirror the front of the line.
         public List<StandOrder> StandQueue = new List<StandOrder>(); public int NextStandOrder = 1, StandClean = 4, StandDirty;
         [NonSerialized] public int Players = 1;
+        // Reputation (XP) from every sale; RankUpTo is set for one frame when a sale crosses a rank threshold.
+        [NonSerialized] public int RankUpTo = -1;
+        public void EarnReputation(int amount) {
+            if (amount <= 0) return; int before = Reputation.Rank(Xp);
+            Xp = Math.Min(999999, Xp + amount); int after = Reputation.Rank(Xp);
+            if (after > before) RankUpTo = after;
+        }
         // Passive income: a recruited worker assigned to the stand cooks, serves and washes on their own.
         public int StandWorkerEarned; [NonSerialized] public string StandWorkerStatus = ""; [NonSerialized] float standWorkTimer;
         // Where the worker is in their cycle, so the stand view can walk them between stations.
@@ -44,7 +51,7 @@ namespace RestaurantCity {
             if (washing) { StandDirty--; StandClean++; return; }
             Restaurant.Protein -= midnight ? 2 : 1; Restaurant.Produce--;
             int earned = (int)Math.Round(KitchenState.StandPrice(this, front.Dish) * (1 - StandWorkerCut));
-            Cash += earned; StandWorkerEarned += earned; Served++; w.TasksCompleted++;
+            Cash += earned; EarnReputation(earned); StandWorkerEarned += earned; Served++; w.TasksCompleted++;
             StandClean--; StandDirty++; StandQueue.RemoveAt(0); SyncStandFront();
         }
         public const int StandQueueMax = 3, StandPlates = 4;
@@ -83,7 +90,7 @@ namespace RestaurantCity {
         }
         public bool Serve() {
             if (!HasOrder || Food != FoodStage.Plated || IsBurnt) return false;
-            Cash += SalePrice; Served++; Food = FoodStage.Empty; HasOrder = false; NextCustomer = 6; return true;
+            Cash += SalePrice; EarnReputation(SalePrice); Served++; Food = FoodStage.Empty; HasOrder = false; NextCustomer = 6; return true;
         }
         public bool ClaimRecipe(bool guardDefeated) {
             // The rival guards his stash every night. First win: the midnight recipe + 3 Flux. After that: +2 Flux per night.
@@ -100,7 +107,10 @@ namespace RestaurantCity {
             Cash = Math.Max(StandBuilt ? 0 : 10, Cash - 10); Health = 100; Discard(); HasOrder = false; StandQueue?.Clear(); NextCustomer = 8;
         }
         public void SanitizeAfterLoad() {
-            Version = 4; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
+            // Saves from before reputation existed get credit for what their restaurant already earned.
+            if (Version < 5 && Xp == 0 && Restaurant != null) Xp = Math.Max(0, Restaurant.Earnings);
+            Version = 5; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
+            Xp = Math.Max(0, Math.Min(999999, Xp)); RankUpTo = -1;
             // Old saves kept stand "Stock" separately; it now lives in the one shared pantry.
             if (Stock > 0) { Restaurant.Protein += Stock; Restaurant.Produce += Stock; Stock = 0; }
             Kitchen = Kitchen ?? new KitchenState(); Kitchen.SanitizeAfterLoad(this); Flux = Math.Max(0, Flux);

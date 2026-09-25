@@ -91,7 +91,7 @@ namespace RestaurantCity {
             summary.Append(waiting).Append(" waiting  /  ").Append(cooking).Append(" cooking  /  ").Append(ready).Append(" ready\nTab to manage orders");
             orderSummary.text = summary.ToString();
             // The crew "phone" (Staff tab) works before you own the restaurant, as soon as the stand is up.
-            bool panelVisible = visible || (Owner.Panel == "Staff" && Owner.Game.State.StandBuilt && Owner.Game.Started && !Owner.Game.Paused);
+            bool panelVisible = visible || ((Owner.Panel == "Map" || (Owner.Panel == "Staff" && Owner.Game.State.StandBuilt)) && Owner.Game.Started && !Owner.Game.Paused);
             if (!Owner.PanelOpen || !panelVisible) {
                 if (modal) { modal.gameObject.SetActive(false); Destroy(modal.gameObject); modal = null; }
                 tickLabels.Clear(); signature = ""; return;
@@ -103,7 +103,7 @@ namespace RestaurantCity {
 
         string Signature() {
             var s = Owner.Data;
-            var key = new StringBuilder(Owner.Panel).Append('|').Append(category).Append('|').Append(Owner.Game.State.Cash).Append('|').Append(s.Stars).Append('|').Append(s.Open).Append('|').Append(s.Produce).Append('|').Append(s.Protein).Append('|').Append(s.Layout.Count).Append('|').Append(s.Reviews.Count).Append('|').Append(s.Served).Append('|').Append(Owner.SelectedInstanceId).Append('|').Append(Owner.Game.State.RecipeUnlocked).Append('|').Append(s.CanCustomize).Append(Owner.AtSupplier);
+            var key = new StringBuilder(Owner.Panel).Append('|').Append(category).Append('|').Append(Owner.Game.State.Cash).Append('|').Append(s.Stars).Append('|').Append(s.Open).Append('|').Append(s.Produce).Append('|').Append(s.Protein).Append('|').Append(s.Layout.Count).Append('|').Append(s.Reviews.Count).Append('|').Append(s.Served).Append('|').Append(Owner.SelectedInstanceId).Append('|').Append(Owner.Game.State.RecipeUnlocked).Append('|').Append(Owner.Game.State.Xp).Append('|').Append(s.CanCustomize).Append(Owner.AtSupplier);
             foreach (var dish in s.ActiveMenu) key.Append(dish);
             key.Append('|').Append(Owner.Game.State.Stock);
             foreach (var order in s.Orders) key.Append('|').Append(order.Id).Append(':').Append(order.Stage);
@@ -119,21 +119,22 @@ namespace RestaurantCity {
             modal = Block(canvas.transform, "Restaurant management", 0, 105, 1440, 735, new Color(ink.r, ink.g, ink.b, .60f));
             var sheet = Block(modal, "Order pad", 110, 12, 1220, 710, paper);
             Block(sheet, "Top accent", 0, 0, 1220, 7, teal);
-            Label(sheet, Owner.Panel == "Supplies" ? "Milo's market pantry." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "How every dish is built." : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
+            Label(sheet, Owner.Panel == "Supplies" ? "Milo's market pantry." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "How every dish is built." : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
             Button(sheet, "Close  x", 1060, 24, 130, 36, () => Owner.ClosePanel(), ink, paper);
             Label(sheet, "Time pauses while management is open.", 823, 62, 365, 19, 12, muted, false, TextAnchor.MiddleRight);
-            string[] panels = { "Catalog", "Service", "Menu", "Cookbook", "Staff", "Reviews", "Furniture" };
+            string[] panels = { "Catalog", "Service", "Menu", "Cookbook", "Staff", "Map", "Reviews", "Furniture" };
             for (int i = 0; i < panels.Length; i++) {
                 string tab = panels[i]; bool active = Owner.Panel == tab;
-                Button(sheet, tab == "Catalog" ? "Shop" : tab == "Furniture" ? "Arrange" : tab, 30 + i * 133, 78, 125, 35, () => { Owner.ShowPanel(tab); signature = ""; Refresh(); }, active ? teal : pale, active ? white : ink);
+                Button(sheet, tab == "Catalog" ? "Shop" : tab == "Furniture" ? "Arrange" : tab, 30 + i * 114, 78, 108, 35, () => { Owner.ShowPanel(tab); signature = ""; Refresh(); }, active ? teal : pale, active ? white : ink);
             }
-            Label(sheet, "Your budget  $" + Owner.Game.State.Cash, 831, 82, 355, 28, 17, ink, true, TextAnchor.MiddleRight);
+            Label(sheet, "Your budget  $" + Owner.Game.State.Cash, 950, 82, 236, 28, 17, ink, true, TextAnchor.MiddleRight);
             Block(sheet, "Rule", 30, 124, 1160, 2, pale);
             if (Owner.Panel == "Supplies") BuildSupplies(sheet);
             else if (Owner.Panel == "Catalog") BuildCatalog(sheet);
             else if (Owner.Panel == "Menu") BuildMenu(sheet);
             else if (Owner.Panel == "Cookbook") BuildCookbook(sheet);
             else if (Owner.Panel == "Staff") BuildStaff(sheet);
+            else if (Owner.Panel == "Map") BuildMap(sheet);
             else if (Owner.Panel == "Reviews") BuildReviews(sheet);
             else if (Owner.Panel == "Furniture") BuildFurniture(sheet);
             else BuildService(sheet);
@@ -311,6 +312,63 @@ namespace RestaurantCity {
                 var job = jobs[i]; bool active = current == job;
                 Button(card, job == StaffJob.Off ? "Rest" : job == StaffJob.Clean ? "Wash" : job == StaffJob.Stand ? "Stand" : job == StaffJob.Any ? "Any job" : job.ToString(), 25 + i * 102, 233, 97, 43, () => Owner.Assign(workerId, job), active ? teal : pale, active ? white : ink);
             }
+        }
+
+        // The phone map: districts (locked ones dimmed), key places, where every player is, and the reputation ladder.
+        void BuildMap(RectTransform sheet) {
+            var st = Owner.Game.State; int xp = st.Xp, rank = Reputation.Rank(xp);
+            float mx = 30, my = 138, mh = 520, sc = mh / (CityDistricts.MaxZ - CityDistricts.MinZ), mw = (CityDistricts.MaxX - CityDistricts.MinX) * sc;
+            Vector2 P(float x, float z) => new Vector2(mx + (x - CityDistricts.MinX) * sc, my + (CityDistricts.MaxZ - z) * sc);
+            Block(sheet, "Bay", mx, my, mw, mh, new Color(.17f, .36f, .44f));
+            foreach (var d in CityDistricts.All) {
+                ColorUtility.TryParseHtmlString("#" + d.Hex, out var c); bool open = rank >= d.Rank;
+                // Drawn shapes follow the plan (boundary roads included); lock areas are slightly smaller.
+                float x0 = d.X0, x1 = d.X1, z0 = d.Z0, z1 = d.Z1;
+                switch (d.Id) {
+                    case "docks": z1 = -110; break;
+                    case "neon": x0 = 160; x1 = 420; z0 = -110; break;
+                    case "greenleaf": z0 = 130; x1 = 420; break;
+                    case "gold": x0 = 420; break;
+                    case "nebula": z1 = -190; break;
+                }
+                var a = P(x0, z1);
+                var b = Block(sheet, d.Name, a.x, a.y, (x1 - x0) * sc, (z1 - z0) * sc, open ? Color.Lerp(c, white, .12f) : Color.Lerp(c, new Color(.16f, .18f, .21f), .7f));
+                Label(b, d.Name.ToUpper(), 6, 4, 220, 20, 13, white, true);
+                if (!open) Label(b, "LOCKED  /  " + Reputation.Titles[d.Rank], 6, 21, 230, 18, 11, new Color(1, .88f, .62f));
+            }
+            var bridgeA = P(434, -126); Block(sheet, "Bridge", bridgeA.x, bridgeA.y, 12 * sc, 64 * sc, new Color(.78f, .76f, .70f));
+            foreach (var place in CityDistricts.Places) {
+                var d = CityDistricts.At(place.X, place.Z); bool open = CityDistricts.Unlocked(d, xp);
+                Color k = place.Kind == "rival" ? coral : place.Kind == "supply" ? teal : place.Kind == "restaurant" ? new Color(.95f, .76f, .3f) : place.Kind == "recipe" ? new Color(.62f, .45f, .9f) : place.Kind == "you" ? white : new Color(.35f, .55f, .9f);
+                var q = P(place.X, place.Z);
+                Block(sheet, place.Name, q.x - 4, q.y - 4, 8, 8, open ? k : new Color(k.r, k.g, k.b, .45f));
+                // Your home block is crowded at this scale: label only The Odd Table there.
+                bool home = Mathf.Abs(place.X) < 40 && Mathf.Abs(place.Z) < 40 && place.Name != "The Odd Table";
+                bool right = place.X > 480;
+                if ((open || place.Kind == "rival") && !home) Label(sheet, place.Name, right ? q.x - 136 : q.x + 6, q.y - 8, 130, 16, 10, open ? white : new Color(1, 1, 1, .55f), false, right ? TextAnchor.UpperRight : TextAnchor.UpperLeft);
+            }
+            var markers = new System.Collections.Generic.List<(RectTransform, Transform)>();
+            if (LocalCoop.Instance != null && LocalCoop.Instance.PlayerCount > 0) { int n = 0; foreach (var pl in LocalCoop.Instance.Players) if (pl) markers.Add((Block(sheet, "P" + (++n), 0, 0, 12, 12, n == 1 ? coral : new Color(.3f, .8f, 1f)), pl.transform)); }
+            else if (Owner.Game.Player) markers.Add((Block(sheet, "You", 0, 0, 12, 12, coral), Owner.Game.Player.transform));
+            tickLabels.Add(() => { foreach (var (m, t) in markers) if (m && t) { var q = P(t.position.x, t.position.z); m.anchoredPosition = new Vector2(q.x - 6, -(q.y - 6)); } });
+            tickLabels[tickLabels.Count - 1]();
+            var home = P(-8, 12); Label(sheet, "Stand, Milo's, Gilded Orbit", home.x - 60, home.y - 30, 150, 16, 10, white, true);
+
+            float rx = mx + mw + 26, rw = 1190 - rx;
+            Label(sheet, "REPUTATION", rx, 140, rw, 20, 13, muted, true);
+            Label(sheet, Reputation.Titles[rank], rx, 160, rw, 40, 30, ink, true);
+            Block(sheet, "Rep bar", rx, 206, rw, 14, pale);
+            Block(sheet, "Rep fill", rx, 206, Mathf.Max(4, rw * Reputation.Progress(xp)), 14, teal);
+            var next = CityDistricts.OpenedAt(rank + 1);
+            Label(sheet, Reputation.IsMax(xp) ? xp + " reputation. The whole city is yours." : xp + " / " + Reputation.NextThreshold(xp) + " to " + Reputation.Titles[rank + 1] + (next != null ? ", which opens " + next.Name : ""), rx, 226, rw, 40, 14, ink);
+            Label(sheet, "Every dollar customers pay you, at the stand or the restaurant, is one reputation point.", rx, 266, rw, 40, 12, muted);
+            for (int i = 0; i < Reputation.Titles.Length; i++) {
+                var d = CityDistricts.OpenedAt(i); bool got = rank >= i; float y = 318 + i * 44;
+                Block(sheet, "Rank row", rx, y, rw, 38, got ? new Color(teal.r, teal.g, teal.b, .16f) : new Color(pale.r, pale.g, pale.b, .55f));
+                Label(sheet, (got ? "OPEN   " : Reputation.Thresholds[i] + "   ") + Reputation.Titles[i], rx + 10, y + 3, rw - 20, 18, 14, got ? teal : ink, true);
+                Label(sheet, d != null ? d.Name : "", rx + 10, y + 20, rw - 20, 16, 12, muted);
+            }
+            Label(sheet, "Map key:  red rival   green supplier   gold restaurant   purple recipe   blue service", rx, 588, rw, 36, 11, muted);
         }
 
         void BuildReviews(RectTransform sheet) {

@@ -42,12 +42,15 @@ namespace RestaurantCity {
             ("21_greenleaf_day", new Vector3(40, 0, 150), 0, 0, 60),
             ("22_gold_day", new Vector3(420, 0, 60), 0, -6, 60),
             ("23_bridge_day", new Vector3(440, 0, -100), 180, 4, 60),
+            ("25_docks_lock_day", new Vector3(-40, 0, -96), 180, 6, 60),
+            ("26_phone_map", new Vector3(0, 0, 3), 0, 0, 60),
         };
 
         IEnumerator Start() {
             var dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "..", "Snapshots"));
             if (Application.isEditor) dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Snapshots"));
             Directory.CreateDirectory(dir);
+            DistrictLocks.Suspended = true;
             yield return new WaitForSeconds(2);
             Game.State.StandBuilt = true; Game.SetPaused(false); Game.SyncWorld();
             foreach (var shot in Shots) {
@@ -57,6 +60,8 @@ namespace RestaurantCity {
                 var cc = p.GetComponent<CharacterController>(); if (cc) cc.enabled = false;
                 p.transform.position = shot.pos; p.transform.rotation = Quaternion.Euler(0, shot.yaw, 0);
                 p.View.transform.localRotation = Quaternion.Euler(shot.pitch, 0, 0);
+                var rc = FindFirstObjectByType<RestaurantController>();
+                if (rc && shot.name.Contains("phone_map")) rc.ShowPanel("Map");
                 for (int i = 0; i < 20; i++) yield return null;
                 ScreenCapture.CaptureScreenshot(Path.Combine(dir, shot.name + ".png"));
                 for (int i = 0; i < 5; i++) yield return null;

@@ -118,6 +118,7 @@ public static class CityGreybox {
         Massing();
         Signs();
         Coast();
+        LockBarriers();
     }
     static void AddRoad(Rect r, float top, Material m, Transform parent) {
         if (r.width < .5f || r.height < .5f) return;
@@ -245,9 +246,9 @@ public static class CityGreybox {
             var p = new Vector3(x, 0, z);
             Box("Sign post", p + Vector3.up * 2.5f, new Vector3(.3f, 5, .3f), M("Post", "2A2E33"), s);
             var face = Fwd[facing]; var side = new Vector3(face.z, 0, -face.x);
-            Box("Sign board", p + Vector3.up * 5.4f, facing % 2 == 0 ? new Vector3(8, 2.6f, .3f) : new Vector3(.3f, 2.6f, 8), board, s, false);
-            Sign("WELCOME TO " + d.Name, p + Vector3.up * 5.8f + face * .2f, facing, .9f, Color.white, s);
-            Sign(id == "market" ? "Your home turf" : "Unlocks at " + d.Rank.ToUpper(), p + Vector3.up * 4.8f + face * .2f, facing, .55f, new Color(1, .92f, .75f), s);
+            Box("Sign board", p + Vector3.up * 5.4f, facing % 2 == 0 ? new Vector3(11, 2.6f, .3f) : new Vector3(.3f, 2.6f, 11), board, s, false);
+            Sign("WELCOME TO " + d.Name, p + Vector3.up * 5.9f + face * .2f, facing, .55f, Color.white, s);
+            Sign(id == "market" ? "Your home turf" : "Unlocks at " + d.Rank.ToUpper(), p + Vector3.up * 4.9f + face * .2f, facing, .38f, new Color(1, .92f, .75f), s);
         }
         Gate("docks", -48, -118, 0); Gate("docks", 48, -118, 0);
         Gate("neon", 167, -8, 3); Gate("neon", 167, 43, 3);
@@ -255,6 +256,32 @@ public static class CityGreybox {
         Gate("gold", 427, -8, 3); Gate("gold", 427, 123, 3);
         Gate("nebula", 429, -116, 0);
         Gate("market", 153, 8, 1); Gate("market", -48, -102, 2);
+    }
+    // Police tape and barriers where roads enter a district. DistrictLocks hides a district's set once its rank is reached.
+    static void LockBarriers() {
+        var all = new GameObject("District locks").transform; all.SetParent(root, false);
+        var tape = M("Tape", "F2C230", .2f);
+        foreach (var d in RestaurantCity.CityDistricts.All) {
+            if (d.Rank == 0) continue;
+            var g = new GameObject("Lock_" + d.Id).transform; g.SetParent(all, false);
+            void Line(Vector3 center, bool acrossX, float length) {
+                var dir = acrossX ? Vector3.right : Vector3.forward; float yaw = acrossX ? 0 : 90;
+                for (float t = -length / 2 + .8f; t <= length / 2 - .7f; t += 1.6f) CityMap.Prefab("Props/SM_Prop_Barrier_01", center + dir * t, yaw, g);
+                Box("Police tape", center + Vector3.up * 1.15f, acrossX ? new Vector3(length + 1, .12f, .04f) : new Vector3(.04f, .12f, length + 1), tape, g, false);
+                foreach (float e in new[] { -length / 2 - .6f, length / 2 + .6f }) CityMap.Prefab("Props/SM_Prop_Cone_01", center + dir * e, 0, g);
+            }
+            foreach (var r in roads) {
+                bool vertical = r.height > r.width;
+                if (vertical) {
+                    if (r.xMin < d.X0 - .5f || r.xMax > d.X1 + .5f) continue;
+                    foreach (float z in new[] { d.Z0, d.Z1 }) if (r.yMin < z - 1 && r.yMax > z + 1) Line(new Vector3(r.center.x, 0, z + (z == d.Z0 ? 1.5f : -1.5f)), true, r.width);
+                } else {
+                    if (r.yMin < d.Z0 - .5f || r.yMax > d.Z1 + .5f) continue;
+                    foreach (float x in new[] { d.X0, d.X1 }) if (r.xMin < x - 1 && r.xMax > x + 1) Line(new Vector3(x + (x == d.X0 ? 1.5f : -1.5f), 0, r.center.y), false, r.height);
+                }
+            }
+            if (d.Id == "nebula") Line(new Vector3(Bridge.center.x, 0, -128), true, Bridge.width - .6f);
+        }
     }
     // Invisible walls along the shoreline (the bridge stays open).
     static void Coast() {
