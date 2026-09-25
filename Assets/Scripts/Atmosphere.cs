@@ -9,6 +9,10 @@ namespace RestaurantCity {
         public CityGame Game;
         Volume volume; ColorAdjustments grade; Bloom bloom; Vignette vignette; WhiteBalance balance;
         Light[] warm;
+        // City windows light up after dark (about half of them, like people are home).
+        readonly System.Collections.Generic.List<Renderer> windows = new System.Collections.Generic.List<Renderer>();
+        readonly System.Collections.Generic.List<Material> windowDay = new System.Collections.Generic.List<Material>();
+        Material windowNight; bool nightWindows;
 
         public static void Install(CityGame game, Transform parent) {
             if (!game || game.GetComponentInChildren<Atmosphere>()) return;
@@ -24,6 +28,18 @@ namespace RestaurantCity {
             balance = profile.Add<WhiteBalance>(true); balance.temperature.Override(8f);
             vignette = profile.Add<Vignette>(true); vignette.intensity.Override(.22f); vignette.smoothness.Override(.45f);
             volume = gameObject.AddComponent<Volume>(); volume.isGlobal = true; volume.priority = 10; volume.profile = profile;
+            var shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader) {
+                windowNight = new Material(shader) { name = "Lit window (night)", color = new Color(1f, .8f, .5f) };
+                windowNight.EnableKeyword("_EMISSION"); windowNight.SetColor("_EmissionColor", new Color(1f, .72f, .38f) * 1.6f);
+                windowNight.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+                int n = 0;
+                foreach (var r in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None)) {
+                    if (r.gameObject.name != "Window" && r.gameObject.name != "Lit window") continue;
+                    if (r.gameObject.name == "Window" && (n++ * 7 + 3) % 10 >= 5) continue;
+                    windows.Add(r); windowDay.Add(r.sharedMaterial);
+                }
+            }
             warm = new[] {
                 Warm(new Vector3(0, 3.0f, 8.1f), 2.2f, 7f),      // food stand, under the awning
                 Warm(new Vector3(-12, 3.0f, 8.6f), 1.8f, 6f),    // Milo's market
@@ -49,7 +65,9 @@ namespace RestaurantCity {
             // Golden hour just before night, cool blue night, crisp day.
             float golden = Mathf.Clamp01(1 - Mathf.Abs(clock - 140) / 22f);
             balance.temperature.value = Mathf.Lerp(8f, -18f, dusk) + golden * 14f;
-            grade.postExposure.value = Mathf.Lerp(.25f, .45f, dusk);
+            grade.postExposure.value = Mathf.Lerp(.25f, .75f, dusk);
+            bool night = dusk > .55f;
+            if (night != nightWindows && windowNight) { nightWindows = night; for (int i = 0; i < windows.Count; i++) if (windows[i]) windows[i].sharedMaterial = night ? windowNight : windowDay[i]; }
             grade.colorFilter.Override(Color.Lerp(Color.white, new Color(.82f, .88f, 1f), dusk));
             bloom.intensity.value = Mathf.Lerp(.45f, 1.1f, dusk);
             vignette.intensity.value = Mathf.Lerp(.2f, .32f, dusk);
