@@ -71,6 +71,7 @@ namespace RestaurantCity {
             var s = Owner.Data;
             bool visible = s.Owned && Owner.Game.Started && !Owner.Game.Paused;
             bool full = Owner.Inside || Owner.PanelOpen || Owner.PlacementActive;
+            canvas.enabled = Owner.PanelOpen || Owner.PlacementActive;
             hud.gameObject.SetActive(visible && full);
             cityBadge.gameObject.SetActive(visible && !full);
             cityRank.text = "Little Flame  /  " + (s.Stars >= 2 ? "Two stars" : "One star") + "\n" + s.Satisfaction.ToString("0") + "% satisfaction   /   " + s.Served + " happy memories served";
@@ -135,6 +136,7 @@ namespace RestaurantCity {
             Text panelNotice = Label(sheet, "", 30, 667, 1156, 29, 14, muted);
             tickLabels.Add(() => { if (panelNotice) panelNotice.text = !string.IsNullOrEmpty(Owner.Game.Notice) ? Owner.Game.Notice : Owner.Panel == "Catalog" ? (Owner.Data.CanCustomize ? "Purchases and layouts save automatically. Choose an item to see it in your restaurant." : "Close service and let the last guest leave before renovating.") : "B Catalog / Tab Manage / Esc Close    |    Your progress saves automatically."; });
             if (scroll) scroll.verticalNormalizedPosition = previousScroll;
+            if(EventSystem.current && !EventSystem.current.currentSelectedGameObject){var first=sheet.GetComponentInChildren<Button>();if(first)EventSystem.current.SetSelectedGameObject(first.gameObject);}
         }
 
         void BuildCatalog(RectTransform sheet) {
@@ -172,7 +174,7 @@ namespace RestaurantCity {
             var content = Scroller(sheet, 30, 182, 1160, 390, Mathf.CeilToInt(count / 2f) * 155);
             int index = 0;
             foreach (var dish in RestaurantCatalog.Dishes) {
-                var entry = dish; int col = index % 2, row = index / 2; index++;
+                if (dish.Id != "burger" && dish.Id != "salad" && dish.Id != "midnight") continue; var entry = dish; int col = index % 2, row = index / 2; index++;
                 var card = Block(content, entry.Name, col * 580, row * 155, 562, 142, white);
                 bool midnight = entry.RequiresMidnight && !Owner.Game.State.RecipeUnlocked;
                 bool locked = midnight || entry.RequiredStars > Owner.Data.Stars || (!string.IsNullOrEmpty(entry.Equipment) && !Owner.Data.HasEquipment(entry.Equipment));
@@ -210,47 +212,16 @@ namespace RestaurantCity {
         }
 
         void BuildService(RectTransform sheet) {
-            Label(sheet, "Cook a ticket, then close this menu. E at a kitchen station collects a ready dish;\nE at the matching guest serves it. Your crew can automate jobs as you grow.", 30, 140, 798, 47, 16, ink);
-            Button(sheet, Owner.Data.Open ? "Close to new arrivals" : "Open for service", 848, 139, 339, 37, () => Owner.ToggleService(), Owner.Data.Open ? coral : teal, white);
-            bool canCookMenu = false;
-            foreach (var dishId in Owner.Data.ActiveMenu) {
-                var dish = RestaurantCatalog.Dish(dishId);
-                if (dish != null && Owner.Data.IsDishAvailable(Owner.Game.State, dishId) && Owner.Data.Produce >= dish.ProduceCost && Owner.Data.Protein >= dish.ProteinCost) canCookMenu = true;
-            }
-            string pantryHint = Owner.Data.Open ? "Service resumes when you close this panel. Watch the pantry before the next rush." : "Choose a menu, stock up, and open your doors. Closing this panel resumes the city.";
-            if (!canCookMenu) pantryHint = Owner.Data.Produce == 0 && Owner.Game.State.Cash < 6
-                ? "Out of cash and produce? Finish ready dishes, then ask Milo for produce. His emergency salad supplies can restart service."
-                : Owner.Data.Protein == 0 && Owner.Data.Produce >= 2 && Owner.Data.HasEquipment("prep_bench")
-                ? "No protein? Add Garden galaxy in Menu. It only needs 2 produce. Milo sells more supplies across the street."
-                : "Pantry exhausted for this menu. Close new arrivals, finish ready dishes, then visit Milo's green market to restock.";
-            var pantryNote = Block(sheet, "Service guidance", 30, 195, 1160, 43, canCookMenu ? pale : new Color(1f, .84f, .64f));
-            Label(pantryNote, pantryHint, 13, 7, 1134, 32, 14, ink);
-            var content = Scroller(sheet, 30, 250, 1160, 315, Mathf.Max(307, Mathf.CeilToInt(Owner.Data.Orders.Count / 3f) * 178));
-            if (Owner.Data.Orders.Count == 0) {
-                Label(content, Owner.Data.Open ? "The first guests are on their way." : "A quiet kitchen. A fresh start.", 45, 73, 1060, 52, 30, ink, true, TextAnchor.MiddleCenter);
-                Label(content, "Choose your menu, stock ingredients and assign your crew.\nCooking stations let you prepare several orders at once.", 150, 148, 840, 81, 19, muted, false, TextAnchor.MiddleCenter);
-            }
-            int index = 0;
-            foreach (var order in Owner.Data.Orders) {
-                var entry = order; int col = index % 3, row = index / 3; index++;
-                var card = Block(content, "Order " + entry.Id, col * 386, row * 178, 372, 166, white);
-                Color stageColor = entry.Stage == RestaurantOrderStage.Ready ? coral : entry.Stage == RestaurantOrderStage.Cooking ? teal : pale;
-                Block(card, "Ticket stripe", 0, 0, 7, 166, stageColor);
-                Label(card, "#" + entry.Id + "   " + CustomerName(entry.CustomerType), 20, 12, 335, 25, 16, muted, true);
-                Label(card, DishName(entry.DishId), 20, 42, 335, 31, 22, ink, true);
-                Text timer = Label(card, "", 20, 81, 334, 25, 15, ink);
-                tickLabels.Add(() => { if (timer) timer.text = entry.Stage == RestaurantOrderStage.Cooking ? "Cooking  " + entry.CookProgress.ToString("0.0") + "s" : entry.Stage == RestaurantOrderStage.Waiting ? "Patience: " + Mathf.Max(0, RestaurantCatalog.Customers[entry.CustomerType].Patience - entry.Wait).ToString("0") + "s" : entry.Stage == RestaurantOrderStage.Ready ? "Ready - collect at a kitchen station" : entry.Stage == RestaurantOrderStage.Eating ? "Enjoying the meal" : "Heading home"; });
-                bool canAct = entry.Stage == RestaurantOrderStage.Waiting;
-                Button(card, entry.Stage == RestaurantOrderStage.Waiting ? "Cook this order" : entry.Stage == RestaurantOrderStage.Ready ? "Collect at kitchen" : entry.Stage == RestaurantOrderStage.Cooking ? "On the stove" : "Bon appetit!", 20, 117, 332, 34, () => Owner.TryCook(entry.Id), canAct ? teal : pale, canAct ? white : muted, canAct);
-            }
-            var bar = Block(sheet, "Service tools", 30, 582, 1160, 68, ink);
-            Text cleaning = Label(bar, "", 16, 13, 359, 48, 16, paper);
-            tickLabels.Add(() => { if (cleaning) cleaning.text = "Cleanliness " + Owner.Data.Cleanliness.ToString("0") + "%\n" + Owner.Data.CookSlots + " cooking stations / " + Owner.Data.Seats + " seats"; });
-            Button(bar, "Clean restaurant", 378, 15, 244, 38, () => Owner.Clean(), teal, white);
-            Button(bar, "Stock pantry", 640, 15, 235, 38, () => Owner.ShowPanel("Menu"), pale, ink);
-            Button(bar, "Assign crew", 893, 15, 251, 38, () => Owner.ShowPanel("Staff"), pale, ink);
+            Label(sheet,"Physical kitchen / Everyone can cook. No worker required.",30,139,1100,40,23,ink,true);
+            Button(sheet,"Open for service",848,188,339,40,()=>Owner.ToggleService(),teal,white);
+            Label(sheet,"BURGER: Take protein from pantry > prep bench > hold E to chop.\nTake prepared patty > grill. Cook 8 seconds; remove before 24 seconds.\nTake a clean plate > assembly counter. Add cooked patty and a bun.\nTake the finished plate > matching guest > E to serve.\n\nSALAD: Chop greens, then add them to a plate on the assembly counter.\nMIDNIGHT: Burger plus midnight sauce, prepared from pantry sauce ingredients.\n\nAfter eating: E at table to clear > sink > hold E to wash.\nQ cycles pantry ingredients when empty handed; Q discards held food.\nV switches first-person / elevated service view without moving you.",30,194,797,300,18,ink);
+            Button(sheet,"Wait until night (+30% sales)",848,242,339,40,()=>{Owner.Game.State.Clock=180;Owner.Feedback("Night service pays 30% more. Watch the rush.");},pale,ink);
+            Button(sheet,"Prep research / 3 Flux",848,297,339,40,()=>{Owner.Game.State.Kitchen.SpendFlux(Owner.Game.State,"research",out var m);Owner.Feedback(m);},pale,ink);
+            int i=0;foreach(var w in Owner.Data.Workers){string id=w.Id;Button(sheet,id+" energy boost / 1 Flux",848,351+i++*48,339,40,()=>{Owner.Game.State.Kitchen.SpendFlux(Owner.Game.State,id,out var m);Owner.Feedback(m);},pale,ink);}
+            var report=Owner.Game.State.Kitchen.LastReport;
+            if(report!=null)Label(sheet,"LAST SHIFT   Sales $"+report.GrossSales+" - ingredients $"+report.IngredientCosts.ToString("0.0")+" - wages $"+report.Wages+" = net $"+report.Net+"\nServed "+report.Served+" / lost "+report.Lost+" | Satisfaction "+report.Satisfaction.ToString("0")+"% | Stars "+report.StarsBefore+" > "+report.StarsAfter+"\n"+string.Join(" / ",report.Comments)+"\n"+report.StaffSummary,30,506,1157,143,16,ink);
+            else Label(sheet,"A shift takes arrivals for two minutes, then lets you finish remaining guests.\nUse the door sign to end arrivals early. Tab opens management between shifts.\nController Start joins player two. Management is a shared screen while closed.",30,523,1157,110,18,muted);
         }
-
         void BuildFurniture(RectTransform sheet) {
             PlacedItem selected = null;
             foreach (var item in Owner.Data.Layout) if (item.InstanceId == Owner.SelectedInstanceId) selected = item;
@@ -285,11 +256,11 @@ namespace RestaurantCity {
             if (hired == null) { Button(card, "Hire for $" + cost, 25, 233, 508, 43, () => Owner.Hire(workerId), teal, white, Owner.Game.State.Cash >= cost); return; }
             var current = WorkerJob(hired);
             Text workStatus = Label(card, "", 25, 207, 508, 24, 14, muted);
-            tickLabels.Add(() => { if (workStatus) workStatus.text = "Hired / " + hired.TasksCompleted + " tasks completed"; });
+            tickLabels.Add(() => { if (workStatus) workStatus.text = "Energy " + hired.Energy.ToString("0") + "/100 / " + hired.TasksCompleted + " tasks completed"; });
             StaffJob[] jobs = { StaffJob.Off, StaffJob.Cook, StaffJob.Serve, StaffJob.Clean };
             for (int i = 0; i < jobs.Length; i++) {
                 var job = jobs[i]; bool active = current == job;
-                Button(card, job == StaffJob.Off ? "Rest" : job.ToString(), 25 + i * 129, 233, 121, 43, () => Owner.Assign(workerId, job), active ? teal : pale, active ? white : ink);
+                Button(card, job == StaffJob.Off ? "Rest" : job == StaffJob.Clean ? "Wash" : job.ToString(), 25 + i * 129, 233, 121, 43, () => Owner.Assign(workerId, job), active ? teal : pale, active ? white : ink);
             }
         }
 

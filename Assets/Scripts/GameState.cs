@@ -6,7 +6,9 @@ namespace RestaurantCity {
     }
     public enum FoodStage { Empty, Prepared, Cooking, Plated }
     [Serializable] public class GameState {
-        public int Version = 2, Cash = 30, Stock, Served, Missed, Health = 100, Day = 1;
+        public int Version = 3, Cash = 30, Stock, Served, Missed, Health = 100, Day = 1, Flux;
+        public bool FluxResearch, FluxIntroduced;
+        public KitchenState Kitchen = new KitchenState();
         public RestaurantState Restaurant = new RestaurantState();
         public bool StandBuilt, RecipeUnlocked, HasOrder;
         public float Clock, CookSeconds, Patience;
@@ -39,7 +41,7 @@ namespace RestaurantCity {
         }
         public bool ClaimRecipe(bool guardDefeated) {
             if (!IsNight || !guardDefeated || RecipeUnlocked) return false;
-            RecipeUnlocked = true; return true;
+            RecipeUnlocked = true; Flux += 3; FluxIntroduced=true; return true;
         }
         public bool RequestHelp() {
             if (!StandBuilt || Cash >= 6 || Stock != 0 || Food != FoodStage.Empty) return false;
@@ -50,7 +52,9 @@ namespace RestaurantCity {
             Cash = Math.Max(StandBuilt ? 0 : 10, Cash - 10); Health = 100; Discard(); HasOrder = false; NextCustomer = 8;
         }
         public void SanitizeAfterLoad() {
-            Version = 2; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
+            Version = 3; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
+            Kitchen = Kitchen ?? new KitchenState(); Kitchen.SanitizeAfterLoad(this); Flux = Math.Max(0, Flux);
+            if(RecipeUnlocked&&!FluxIntroduced){Flux+=3;FluxIntroduced=true;}
             Cash = Math.Max(StandBuilt ? 0 : 10, Math.Min(999999, Cash)); Stock = Math.Max(0, Math.Min(99, Stock));
             Served = Math.Max(0, Served); Missed = Math.Max(0, Missed); Day = Math.Max(1, Day);
             Clock = float.IsNaN(Clock) || float.IsInfinity(Clock) ? 0 : Math.Max(0, Clock) % 240;

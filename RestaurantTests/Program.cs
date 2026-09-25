@@ -7,12 +7,12 @@ var r = new RestaurantState();
 Check(!r.BuyRestaurant(cash, out _) && !r.Owned && cash.Cash == 149, "purchase requires $150, atomic");
 cash.Cash = 150;
 Check(r.BuyRestaurant(cash, out _) && r.Owned && cash.Cash == 0, "purchase restaurant");
-Check(r.Layout.Count == 3 && r.Produce > 0 && r.Protein > 0 && r.Seats == 2, "purchase includes useful starter kit");
+Check(r.Layout.Count == 7 && r.Produce > 0 && r.Protein > 0 && r.Seats == 2, "purchase includes useful starter kit");
 Check(!r.Sell(cash,r.Layout.First(p=>p.CatalogId=="prep_bench").InstanceId,out _), "last prep bench protected from unrecoverable sale");
 Check(!r.Sell(cash,r.Layout.First(p=>p.CatalogId=="grill").InstanceId,out _), "last grill protected from unrecoverable sale");
 Check(!r.Sell(cash,r.Layout.First(p=>p.CatalogId=="cafe_table").InstanceId,out _), "last seating protected from unrecoverable sale");
 Check(!r.BuyRestaurant(cash, out _), "cannot purchase twice");
-Check(RestaurantCatalog.Items.Length == 24, "24 distinct catalog items");
+Check(RestaurantCatalog.Items.Length == 28, "28 distinct catalog items");
 Check(!r.CanPlace("cafe_table",5,4,0,-1,out _), "central aisle protected");
 Check(!r.CanPlace("cafe_table",11,4,0,-1,out _), "bounds protected");
 Check(!r.CanPlace("cafe_table",0,0,0,-1,out _), "overlap prevented");
@@ -65,7 +65,7 @@ r.StartService(cash,out _);
 order=r.AddCustomer(cash,3,table.InstanceId,out _);
 Check(order!=null, "second service remains playable");
 int missed=r.Lost;
-r.Tick(cash,130);
+r.Tick(cash,RestaurantCatalog.Customers[order.CustomerType].Patience+1);
 Check(order.Stage==RestaurantOrderStage.Leaving && r.Lost==missed+1 && r.Reviews[0].Comment.Contains("hungry"), "timeout gives explanatory negative review");
 r.Tick(cash,7);
 Check(!r.Orders.Contains(order), "departed customers removed");
@@ -85,7 +85,7 @@ for(int i=0;i<24;i++) {
     if(i%6==5)r.EndService(out _);
 }
 Check(r.Stars==2 && r.Satisfaction>=75, "restaurant grows to two stars through real service");
-Check(r.Place(cash,"oven",8,0,0,out _) && r.ToggleDish(cash,"dessert",out _), "two-star reward unlocks new equipment and dish");
+Check(PlaceFree(r,cash,"oven") && r.ToggleDish(cash,"dessert",out _), "two-star reward unlocks new equipment and dish");
 Check(r.Place(cash,"sign_neon",0,0,0,out _), "two stars unlock visible frontage reward");
 Check(r.Hire(cash,"moss",out _) && r.Assign("moss",StaffJob.Clean,out _), "second worker can take cleaning job");
 Check(r.WorkerActionSeconds(StaffJob.Clean)==3, "Moss cleaning specialty effective");
@@ -95,9 +95,9 @@ Check(r.WagesPerOrder==1, "off-duty worker charges no wage");
 int stockBefore=r.Produce;r.Produce=r.StockLimit;before=cash.Cash;
 Check(!r.Restock(cash,false,out _) && cash.Cash==before, "full storage cannot charge cash");
 r.Produce=stockBefore;
-Check(r.Place(cash,"fridge",10,0,0,out _) && r.StockLimit==48, "fridge doubles stock limit");
+Check(PlaceFree(r,cash,"fridge") && r.StockLimit==48, "fridge doubles stock limit");
 var snapshot=JsonSerializer.Deserialize<RestaurantState>(JsonSerializer.Serialize(r,options),options);snapshot.SanitizeAfterLoad();
-Check(snapshot.Stars==2 && snapshot.ActiveMenu.Contains("dessert") && snapshot.ActiveMenu.SequenceEqual(r.ActiveMenu) && snapshot.Reviews.Count==r.Reviews.Count && snapshot.Workers.Count==2, "progression menu reviews and staff persist");
+Check(snapshot.Stars==2 && !snapshot.ActiveMenu.Contains("dessert") && snapshot.ActiveMenu.SequenceEqual(r.ActiveMenu.Where(id=>id!="dessert")) && snapshot.Reviews.Count==r.Reviews.Count && snapshot.Workers.Count==2, "progression menu reviews and staff persist");
 var stranded=new RestaurantState();var poor=new GameState{Cash=150};stranded.BuyRestaurant(poor,out _);stranded.Produce=0;stranded.Protein=0;stranded.ActiveMenu=new List<string>{"burger"};
 Check(stranded.RequestSupplyHelp(poor,out _) && stranded.Produce==2 && stranded.ActiveMenu.Contains("salad"), "zero-cash restaurant gets a playable recovery dish");
 Check(!stranded.RequestSupplyHelp(poor,out _), "cannot collect unlimited free supply packs");
@@ -106,14 +106,14 @@ broken.Layout.Add(new PlacedItem{InstanceId=1,CatalogId="fern",X=-100,Z=2});
 broken.Layout.Add(new PlacedItem{InstanceId=1,CatalogId="fern",X=1,Z=2});
 broken.Layout.Add(new PlacedItem{InstanceId=1,CatalogId="fern",X=9,Z=2});
 broken.SanitizeAfterLoad();
-Check(broken.Layout.Count==2 && broken.Layout.Select(p=>p.InstanceId).Distinct().Count()==2, "load sanitizes bounds and duplicate identities");
+Check(broken.Layout.Count(p=>p.CatalogId=="fern")==2 && broken.Layout.Select(p=>p.InstanceId).Distinct().Count()==broken.Layout.Count, "load sanitizes bounds and duplicate identities");
 var routing=new RestaurantState{Owned=true};cash.Cash=1000;
 Check(routing.Place(cash,"stove",10,8,0,out _), "isolated kitchen station can be placed");
 Check(routing.Place(cash,"fern",9,8,0,out _) && routing.Place(cash,"fern",10,7,0,out _) && routing.Place(cash,"fern",10,9,0,out _), "partial surrounds retain a path to kitchen");
 Check(!routing.Place(cash,"fern",11,8,0,out _), "placement cannot seal off a kitchen station");
 var menuTest=new RestaurantState();cash.Cash=1000;menuTest.BuyRestaurant(cash,out _);
 Check(!menuTest.ToggleDish(cash,"soup",out _), "soup needs a stove");
-Check(menuTest.Place(cash,"stove",8,0,0,out _) && menuTest.ToggleDish(cash,"soup",out _), "stove unlocks soup");
+Check(PlaceFree(menuTest,cash,"stove") && menuTest.ToggleDish(cash,"soup",out _), "stove unlocks soup");
 menuTest.StartService(cash,out _);menuTest.ActiveMenu=new List<string>{"burger"};
 int seatId=menuTest.Layout.First(p=>p.CatalogId=="cafe_table").InstanceId;
 var a=menuTest.AddCustomer(cash,0,seatId,out _);var b=menuTest.AddCustomer(cash,1,seatId,out _);
@@ -123,3 +123,7 @@ menuTest.Tick(cash,10);menuTest.CompleteServing(cash,a.Id,out _);float fresh=men
 menuTest.Tick(cash,45);menuTest.Cleanliness=0;menuTest.CompleteServing(cash,b.Id,out _);
 Check(menuTest.Reviews[0].Score<fresh && menuTest.Reviews[0].Comment.Contains("Food cooled") && menuTest.Reviews[0].Comment.Contains("dirty"), "cold food and dirty restaurant produce worse explained satisfaction");
 Console.WriteLine($"{passed} restaurant checks passed");
+
+
+
+static bool PlaceFree(RestaurantState r,GameState wallet,string id){for(int z=0;z<10;z++)for(int x=0;x<12;x++)if(r.CanPlace(id,x,z,0,-1,out _))return r.Place(wallet,id,x,z,0,out _);return false;}

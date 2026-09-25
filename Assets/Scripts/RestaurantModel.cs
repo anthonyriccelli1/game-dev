@@ -31,7 +31,7 @@ namespace RestaurantCity {
         public int Id; public string Name,FavoriteDish,Description;
         public float Patience,AmbienceWeight,CleanlinessWeight;
         public CustomerDefinition(int id,string name,string favorite,float patience,float ambience,float clean,string description) {
-            Id=id;Name=name;FavoriteDish=favorite;Patience=patience;AmbienceWeight=ambience;CleanlinessWeight=clean;Description=description;
+            Id=id;Name=name;FavoriteDish=favorite;Patience=Math.Min(220,patience*2);AmbienceWeight=ambience;CleanlinessWeight=clean;Description=description;
         }
     }
     public class StaffDefinition {
@@ -40,10 +40,14 @@ namespace RestaurantCity {
     }
     public static class RestaurantCatalog {
         public static readonly CatalogItem[] Items = {
-            new CatalogItem("prep_bench","Steel prep bench",CatalogCategory.Kitchen,28,2,1,0,0,"Adds prep capacity; salads cook 25% faster per extra bench."),
+            new CatalogItem("pantry","Ingredient pantry",CatalogCategory.Kitchen,25,1,1,0,0,"Take protein, greens, buns or midnight sauce ingredients."),
+            new CatalogItem("plate_rack","Plate rack",CatalogCategory.Kitchen,18,1,1,0,0,"Six shared reusable plates. Return dirty plates to the sink."),
+            new CatalogItem("assembly","Assembly counter",CatalogCategory.Kitchen,25,2,1,0,0,"Place a clean plate, then add prepared ingredients."),
+            new CatalogItem("sink","Deep washing sink",CatalogCategory.Kitchen,30,1,1,0,0,"Wash dirty plates for six seconds to replenish the rack."),
+            new CatalogItem("prep_bench","Steel prep bench",CatalogCategory.Kitchen,28,2,1,0,0,"Prepare one ingredient at a time. Extra benches let partners prep together."),
             new CatalogItem("grill","Comet grill",CatalogCategory.Kitchen,45,2,1,0,1,"Burgers and midnight buns. Extra grills add a cooking slot."),
-            new CatalogItem("stove","Little red stove",CatalogCategory.Kitchen,55,1,1,0,1,"Unlocks planet soup and adds one cooking slot."),
-            new CatalogItem("oven","Starlight oven",CatalogCategory.Kitchen,100,2,1,0,2,"TWO STARS: unlocks moonberry tart and adds a cooking slot.",2),
+            new CatalogItem("stove","Little red stove",CatalogCategory.Kitchen,55,1,1,0,1,"A decorative stove for your growing kitchen. Soup is not in this playable menu yet."),
+            new CatalogItem("oven","Starlight oven",CatalogCategory.Kitchen,100,2,1,0,2,"TWO STARS: cooks patties in six seconds instead of eight.",2),
             new CatalogItem("fridge","Mint refrigerator",CatalogCategory.Kitchen,40,1,1,0,1,"Raises each stock limit from 24 to 48; keeps ready dishes fresh longer."),
             new CatalogItem("stool_pair","Counter stools",CatalogCategory.Seating,20,2,2,2,1,"Two inexpensive customer seats."),
             new CatalogItem("cafe_table","Daisy cafe table",CatalogCategory.Seating,30,2,2,2,2,"Two seats and a cheery tabletop."),
@@ -97,9 +101,9 @@ namespace RestaurantCity {
         public RestaurantOrderStage Stage; public float Wait,CookProgress,Quality=1,StageTime;
     }
     [Serializable] public class RestaurantReview { public string Customer,Comment; public float Score; public string DishId; }
-    [Serializable] public class WorkerState { public string Id; public StaffJob Job; public int TasksCompleted; }
+    [Serializable] public class WorkerState { public string Id; public StaffJob Job; public int TasksCompleted; public float Energy=100; }
     [Serializable] public class RestaurantState {
-        public bool Owned,Open;
+        public bool Owned,Open,PhysicalKitInstalled;
         public int Produce,Protein,Served,Lost,Earnings,Rank=1,NextInstanceId=1,NextOrderId=1;
         public float Cleanliness=42,Satisfaction=50,ServiceSeconds;
         public List<PlacedItem> Layout=new List<PlacedItem>();
@@ -116,7 +120,7 @@ namespace RestaurantCity {
         public int WagesPerOrder => Workers.Count(w=>w.Job!=StaffJob.Off);
         public string WallId => Layout.FindLast(p=>p.CatalogId.StartsWith("wall_"))?.CatalogId??"wall_shabby";
         public string FloorId => Layout.FindLast(p=>p.CatalogId.StartsWith("floor_"))?.CatalogId??"floor_shabby";
-        public string StarProgress => Rank>=2?"TWO STARS • oven, moonberry tart, jukebox & neon sign unlocked":$"Two stars: {Served}/20 served • {Satisfaction:0}/75 satisfaction • {Ambience}/12 ambience";
+        public string StarProgress => Rank>=2?"TWO STARS • faster oven, jukebox & neon sign unlocked":$"Two stars: {Served}/20 served • {Satisfaction:0}/75 satisfaction • {Ambience}/12 ambience";
         public bool HasEquipment(string id) => Layout.Exists(p=>p.CatalogId==id);
         static bool Fail(string text,out string message) {message=text;return false;}
         public bool BuyRestaurant(GameState wallet,out string message) {
@@ -124,9 +128,20 @@ namespace RestaurantCity {
             if(wallet.Cash<150)return Fail("The lease costs $150. Keep earning at your stand.",out message);
             wallet.Cash-=150;Owned=true;Produce=12;Protein=8;
             AddPlaced("prep_bench",0,0,0,0);AddPlaced("grill",3,0,0,0);AddPlaced("cafe_table",0,3,0,0);
+            EnsurePhysicalKit();
             message="Your first restaurant! Starter equipment and 20 ingredients included. Open service when ready.";return true;
         }
         void AddPlaced(string id,int x,int z,int rotation,int paid) {Layout.Add(new PlacedItem{InstanceId=NextInstanceId++,CatalogId=id,X=x,Z=z,Rotation=rotation%4,Paid=paid});}
+        public void EnsurePhysicalKit() {
+            if(!Owned||PhysicalKitInstalled)return;
+            foreach(string id in new[]{"pantry","plate_rack","assembly","sink"}) {
+                if(HasEquipment(id))continue;
+                bool added=false;
+                for(int z=0;z<10&&!added;z++)for(int x=7;x<12&&!added;x++)if(CanPlace(id,x,z,0,-1,out _)){AddPlaced(id,x,z,0,0);added=true;}
+                for(int z=0;z<10&&!added;z++)for(int x=0;x<5&&!added;x++)if(CanPlace(id,x,z,0,-1,out _)){AddPlaced(id,x,z,0,0);added=true;}
+            }
+            PhysicalKitInstalled=new[]{"pantry","plate_rack","assembly","sink"}.All(HasEquipment);
+        }
         public bool CanPlace(string id,int x,int z,int rotation,int ignoreInstance,out string message) {
             var item=RestaurantCatalog.Find(id);
             if(item==null)return Fail("Unknown catalog item.",out message);
@@ -182,7 +197,7 @@ namespace RestaurantCity {
         public bool Sell(GameState wallet,int instanceId,out string message) {
             if(!CanCustomize)return Fail("Close service and let customers leave before selling furnishings.",out message);
             var p=Layout.Find(i=>i.InstanceId==instanceId);if(p==null)return Fail("That furnishing no longer exists.",out message);
-            if((p.CatalogId=="prep_bench"||p.CatalogId=="grill")&&Layout.Count(i=>i.CatalogId==p.CatalogId)<=1)return Fail("Install a replacement before selling your last essential kitchen station.",out message);
+            if(new[]{"prep_bench","grill","pantry","plate_rack","assembly","sink"}.Contains(p.CatalogId)&&Layout.Count(i=>i.CatalogId==p.CatalogId)<=1)return Fail("Install a replacement before selling your last essential kitchen station.",out message);
             if(RestaurantCatalog.Find(p.CatalogId).Seats>0&&Seats<=RestaurantCatalog.Find(p.CatalogId).Seats)return Fail("Install replacement seating before selling your last table.",out message);
             int refund=p.Paid/2;Layout.Remove(p);wallet.Cash+=refund;message=$"Sold for ${refund}. Starter furnishings have no resale value.";return true;
         }
@@ -217,6 +232,7 @@ namespace RestaurantCity {
         public RestaurantOrder AddCustomer(GameState wallet,int type,int seatInstanceId,out string message) {
             if(!Open||type<0||type>=RestaurantCatalog.Customers.Length){message="Restaurant is closed or customer is unavailable.";return null;}
             var seat=Layout.Find(p=>p.InstanceId==seatInstanceId);int capacity=seat==null?0:RestaurantCatalog.Find(seat.CatalogId).Seats;
+            capacity-=wallet.Kitchen?.DirtyAtTable(seatInstanceId)??0;
             if(capacity<=Orders.Count(o=>o.SeatInstanceId==seatInstanceId&&o.Stage!=RestaurantOrderStage.Leaving)){message="All seats here are occupied.";return null;}
             var available=ActiveMenu.Where(id=>IsDishAvailable(wallet,id)).ToList();if(available.Count==0){message="No available menu dishes.";return null;}
             var customer=RestaurantCatalog.Customers[type];string dish=available.Contains(customer.FavoriteDish)?customer.FavoriteDish:available[(NextOrderId+type)%available.Count];
@@ -246,6 +262,7 @@ namespace RestaurantCity {
             Reviews.Insert(0,new RestaurantReview{Customer=RestaurantCatalog.Customers[o.CustomerType].Name,Score=score,Comment=comment,DishId=o.DishId});
             if(Reviews.Count>12)Reviews.RemoveAt(Reviews.Count-1);Satisfaction=Reviews.Average(r=>r.Score);
         }
+        public void RecordQueueLoss(int customerType){Lost++;AddReview(new RestaurantOrder{CustomerType=customerType,DishId="burger"},20,"No clean table became available. Clear and wash dishes, or add seating.");}
         void UpdateRank(){if(Rank<2&&Served>=20&&Satisfaction>=75&&Ambience>=12)Rank=2;}
         public bool Clean(out string message) {if(!Owned)return Fail("Buy the restaurant first.",out message);if(Cleanliness>=100)return Fail("The restaurant is already spotless.",out message);Cleanliness=Math.Min(100,Cleanliness+25);message=$"Tables wiped. Cleanliness {Cleanliness:0}%.";return true;}
         public bool Hire(GameState wallet,string id,out string message) {
@@ -293,10 +310,12 @@ namespace RestaurantCity {
                 seenIds.Add(p.InstanceId);Layout.Add(p);
             }
             NextInstanceId=Math.Max(NextInstanceId,Layout.Count==0?1:Layout.Max(p=>p.InstanceId)+1);
-            ActiveMenu=ActiveMenu.Where(id=>RestaurantCatalog.Dish(id)!=null).Distinct().ToList();if(ActiveMenu.Count==0)ActiveMenu.Add("burger");
+            ActiveMenu=ActiveMenu.Where(id=>id=="burger"||id=="salad"||id=="midnight").Distinct().ToList();if(ActiveMenu.Count==0)ActiveMenu.Add("burger");
             // Unfinished service ends on load; durable restaurant layout, finances, menu, stock, reviews and workers survive.
             Orders.Clear();Open=false;Produce=Math.Max(0,Math.Min(StockLimit,Produce));Protein=Math.Max(0,Math.Min(StockLimit,Protein));
             Cleanliness=Clamp(Cleanliness,0,100);Satisfaction=Clamp(Satisfaction,0,100);Rank=Math.Max(1,Math.Min(2,Rank));Served=Math.Max(0,Served);Lost=Math.Max(0,Lost);UpdateRank();
+            foreach(var worker in Workers)worker.Energy=Clamp(worker.Energy,0,100);
+            EnsurePhysicalKit();
         }
     }
 }

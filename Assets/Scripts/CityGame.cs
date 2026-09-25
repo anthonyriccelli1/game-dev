@@ -8,6 +8,7 @@ namespace RestaurantCity {
         public FirstPersonPlayer Player;
         public StreetGuard Guard;
         public RestaurantController Restaurant;
+        public LocalCoop CoOp;
         public Light Sun;
         public Light[] Lamps;
         public GameObject Stand, SetupMarker, Customer, GrillFood, HandFood, RecipeGlow;
@@ -23,20 +24,24 @@ namespace RestaurantCity {
         public string SavePath => Path.Combine(Application.persistentDataPath, "restaurant-city-v1.json");
 
         void Awake() {
-            SmokeMode = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--smoke-test" || arg.StartsWith("--restaurant-"));
-            if (!SmokeMode) Load();
+            SmokeMode = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--smoke-test" || arg.StartsWith("--restaurant-") || arg.StartsWith("--physical-"));
+            if (!SmokeMode) Load(); else State = new GameState();
+            State.Version = 3;
             SetPaused(true);
             if (Customer) customerPosition = Customer.transform.position;
         }
         void Start() {
             Restaurant = gameObject.AddComponent<RestaurantController>(); Restaurant.Initialize(this);
+            CoOp = gameObject.AddComponent<LocalCoop>(); CoOp.Initialize(this);
+            gameObject.AddComponent<PhysicalHud>().Game = this;
             SyncWorld();
             if (Array.IndexOf(Environment.GetCommandLineArgs(), "--smoke-test") >= 0) gameObject.AddComponent<PrototypeSmokeTest>().Game = this;
             if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg.StartsWith("--restaurant-"))) gameObject.AddComponent<RestaurantAcceptance>().Game = this;
+            if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg.StartsWith("--physical-"))) gameObject.AddComponent<PhysicalAcceptance>().Game = this;
         }
         void Update() {
             if (Time.unscaledTime > noticeUntil) Notice = "";
-            if (!Paused && !SmokeMode && (!Restaurant || !Restaurant.PanelOpen && !Restaurant.PlacementActive)) {
+            if (!Paused && !SmokeMode && (!Restaurant || !Restaurant.ManagementPauses && !Restaurant.PlacementActive)) {
                 int missed = State.Missed;
                 State.Tick(Time.deltaTime);
                 if (State.Missed > missed) Notify("Customer left. The next one arrives in a moment.");
@@ -55,6 +60,10 @@ namespace RestaurantCity {
             if (value && Started) Save();
         }
         public void Notify(string message, float duration = 4) { Notice = message; noticeUntil = Time.unscaledTime + duration; }
+        public bool InteractForPlayer(InteractionKind kind, FirstPersonPlayer player) {
+            if (kind == InteractionKind.FutureRestaurant) return Restaurant.BuyRestaurant(player);
+            return Interact(kind);
+        }
         public bool Interact(InteractionKind kind) {
             bool success = false;
             switch (kind) {
@@ -78,7 +87,7 @@ namespace RestaurantCity {
                 case InteractionKind.Bin: State.Discard(); success = true; Notify("Dish discarded. Ready for a fresh start."); break;
                 case InteractionKind.Recipe:
                     success = State.ClaimRecipe(Guard.Defeated);
-                    Notify(success ? "MIDNIGHT BURGER unlocked. Every new burger now earns more!" : !State.IsNight ? "Come back after dusk. Watch for the rival." : State.RecipeUnlocked ? "You already know this recipe." : "The rival is guarding the stash. Three spatula hits will stagger them.", 6); break;
+                    Notify(success ? "MIDNIGHT RECIPE + 3 FLUX earned! Prepare night sauce in your kitchen. Spend Flux on research or an energy boost in management." : !State.IsNight ? "Come back after dusk. Watch for the rival." : State.RecipeUnlocked ? "You already know this recipe." : "The rival is guarding the stash. Three spatula hits will stagger them.", 8); break;
                 case InteractionKind.FutureRestaurant:
                     return Restaurant.BuyRestaurant();
             }
@@ -86,9 +95,14 @@ namespace RestaurantCity {
             SyncWorld(); return success;
         }
         public void Hurt(int amount) {
-            State.Health = Mathf.Max(0, State.Health - amount);
-            if (State.Health > 0) { Notify("Hit! Back out of the alley to escape."); return; }
-            State.Respawn(); Player.Teleport(SpawnPoint); Guard.ResetGuard(); Save();
+            HurtPlayer(Player, amount);
+        }
+        public void HurtPlayer(FirstPersonPlayer player, int amount) {
+            player.Health = Mathf.Max(0, (player.PlayerId == 0 ? State.Health : player.Health) - amount);
+            if (player.PlayerId == 0) State.Health = Mathf.RoundToInt(player.Health);
+            if (player.Health > 0) { Notify("Player " + (player.PlayerId + 1) + " hit! Back out of the alley to escape."); return; }
+            if (player.PlayerId == 0) State.Respawn(); else State.Cash = Mathf.Max(0, State.Cash - 10);
+            player.Health = 100; player.Teleport(SpawnPoint + Vector3.right * player.PlayerId * 1.5f); Guard.ResetGuard(); Save();
             Notify("Back at your stand. Lost up to $10; your stand and recipes are safe.", 7);
         }
         public void SyncWorld() {
@@ -147,7 +161,8 @@ namespace RestaurantCity {
         public bool LoadFrom(string path) {
             try {
                 var loaded = JsonUtility.FromJson<GameState>(File.ReadAllText(path));
-                if (loaded == null || loaded.Version < 1 || loaded.Version > 2) throw new InvalidDataException("Unsupported save version");
+                if (loaded == null || loaded.Version < 1 || loaded.Version > 3) throw new InvalidDataException("Unsupported save version");
+                if (loaded.Version < 3 && !File.Exists(path + ".pre-physical-v2.bak")) File.Copy(path, path + ".pre-physical-v2.bak");
                 loaded.SanitizeAfterLoad(); State = loaded; SaveStatus = "Saved progress loaded";
                 return true;
             } catch (Exception e) { SaveStatus = "Save unreadable; starting fresh"; Debug.LogWarning("Load failed: " + e.Message); return false; }

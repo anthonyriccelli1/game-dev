@@ -1,0 +1,47 @@
+using System;
+using System.Collections;
+using System.IO;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
+namespace RestaurantCity {
+ public class PhysicalAcceptance:MonoBehaviour {
+  public CityGame Game; int checks; string output;
+  void Check(bool value,string label){if(!value)throw new Exception(label);checks++;Debug.Log("PHYSICAL_CHECK "+label);}
+  int Station(string id)=>Game.State.Kitchen.Stations.First(s=>s.CatalogId==id).InstanceId;
+  void Act(string station,string action="",string actor="player:0"){Check(Game.State.Kitchen.Act(Game.State,actor,Station(station),action,out var m),m);}
+  void Prep(string ingredient,bool grill){Act("pantry",ingredient);Act("prep_bench");Check(Game.State.Kitchen.Work(Game.State,"player:0",Station("prep_bench"),5,out var m),m);Act("prep_bench");if(grill){Act("grill");Game.State.Kitchen.Tick(Game.State,8);Act("grill");}Act("assembly");}
+  void Cook(string dish){Act("plate_rack");Act("assembly");Prep(dish=="salad"?"greens":"protein",dish!="salad");if(dish!="salad"){Act("pantry","bun");Act("assembly");}if(dish=="midnight")Prep("sauce",false);Act("assembly");}
+  IEnumerator Start(){
+   output=Path.GetFullPath(Path.Combine(Application.dataPath,"..","PhysicalEvidence"));Directory.CreateDirectory(output);yield return new WaitForSecondsRealtime(2);   if(Array.IndexOf(Environment.GetCommandLineArgs(),"--physical-resume")>=0){try{Check(Game.LoadFrom(Path.Combine(output,"physical-save.json")),"read save in fresh process");Check(Fingerprint()==File.ReadAllText(Path.Combine(output,"expected-layout.txt")),"fresh process exact layout and economy");Game.Restaurant.RebuildLayout();Game.SetPaused(false);Game.Player.Teleport(new Vector3(-10,.15f,-13));Game.Player.LookAt(new Vector3(-11,1,-19));}catch(Exception e){Fail(e);yield break;}yield return new WaitForSecondsRealtime(.5f);Capture("07-resumed.png");Debug.Log("PHYSICAL_RESUME_PASS "+checks);Application.Quit(0);yield break;}
+   try{Game.SetPaused(false);Check(Game.Interact(InteractionKind.Stand),"start food stand");int attempts=0;while(Game.State.Cash<500&&attempts++<90){if(Game.State.Stock==0)Check(Game.Interact(InteractionKind.Supplier),"buy stand supplies");Game.State.Tick(7);Check(Game.Interact(InteractionKind.Prep),"stand prep");Check(Game.Interact(InteractionKind.Grill),"stand grill");Game.State.Tick(5);Check(Game.Interact(InteractionKind.Grill),"stand plate");Check(Game.Interact(InteractionKind.Serve),"stand sale");}Check(Game.State.Cash>=500,"earned restaurant and renovation budget");Check(Game.Restaurant.BuyRestaurant(),"purchase integration");Game.Restaurant.ClosePanel();Game.Player.Teleport(new Vector3(-10,.15f,-11));Game.Player.LookAt(new Vector3(-11,1,-18));Check(Game.Restaurant.Furnishings.Count>=7,"physical kit rendered");}catch(Exception e){Fail(e);yield break;}
+   yield return new WaitForSecondsRealtime(1);Capture("01-physical-kitchen.png");
+   try{var pos=Game.Player.transform.position;Game.CoOp.ToggleElevated(Game.Player);Check(Vector3.Distance(pos,Game.Player.transform.position)<.01f,"camera preserves position");Game.CoOp.Join(null);Game.CoOp.SecondPlayer.LookAt(new Vector3(-11,1,-18));Check(Game.CoOp.PlayerCount==2,"two independent players created");var hostPosition=Game.Player.transform.position;var partnerPosition=Game.CoOp.SecondPlayer.transform.position;Game.CoOp.SecondPlayer.ApplyMovement(new Vector2(1,0),.2f);Check(Vector3.Distance(hostPosition,Game.Player.transform.position)<.01f&&Vector3.Distance(partnerPosition,Game.CoOp.SecondPlayer.transform.position)>.05f,"partner movement leaves host independent");Game.Restaurant.ToggleService();Game.Restaurant.ClosePanel();Game.Restaurant.Advance(5);}catch(Exception e){Fail(e);yield break;}
+   yield return new WaitForSecondsRealtime(1);Capture("02-local-coop.png");
+   try{Game.Restaurant.ClosePanel();Game.State.Clock=180;Game.Player.Teleport(new Vector3(11,.15f,18));Game.Guard.Hit();Game.Guard.Hit();Game.Guard.Hit();Check(Game.Interact(InteractionKind.Recipe),"night encounter earns recipe and Flux");Check(Game.State.Flux==3,"night reward has 3 Flux");Game.Player.Teleport(new Vector3(-10,.15f,-11));var r=Game.State.Restaurant;var table=r.Layout.First(p=>RestaurantCatalog.Find(p.CatalogId).Seats>0);foreach(var dish in new[]{"burger","salad","midnight"}){r.Orders.Clear();r.Protein=20;r.Produce=20;r.ActiveMenu.Clear();r.ActiveMenu.Add(dish);var order=r.AddCustomer(Game.State,0,table.InstanceId,out var m);Check(order!=null,"spawn physical order");Cook(dish);Check(Game.State.Kitchen.Serve(Game.State,"player:0",order.Id,out m),m);r.Tick(Game.State,30);Game.State.Kitchen.Tick(Game.State,30);Check(Game.State.Kitchen.ClearTable(Game.State,"player:1",table.InstanceId,out m),m);Act("sink","","player:1");Check(Game.State.Kitchen.Work(Game.State,"player:1",Station("sink"),7,out m),m);Check(Game.State.Kitchen.CleanPlates==6,"plate conserved after wash");}r.Orders.Clear();r.EndService(out _);Game.Restaurant.Advance(.1f);Check(Game.State.Kitchen.LastReport!=null,"shift report produced");Game.Restaurant.ShowPanel("Service");}catch(Exception e){Fail(e);yield break;}
+   yield return new WaitForSecondsRealtime(1);Capture("03-shift-report.png");   try{Game.Restaurant.ClosePanel();var r=Game.State.Restaurant;Check(r.Place(Game.State,"wall_teal",0,0,0,out var m),m);Check(r.Place(Game.State,"floor_checker",0,0,0,out m),m);Game.Restaurant.RebuildLayout();Game.Restaurant.ShowPanel("Catalog");}catch(Exception e){Fail(e);yield break;}
+   yield return new WaitForSecondsRealtime(.5f);Capture("04-catalog.png");
+   try{Game.Restaurant.ClosePanel();Check(Game.State.Restaurant.Hire(Game.State,"ember",out var m),m);Check(Game.State.Restaurant.Hire(Game.State,"moss",out m),m);Game.State.Restaurant.ActiveMenu.Clear();Game.State.Restaurant.ActiveMenu.Add("salad");Game.State.Restaurant.Produce=24;Game.Restaurant.ToggleService();}catch(Exception e){Fail(e);yield break;}
+   for(int t=0;t<1000;t++){Game.Restaurant.Advance(.25f);if(t==200)Capture("05-busy-service.png");if(t%20==0)yield return null;}
+   try{Check(Game.State.Restaurant.Workers.Any(w=>w.TasksCompleted>3),"worker physically performs station tasks");Check(Game.State.Restaurant.Served>3,"staff completes additional service");Game.State.Restaurant.EndService(out _);}catch(Exception e){Fail(e);yield break;}
+   for(int t=0;t<1000&&Game.State.Restaurant.Orders.Count>0;t++){Game.Restaurant.Advance(.25f);if(t%40==0)yield return null;}
+   try{Game.Restaurant.ClosePanel();foreach(var w in Game.State.Restaurant.Workers)w.Job=StaffJob.Off;Game.State.Restaurant.Produce=12;Game.Restaurant.ToggleService();}catch(Exception e){Fail(e);yield break;}
+   for(int t=0;t<1600;t++){Game.Restaurant.Advance(.25f);if(t%60==0)yield return null;}
+   try{Check(Game.State.Kitchen.LastReport.Lost>0,"failed shift reports lost guests");Check(Game.State.Restaurant.Owned&&Game.State.Restaurant.Workers.Count==2,"bad shift preserves restaurant and workers");Game.Restaurant.ClosePanel();Game.State.Restaurant.Orders.Clear();Game.State.Restaurant.Produce=12;Game.Restaurant.ToggleService();Check(Game.State.Restaurant.Open,"can reopen after failed shift");Game.State.Restaurant.EndService(out _);Game.Restaurant.Advance(.1f);Game.Restaurant.ClosePanel();Game.Player.Teleport(new Vector3(-10,.15f,-12));Game.CoOp.SetElevated(Game.Player,true);Check(Game.State.Kitchen.SpendFlux(Game.State,"research",out var m),m);string layout=JsonUtility.ToJson(Game.State.Restaurant.Layout.ToArray());File.WriteAllText(Path.Combine(output,"expected-layout.txt"),Fingerprint());Check(Game.SaveTo(Path.Combine(output,"physical-save.json")),"disk save written");Check(Game.LoadFrom(Path.Combine(output,"physical-save.json")),"disk save reloaded");Check(Fingerprint()==File.ReadAllText(Path.Combine(output,"expected-layout.txt")),"exact layout cash staff menu Flux restored");Game.Restaurant.RebuildLayout();}catch(Exception e){Fail(e);yield break;}
+   yield return new WaitForSecondsRealtime(.5f);Capture("06-upgraded-restaurant.png");Debug.Log("PHYSICAL_RUNTIME_PASS "+checks);Application.Quit(0);
+  }
+  string Fingerprint()=>Game.State.Cash+"|"+Game.State.Flux+"|"+Game.State.FluxResearch+"|"+string.Join(";",Game.State.Restaurant.Layout.Select(p=>p.InstanceId+":"+p.CatalogId+":"+p.X+":"+p.Z+":"+p.Rotation))+"|"+string.Join(",",Game.State.Restaurant.ActiveMenu)+"|"+string.Join(",",Game.State.Restaurant.Workers.Select(w=>w.Id+":"+w.Job));
+  void Capture(string file){
+   Canvas.ForceUpdateCanvases();var pixels=new Texture2D(1440,900,TextureFormat.RGB24,false);var previous=RenderTexture.active;
+   bool split=Game.CoOp.PlayerCount==2&&!Game.Restaurant.PanelOpen;int width=split?720:1440;
+   foreach(var player in Game.CoOp.Players){if(!split&&player.PlayerId>0)continue;var cam=player.View;var rect=cam.rect;var target=new RenderTexture(width,900,24);target.Create();cam.rect=new Rect(0,0,1,1);cam.targetTexture=target;Canvas.ForceUpdateCanvases();RenderPipeline.SubmitRenderRequest(cam,new UniversalRenderPipeline.SingleCameraRequest{destination=target});RenderTexture.active=target;pixels.ReadPixels(new Rect(0,0,width,900),split?player.PlayerId*720:0,0);cam.targetTexture=null;cam.rect=rect;Canvas.ForceUpdateCanvases();target.Release();Destroy(target);}
+   pixels.Apply();File.WriteAllBytes(Path.Combine(output,file),pixels.EncodeToPNG());RenderTexture.active=previous;Destroy(pixels);
+  }
+  void Fail(Exception e){Debug.LogError("PHYSICAL_RUNTIME_FAIL "+e);Application.Quit(1);}
+ }
+}
+
+
+
+

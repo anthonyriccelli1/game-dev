@@ -50,7 +50,7 @@ namespace RestaurantCity {
             if (Data.Open) {
                 arrival -= seconds;
                 if (arrival <= 0) {
-                    arrival = Rush ? 7 : Game.State.RecipeUnlocked && Data.ActiveMenu.Contains("midnight") ? 13 : 17;
+                    arrival = Rush ? 14 : Game.State.RecipeUnlocked && Data.ActiveMenu.Contains("midnight") ? 13 : 17;
                     if (queue.Count < 3) {
                         var guest = NewGuest(nextType++ % RestaurantCatalog.Customers.Length);
                         guest.Root.transform.position = new Vector3(-8.7f, .055f, -5.4f + queue.Count);
@@ -80,7 +80,7 @@ namespace RestaurantCity {
                         continue;
                     }
                 }
-                if (!Data.Open || view.QueueWait > 32) { Destroy(view.Root); queue.RemoveAt(i); continue; }
+                if (!Data.Open || view.QueueWait > 32) { if(Data.Open)Data.RecordQueueLoss(view.Type);Destroy(view.Root); queue.RemoveAt(i); continue; }
                 Vector3 spot = new Vector3(-8.5f, .055f, -7.4f + i * .95f);
                 view.Motion.Walking = StepTo(view.Root.transform, spot, seconds * 1.9f);
                 SetBubble(view.Bubble, "Waiting for a table\n" + RestaurantCatalog.Customers[view.Type].Name);
@@ -109,20 +109,20 @@ namespace RestaurantCity {
                     var review = Data.Reviews.FirstOrDefault(r => r.Customer == def.Name);
                     float score = review == null ? 70 : review.Score; view.Motion.SetMood(score);
                     SetBubble(view.Bubble, (score >= 85 ? "<3  Delicious!" : score >= 65 ? "That hit the spot." : "Could be better...") + "\n" + Mathf.RoundToInt(score) + "%  /  " + (score >= 85 ? "+$3 tip" : "Thanks for dinner"));
-                    if (!view.Plate) { view.Plate = MakeDish(order.DishId, view.Root.transform); view.Plate.transform.localPosition = new Vector3(0, .85f, .4f); }
+
                 } else {
                     float patience = Mathf.Clamp01(1 - order.Wait / def.Patience); view.Motion.SetMood(patience);
                     string status = order.Stage == RestaurantOrderStage.Ready ? "Dish ready!" : patience < .35f ? "I'm getting hungry..." : order.Stage == RestaurantOrderStage.Cooking ? "Smells good!" : "I'd like " + dish;
                     SetBubble(view.Bubble, def.Name + "\n" + status);
                 }
             }
-            UpdateEmployees(seconds);
-            UpdateDishes();
+            UpdatePhysicalEmployees(seconds);
+            DrawKitchenItems();
             if (crumbs.Count == 0) for (int i = 0; i < 14; i++) {
                 var crumb = SmallShape("Service crumbs", PrimitiveType.Cylinder, transform, new Vector3(-14.5f + i % 4 * 2.7f, .071f, -17.3f + i / 4 * 2), new Vector3(.12f + i % 3 * .04f, .006f, .08f), new Color(.37f,.24f,.16f)); crumbs.Add(crumb);
             }
             for (int i = 0; i < crumbs.Count; i++) crumbs[i].SetActive(i < (100 - Data.Cleanliness) / 6);
-            if (Data.Stars > lastRank) { Feedback("TWO STARS! The Starlight oven, moonberry tart, jukebox and neon sign are yours to unlock."); PlayChime(true); Game.Save(); }
+            if (Data.Stars > lastRank) { Feedback("TWO STARS! The faster Starlight oven, jukebox and neon sign are yours to unlock."); PlayChime(true); Game.Save(); }
             lastRank = Data.Stars;
             sparkleTime = Mathf.Max(0, sparkleTime - seconds);
         }
@@ -132,7 +132,7 @@ namespace RestaurantCity {
             foreach (var view in employees.Values) if(view.Root) Destroy(view.Root);
             foreach (var plate in kitchenPlates.Values) if(plate) Destroy(plate);
             foreach (var crumb in crumbs) if(crumb) Destroy(crumb);
-            guests.Clear(); queue.Clear(); employees.Clear(); kitchenPlates.Clear(); crumbs.Clear(); observedTypes.Clear();
+            guests.Clear(); queue.Clear(); employees.Clear(); workerPlans.Clear(); kitchenPlates.Clear(); crumbs.Clear(); observedTypes.Clear();
             if(heldPlate)Destroy(heldPlate); CarriedOrderId = -1; arrival = 3; nextType = 0; actorState = Data; lastRank = Data.Stars;
         }
         GuestView NewGuest(int type) {

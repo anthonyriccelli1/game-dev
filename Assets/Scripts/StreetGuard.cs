@@ -20,7 +20,9 @@ namespace RestaurantCity {
             Body.gameObject.SetActive(active);
             if (!active || Game.Paused) return;
             cooldown -= Time.deltaTime; stagger -= Time.deltaTime;
-            Vector3 player = Game.Player.transform.position;
+            var target = Game.Player;
+            if(Game.CoOp)foreach(var candidate in Game.CoOp.Players)if(Vector3.Distance(candidate.transform.position,transform.position)<Vector3.Distance(target.transform.position,transform.position))target=candidate;
+            Vector3 player = target.transform.position;
             bool inAlley = EncounterRules.InTerritory(player.x, player.z);
             Vector3 destination = inAlley ? player : home; destination.y = transform.position.y;
             float distance = Vector3.Distance(transform.position, destination);
@@ -28,10 +30,10 @@ namespace RestaurantCity {
                 windup -= Time.deltaTime;
                 if (windup <= 0) {
                     Vector3 rayStart = transform.position + Vector3.up;
-                    Vector3 rayEnd = Game.Player.transform.position + Vector3.up;
+                    Vector3 rayEnd = target.transform.position + Vector3.up;
                     bool clear = Physics.Linecast(rayStart, rayEnd, out var obstruction, ~0, QueryTriggerInteraction.Ignore)
-                        && obstruction.collider.GetComponent<FirstPersonPlayer>() == Game.Player;
-                    if (inAlley && distance < 2.5f && clear) Game.Hurt(25);
+                        && obstruction.collider.GetComponent<FirstPersonPlayer>() == target;
+                    if (inAlley && distance < 2.5f && clear) Game.HurtPlayer(target,25);
                     cooldown = 1.3f;
                 }
             } else if (stagger <= 0) {

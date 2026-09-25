@@ -34,6 +34,7 @@ namespace RestaurantCity {
         GameObject preview, footprint;
         readonly List<Renderer> hiddenRoof = new List<Renderer>();
         Vector3 savedPosition, savedViewLocal, savedLook;
+        Quaternion savedViewRotation;
         int previewX, previewZ, movingId = -1;
         float hudTimer;
         bool previewValid;
@@ -52,30 +53,35 @@ namespace RestaurantCity {
             desk.AddComponent<RestaurantTarget>().Kind = "Management";
             WorldCaption(desk.transform, "LITTLE FLAME\n[E] MANAGE", new Vector3(0, 1.15f, 0), .024f);
             UI = gameObject.AddComponent<RestaurantUI>(); UI.Owner = this; UI.Rebuild();
+            PhysicalSetup();
         }
         void Update() {
             if (!Game || !Room) return;
             hudTimer -= Time.unscaledDeltaTime;
             if (hudTimer <= 0) { UI.Refresh(); hudTimer = .35f; }
-            if (!Game.Paused && !PanelOpen && !PlacementActive && !Game.SmokeMode) Advance(Time.deltaTime);
+            if (!Game.Paused && !ManagementPauses && !PlacementActive && !Game.SmokeMode) Advance(Time.deltaTime);
         }
         public void Feedback(string message) { Hint = message; Game.Notify(message, 5); if (UI) UI.Refresh(); }
-        public bool BuyRestaurant() {
+        public bool BuyRestaurant() => BuyRestaurant(Game.Player);
+        public bool BuyRestaurant(FirstPersonPlayer buyer) {
             if (Data.Owned) { ShowPanel("Service"); return true; }
             bool result = Data.BuyRestaurant(Game.State, out string message);
             Feedback(message);
-            if (result) { RebuildLayout(); PlayChime(true); Game.Save(); Game.Player.Teleport(new Vector3(-10, .15f, -10.7f)); Game.Player.LookAt(new Vector3(-10, 1.5f, -18)); ShowPanel("Catalog"); }
+            if (result) { RebuildLayout(); PlayChime(true); Game.Save(); buyer.Teleport(new Vector3(-10, .15f, -10.7f)); buyer.LookAt(new Vector3(-10, 1.5f, -18)); ShowPanel("Service"); }
             return result;
         }
         public void ShowPanel(string panel) {
             if (!Data.Owned) { Feedback("Earn $150 and buy the restaurant at its front sign."); return; }
+            if (ServiceInProgress) { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
             if (PlacementActive) CancelPlacement(false);
             Panel = panel; PanelOpen = true;
+            if (Game.CoOp) Game.CoOp.RefreshViews();
             Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
             UI.Rebuild();
         }
         public void ClosePanel() {
             PanelOpen = false;
+            if (Game.CoOp) Game.CoOp.RefreshViews();
             Cursor.lockState = Game.Paused || Game.SmokeMode ? CursorLockMode.None : CursorLockMode.Locked;
             Cursor.visible = Game.Paused || Game.SmokeMode;
             UI.Rebuild(); Game.Save();
@@ -147,12 +153,14 @@ namespace RestaurantCity {
             SelectedCatalogId = id; movingId = instanceId; PreviewRotation = rotation;
             PanelOpen = false; PlacementActive = true;
             savedPosition = Game.Player.transform.position; savedViewLocal = Game.Player.View.transform.localPosition;
+            savedViewRotation = Game.Player.View.transform.localRotation;
             savedLook = Game.Player.View.transform.position + Game.Player.View.transform.forward * 10;
-            Game.Player.Teleport(new Vector3(-10, 14, -15.5f)); Game.Player.View.transform.localPosition = Vector3.zero;
-            Game.Player.LookAt(new Vector3(-10, 0, -15.5f)); Game.Player.View.orthographic = true; Game.Player.View.orthographicSize = 8;
+            Game.Player.View.transform.position = new Vector3(-10, 14, -15.5f);
+            Game.Player.View.transform.rotation = Quaternion.Euler(90, 0, 0); Game.Player.View.orthographic = true; Game.Player.View.orthographicSize = 8;
+            if (Game.CoOp) Game.CoOp.RefreshViews();
             Game.Player.Spatula.gameObject.SetActive(false); Game.HandFood.SetActive(false);
             foreach (var renderer in Room.GetComponentsInChildren<Renderer>()) if (renderer.name.IndexOf("ceiling", StringComparison.OrdinalIgnoreCase) >= 0 || renderer.name.IndexOf("roof", StringComparison.OrdinalIgnoreCase) >= 0) { if (renderer.enabled) { hiddenRoof.Add(renderer); renderer.enabled = false; } }
-            preview = RestaurantArt.CreateFurniture(id, transform); preview.name = "Placement preview";
+            preview = CreateFurnishing(id, transform); preview.name = "Placement preview";
             foreach (var collider in preview.GetComponentsInChildren<Collider>()) collider.enabled = false;
             footprint = GameObject.CreatePrimitive(PrimitiveType.Cube); footprint.name = "Placement validity"; Destroy(footprint.GetComponent<Collider>());
             footprint.GetComponent<Renderer>().material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
@@ -182,9 +190,10 @@ namespace RestaurantCity {
             if (preview) Destroy(preview); if (footprint) Destroy(footprint);
             foreach (var r in hiddenRoof) if (r) r.enabled = true; hiddenRoof.Clear();
             Game.Player.View.orthographic = false; Game.Player.View.transform.localPosition = savedViewLocal;
-            Game.Player.Teleport(savedPosition); Game.Player.LookAt(savedLook); Game.Player.Spatula.gameObject.SetActive(true);
+            Game.Player.View.transform.localRotation = savedViewRotation; Game.Player.Spatula.gameObject.SetActive(true);
             if (movingId >= 0 && Furnishings.TryGetValue(movingId, out var original)) original.SetActive(true);
             PlacementActive = false; movingId = -1;
+            if (Game.CoOp) Game.CoOp.RefreshViews();
             if (reopen) ShowPanel("Catalog"); else { Cursor.lockState = Game.SmokeMode ? CursorLockMode.None : CursorLockMode.Locked; Cursor.visible = Game.SmokeMode; UI.Rebuild(); }
         }
         public void MoveItem(int id) {
@@ -193,18 +202,20 @@ namespace RestaurantCity {
             BeginPlacement(item.CatalogId, id, item.Rotation);
         }
         public void SellItem(int id) {
+            if (Game.State.Kitchen.At(id) != null) { Feedback("Clear this station before selling it."); return; }
             bool sold = Data.Sell(Game.State, id, out string reason); Feedback(reason);
             if (sold) { SelectedInstanceId = -1; RebuildLayout(); Game.Save(); ShowPanel("Catalog"); }
         }
         public static Vector3 CellCenter(int x, int z, int width = 1, int depth = 1) => new Vector3(-15.5f + x + (width - 1) * .5f, .055f, -20.5f + z + (depth - 1) * .5f);
         public void RebuildLayout() {
+            Game.State.Kitchen.EnsureStations(Data);
             foreach (var obj in Furnishings.Values) if (obj) { obj.SetActive(false); Destroy(obj); }
             Furnishings.Clear();
             if (!Data.Owned) { RestaurantArt.UpdateFinishes(Room, "wall_shabby", "floor_shabby", false, false); return; }
             foreach (var p in Data.Layout) {
                 var item = RestaurantCatalog.Find(p.CatalogId);
                 if (item == null || item.IsFinish || item.IsExterior) continue;
-                var obj = RestaurantArt.CreateFurniture(p.CatalogId, Room.transform);
+                var obj = CreateFurnishing(p.CatalogId, Room.transform);
                 int w = p.Rotation % 2 == 0 ? item.Width : item.Depth, d = p.Rotation % 2 == 0 ? item.Depth : item.Width;
                 obj.transform.position = CellCenter(p.X, p.Z, w, d); obj.transform.rotation = Quaternion.Euler(0, p.Rotation * 90, 0);
                 var target = obj.AddComponent<RestaurantTarget>(); target.InstanceId = p.InstanceId;
@@ -212,11 +223,12 @@ namespace RestaurantCity {
                 Furnishings[p.InstanceId] = obj;
             }
             RestaurantArt.UpdateFinishes(Room, Data.WallId, Data.FloorId, Data.Layout.Any(p => p.CatalogId == "awning_coral"), Data.Layout.Any(p => p.CatalogId == "sign_neon"));
+            Game.State.Kitchen.EnsureStations(Data);
         }
         public Texture GetCatalogIcon(string id) {
             if (thumbnails.TryGetValue(id, out Texture found)) return found;
             var stage = new GameObject("Catalog photo stage"); stage.transform.position = new Vector3(800, 0, 800);
-            var obj = RestaurantArt.CreateFurniture(id, stage.transform); obj.transform.localPosition = Vector3.zero;
+            var obj = CreateFurnishing(id, stage.transform); obj.transform.localPosition = Vector3.zero;
             foreach (var t in obj.GetComponentsInChildren<Transform>()) t.gameObject.layer = 30;
             var cam = new GameObject("Catalog camera").AddComponent<Camera>(); cam.enabled = false; cam.cullingMask = 1 << 30;
             cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(.87f, .86f, .77f); cam.orthographic = true;
@@ -239,9 +251,10 @@ namespace RestaurantCity {
 
         public void ToggleService() {
             bool result = Data.Open ? Data.EndService(out string message) : Data.StartService(Game.State, out message);
+            if (result && Data.Open) { Game.State.Kitchen.StartShift(Game.State); ClosePanel(); }
             Feedback(message); if (result) Game.Save(); UI.Rebuild();
         }
-        public void TryCook(int id) { Data.BeginCooking(id, out string message); Feedback(message); Game.Save(); UI.Refresh(); }
+        public void TryCook(int id) { Feedback("Cooking happens at the stations: pantry, prep, grill, then assemble on a plate. Follow your order card."); }
         public void Restock(bool protein) {
             if (!AtSupplier) { Feedback("Visit Milo's green supplier counter across the street to stock up."); return; }
             if (!Data.Restock(Game.State, protein, out string message) && Game.State.Cash < 6 && Data.Produce == 0) Data.RequestSupplyHelp(Game.State, out message);
@@ -256,12 +269,11 @@ namespace RestaurantCity {
         public void Assign(string id, StaffJob job) { Data.Assign(id, job, out string message); Feedback(message); Game.Save(); UI.Rebuild(); }
         public void ToggleDish(string id) { Data.ToggleDish(Game.State, id, out string message); Feedback(message); Game.Save(); UI.Rebuild(); }
         public void ServeGuest(int id) {
-            if (CarriedOrderId != id) { Feedback("Collect this guest's ready dish from a kitchen station first."); ShowPanel("Service"); return; }
-            if (Data.CompleteServing(Game.State, id, out string message)) { CarriedOrderId = -1; PlayChime(false); }
+            if (Game.State.Kitchen.Serve(Game.State, Game.Player.ActorId, id, out string message)) PlayChime(false);
             Feedback(message); Game.Save();
         }
         // Stage two adds arrivals, world navigation and visible staff tasks.
-        public void Advance(float seconds) { Data.Tick(Game.State, seconds); TickServiceActors(seconds); }
+        public void Advance(float seconds) { Data.Tick(Game.State, seconds); Game.State.Kitchen.Tick(Game.State, seconds); TickServiceActors(seconds); TickPhysicalService(seconds); }
         partial void TickServiceActors(float seconds);
     }
 }

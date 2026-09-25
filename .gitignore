@@ -15,3 +15,6 @@
 /prototype-build.request
 /prototype-build.result
 /Assets/Resources/PerformanceTestRun*.json*
+SaveBackups/
+/PhysicalTests/bin/
+/PhysicalTests/obj/

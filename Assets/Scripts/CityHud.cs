@@ -29,6 +29,7 @@ namespace RestaurantCity {
 
         void OnGUI() {
             if (!Game) return;
+            if (Game.CoOp && !Game.Paused) return;
             if (Game.Restaurant && (Game.Restaurant.PanelOpen || Game.Restaurant.PlacementActive || Game.Restaurant.Data.Owned && Game.Restaurant.Inside && !Game.Paused)) return;
             if (body == null) Init();
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(Screen.width / 1440f, Screen.height / 900f, 1));

@@ -14,3 +14,7 @@ No external art assets were purchased or downloaded for this pass. This document
 ## Runtime generation
 
 Call art factories at runtime so generated meshes, materials, and textures are recreated in a built player. They are cached within the current process, but are not serialized as standalone `.asset` resources. Saved restaurant layouts store catalog IDs, transforms, and finish choices rather than transient mesh references.
+
+## Physical kitchen pass
+
+`Assets/Scripts/KitchenArt.cs` adds original runtime mesh designs for the pantry, plate rack, sink, serving pass, raw/prepared/cooked/burnt ingredients, sesame buns, clean/dirty plates, assembled dishes, ingredient crates, and street herb trough. Faceted revolution profiles and chamfered polygon blocks form the models; split mesh vertices preserve readable flat shading. Cabinet doors, handles, shelf slats, plate rims, sauce bottles, sesame seeds, grill marks, and dish scraps are modeled details. Materials and meshes are cached for reuse. These are original project assets; no external models, images, textures, or sound assets were downloaded or purchased for this pass. Unity shader and engine terms continue to apply as described above.
