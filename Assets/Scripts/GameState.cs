@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 namespace RestaurantCity {
+    [Serializable] public class StandOrder { public int Id, Type; public string Dish = "burger"; public float Patience, MaxPatience; }
     public static class EncounterRules {
         // Keep pursuit inside the clear corridor, away from the warehouse and stash.
         public static bool InTerritory(float x, float z) => x > 9.35f && x < 13.85f && z > 14 && z < 24;
@@ -12,6 +14,16 @@ namespace RestaurantCity {
         public RestaurantState Restaurant = new RestaurantState();
         public bool StandBuilt, RecipeUnlocked, HasOrder, StandOpen;
         public int StandCustomerType; public string StandDish = "burger";
+        // Up to StandQueueMax customers line up at the stand. HasOrder/Patience/StandDish mirror the front of the line.
+        public List<StandOrder> StandQueue = new List<StandOrder>(); public int NextStandOrder = 1, StandClean = 4, StandDirty;
+        [NonSerialized] public int Players = 1;
+        public const int StandQueueMax = 3, StandPlates = 4;
+        public float StandArrivalSeconds => Players > 1 ? 9 : 13;
+        public void SyncStandFront() {
+            HasOrder = StandQueue.Count > 0;
+            if (!HasOrder) return;
+            var f = StandQueue[0]; Patience = f.Patience; StandDish = f.Dish; StandCustomerType = f.Type;
+        }
         public float Clock, CookSeconds, Patience;
         public float NextCustomer = 1;
         public bool SignatureDish;
@@ -55,7 +67,7 @@ namespace RestaurantCity {
         }
         public void Discard() { Food = FoodStage.Empty; CookSeconds = 0; }
         public void Respawn() {
-            Cash = Math.Max(StandBuilt ? 0 : 10, Cash - 10); Health = 100; Discard(); HasOrder = false; NextCustomer = 8;
+            Cash = Math.Max(StandBuilt ? 0 : 10, Cash - 10); Health = 100; Discard(); HasOrder = false; StandQueue?.Clear(); NextCustomer = 8;
         }
         public void SanitizeAfterLoad() {
             Version = 4; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
@@ -67,23 +79,26 @@ namespace RestaurantCity {
             Served = Math.Max(0, Served); Missed = Math.Max(0, Missed); Day = Math.Max(1, Day);
             Clock = float.IsNaN(Clock) || float.IsInfinity(Clock) ? 0 : Math.Max(0, Clock) % 240;
             Health = 100; HasOrder = false; NextCustomer = 2; Discard();
+            StandQueue = new List<StandOrder>(); StandDirty = Math.Max(0, Math.Min(StandPlates, StandDirty)); StandClean = StandPlates - StandDirty;
         }
         public void Tick(float seconds) {
             if (seconds <= 0 || float.IsNaN(seconds) || float.IsInfinity(seconds)) return;
             Clock += seconds;
             while (Clock >= 240) { Clock -= 240; Day++; }
             if (Food == FoodStage.Cooking) CookSeconds += seconds;
-            if (HasOrder) {
-                Patience -= seconds;
-                if (Patience <= 0) { HasOrder = false; Missed++; NextCustomer = 6; }
-            } else if (StandBuilt && StandOpen) {
+            StandQueue = StandQueue ?? new List<StandOrder>();
+            foreach (var o in StandQueue) o.Patience -= seconds;
+            Missed += StandQueue.RemoveAll(o => o.Patience <= 0);
+            if (StandBuilt && StandOpen && StandQueue.Count < StandQueueMax) {
                 NextCustomer -= seconds;
                 if (NextCustomer <= 0) {
-                    HasOrder = true; Patience = 65;
-                    StandCustomerType = (StandCustomerType + 3) % 10;
-                    StandDish = RecipeUnlocked && (Served + Day) % 3 == 0 ? "midnight" : "burger";
+                    int id = NextStandOrder++;
+                    float patience = StandQueue.Count == 0 && Served == 0 ? 80 : 60;
+                    StandQueue.Add(new StandOrder { Id = id, Type = (id * 3) % 10, Dish = RecipeUnlocked && id % 3 == 0 ? "midnight" : "burger", Patience = patience, MaxPatience = patience });
+                    NextCustomer = StandArrivalSeconds + (id % 3) * 1.5f;
                 }
             }
+            SyncStandFront();
         }
     }
 }

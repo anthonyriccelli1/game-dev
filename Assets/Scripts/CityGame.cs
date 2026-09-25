@@ -109,10 +109,8 @@ namespace RestaurantCity {
         }
         public void SyncWorld() {
             Stand.SetActive(State.StandBuilt); SetupMarker.SetActive(!State.StandBuilt);
-            if (State.HasOrder && !lastOrder) Customer.transform.position = customerPosition + new Vector3(8, 0, -2);
-            Customer.SetActive(State.HasOrder);
-            if (State.HasOrder) Customer.transform.position = Vector3.MoveTowards(Customer.transform.position, customerPosition, Time.deltaTime * 2.5f);
-            lastOrder = State.HasOrder;
+            // Stand customers are drawn as a line of characters by RestaurantController (PhysicalStand).
+            Customer.SetActive(false); lastOrder = State.HasOrder;
             GrillFood.SetActive(false);
             HandFood.SetActive(false);
             RecipeGlow.SetActive(State.IsNight && !State.RecipeUnlocked);

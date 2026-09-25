@@ -5,7 +5,7 @@ namespace RestaurantCity {
     // The street food stand and Milo's market, built from the same stations and art as the restaurant.
     public partial class RestaurantController {
         readonly Dictionary<int, GameObject> standObjects = new Dictionary<int, GameObject>();
-        static readonly float[] StandX = { -2.6f, -1.0f, .6f, 1.6f, 2.7f };
+        static readonly float[] StandX = { -2.6f, -1.0f, .6f, 1.6f, 2.6f, 3.9f };
         const float StandZ = 8.3f;
 
         public GameObject StationObject(int id) {
@@ -26,7 +26,7 @@ namespace RestaurantCity {
             for (int i = 0; i < KitchenState.StandKit.Length; i++) {
                 int id = KitchenState.StandBase + 1 + i; string kind = KitchenState.StandKit[i];
                 if (standObjects.TryGetValue(id, out var existing) && existing) continue;
-                var obj = kind == "paper_plates" ? KitchenArt.CreateStation("plate_rack", Game.Stand.transform) : CreateFurnishing(kind, Game.Stand.transform);
+                var obj = kind == "stand_plates" ? KitchenArt.CreateStation("plate_rack", Game.Stand.transform) : CreateFurnishing(kind, Game.Stand.transform);
                 obj.name = "Stand " + kind;
                 obj.transform.position = new Vector3(StandX[i], 0, StandZ);
                 obj.transform.rotation = Quaternion.Euler(0, 180, 0);
@@ -40,7 +40,6 @@ namespace RestaurantCity {
         }
 
         TextMesh standSignText;
-        GameObject standGuest; int standGuestType = -1; TextMesh standGuestBubble;
 
         void BuildStandSign() {
             if (standSignText) return;
@@ -57,28 +56,45 @@ namespace RestaurantCity {
             standSignText.transform.rotation = Quaternion.identity;
         }
 
-        // Stand customers are the same odd residents who visit the restaurant.
+        // Stand customers are the same odd residents who visit the restaurant. Up to three line up at once.
+        readonly Dictionary<int, GameObject> standGuests = new Dictionary<int, GameObject>();
+        readonly Dictionary<int, TextMesh> standBubbles = new Dictionary<int, TextMesh>();
+        TextMesh standPlatesText, standSinkText;
+        static readonly Vector3 StandFront = new Vector3(2.2f, 0, 5.9f);
+
         void TickStreet(float seconds) {
             var s = Game.State;
-            if (standSignText) { standSignText.text = s.StandOpen ? "<color=#4FCB7A>OPEN</color>\nBurgers" : "<color=#E1543B>CLOSED</color>"; }
-            if (!Game.Customer) return;
-            foreach (var r in Game.Customer.GetComponentsInChildren<MeshRenderer>()) if (r.enabled) r.enabled = false;
-            if (!s.HasOrder) { if (standGuest) standGuest.SetActive(false); return; }
-            if (!standGuest || standGuestType != s.StandCustomerType) {
-                if (standGuest) Destroy(standGuest);
-                standGuestType = s.StandCustomerType;
-                standGuest = RestaurantArt.CreateCharacter(standGuestType, Game.Stand ? Game.Stand.transform.parent : transform);
-                standGuestBubble = WorldCaption(standGuest.transform, "", new Vector3(0, 2.4f, 0), .02f);
+            s.Players = Game.CoOp ? Mathf.Max(1, Game.CoOp.PlayerCount) : 1;
+            if (standSignText) standSignText.text = s.StandOpen ? "<color=#4FCB7A>OPEN</color>\nBurgers" : "<color=#E1543B>CLOSED</color>";
+            if (!standPlatesText && standObjects.TryGetValue(KitchenState.StandBase + 4, out var rack) && rack) { standPlatesText = WorldCaption(rack.transform, "", new Vector3(0, 2.1f, 0), .014f); }
+            if (!standSinkText && standObjects.TryGetValue(KitchenState.StandBase + 5, out var sink) && sink) { standSinkText = WorldCaption(sink.transform, "", new Vector3(0, 2.1f, 0), .014f); }
+            if (standPlatesText) { standPlatesText.text = "Clean plates: " + s.StandClean; standPlatesText.transform.rotation = Quaternion.identity; }
+            if (standSinkText) { standSinkText.text = s.StandDirty > 0 ? "<color=#E8C34A>Dirty: " + s.StandDirty + "</color>\nHold E to wash" : "Sink"; standSinkText.transform.rotation = Quaternion.identity; }
+            if (Game.Customer && Game.Customer.activeSelf) Game.Customer.SetActive(false);
+            var world = Game.Stand ? Game.Stand.transform.parent : transform;
+            var live = new HashSet<int>();
+            for (int i = 0; i < s.StandQueue.Count; i++) {
+                var order = s.StandQueue[i]; live.Add(order.Id);
+                if (!standGuests.TryGetValue(order.Id, out var guest) || !guest) {
+                    guest = RestaurantArt.CreateCharacter(order.Type, world); guest.name = "Stand guest " + order.Id;
+                    guest.transform.position = new Vector3(11, 0, 4.5f);
+                    var capsule = guest.AddComponent<CapsuleCollider>(); capsule.radius = .3f; capsule.height = 1.6f; capsule.center = Vector3.up * .83f;
+                    guest.AddComponent<Interactable>().Kind = InteractionKind.Serve;
+                    standGuests[order.Id] = guest; standBubbles[order.Id] = WorldCaption(guest.transform, "", new Vector3(0, 2.4f, 0), .02f);
+                }
+                var spot = StandFront + new Vector3(1.4f * i, 0, 0);
+                var before = guest.transform.position;
+                guest.transform.position = Vector3.MoveTowards(before, spot, seconds * 2.4f);
+                bool walking = (guest.transform.position - before).sqrMagnitude > .000001f;
+                guest.transform.rotation = Quaternion.Euler(0, walking ? 270 : 0, 0);
+                var motion = guest.GetComponent<CharacterMotion>();
+                float ratio = Mathf.Clamp01(order.Patience / Mathf.Max(1, order.MaxPatience));
+                if (motion) { motion.Walking = walking; motion.SetMood(ratio); }
+                int filled = Mathf.Max(1, Mathf.CeilToInt(ratio * 8)); string color = ratio > .55f ? "#4FCB7A" : ratio > .25f ? "#E8C34A" : "#E1543B";
+                var name = RestaurantCatalog.Customers[Mathf.Clamp(order.Type, 0, RestaurantCatalog.Customers.Length - 1)].Name;
+                SetBubble(standBubbles[order.Id], name + "\n" + (order.Dish == "midnight" ? "Midnight burger!" : "Burger, please!") + "\n<color=" + color + ">" + new string('|', filled) + "</color>");
             }
-            standGuest.SetActive(true);
-            var target = Game.Customer.transform.position; var last = standGuest.transform.position;
-            standGuest.transform.position = new Vector3(target.x, 0, target.z);
-            var motion = standGuest.GetComponent<CharacterMotion>();
-            bool walking = (last - standGuest.transform.position).sqrMagnitude > .00001f;
-            if (motion) { motion.Walking = walking; motion.SetMood(Mathf.Clamp01(s.Patience / 65f)); }
-            standGuest.transform.rotation = Quaternion.Euler(0, walking ? 270 : 0, 0);
-            var name = RestaurantCatalog.Customers[Mathf.Clamp(standGuestType, 0, RestaurantCatalog.Customers.Length - 1)].Name;
-            SetBubble(standGuestBubble, name + "\n" + (s.StandDish == "midnight" ? "A midnight burger, please!" : "One burger, please!"));
+            foreach (var id in new List<int>(standGuests.Keys)) if (!live.Contains(id)) { if (standGuests[id]) Destroy(standGuests[id]); standGuests.Remove(id); standBubbles.Remove(id); }
         }
 
         void BuildMilo(Transform world) {
@@ -130,8 +146,8 @@ namespace RestaurantCity {
                 if (pressed) { st.StandOpen = !st.StandOpen; if (st.StandOpen && !st.HasOrder) st.NextCustomer = Mathf.Min(st.NextCustomer, 3); Feedback(st.StandOpen ? "Stand open! Customers will start walking up." : "Stand closed. Finish the current customer."); Game.Save(); }
                 return true;
             }
-            if (city.Kind == InteractionKind.Serve && city.gameObject == Game.Customer) {
-                prompts[actor] = "Stand customer\n" + k.StandPreview(Game.State, actor);
+            if (city.Kind == InteractionKind.Serve && (city.gameObject == Game.Customer || city.name.StartsWith("Stand guest"))) {
+                prompts[actor] = "Stand line\n" + k.StandPreview(Game.State, actor);
                 if (pressed) { bool ok = k.ServeStand(Game.State, actor, out var m); Feedback(m); if (ok) { PlayChime(false); Game.Save(); } }
                 return true;
             }
