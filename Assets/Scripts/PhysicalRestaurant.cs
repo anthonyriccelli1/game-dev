@@ -98,6 +98,31 @@ namespace RestaurantCity {
     else{int id;if(item.Holder.StartsWith("station:")&&int.TryParse(item.Holder.Substring(8),out id)&&Furnishings.TryGetValue(id,out var s)){parent=s.transform;pos=new Vector3(0,1.08f,0);found=true;}else if(item.TableInstanceId>0&&Furnishings.TryGetValue(item.TableInstanceId,out var t)){parent=t.transform;pos=new Vector3((item.Id%2-.5f)*.4f,.94f,0);found=true;}}
     obj.SetActive(found);obj.transform.SetParent(parent,false);obj.transform.localPosition=pos;
    }
+   DrawProgressBars();
+  }
+  readonly Dictionary<int,GameObject> progressBars=new Dictionary<int,GameObject>();
+  // Cooking-game style bars over stations: yellow fills while cooking/chopping, green = ready,
+  // turns red as a cooked patty approaches burning; blue while washing.
+  void DrawProgressBars(){
+   var k=Game.State.Kitchen;var eye=Game.Player&&Game.Player.View?Game.Player.View.transform.position:Vector3.zero;
+   foreach(var s in k.Stations){
+    if(!Furnishings.TryGetValue(s.InstanceId,out var station)||!station||!station.activeInHierarchy){if(progressBars.TryGetValue(s.InstanceId,out var stale)&&stale)stale.SetActive(false);continue;}
+    var item=k.At(s.InstanceId);float ratio=-1;string color="E8C34A";
+    if(item!=null&&(s.CatalogId=="grill"||s.CatalogId=="oven")){
+     float done=s.CatalogId=="oven"?6:8,burn=24;
+     if(item.Kind==KitchenItemKind.RawProtein)ratio=s.Progress/done;
+     else if(item.Kind==KitchenItemKind.CookedPatty){float heat=(s.Progress-done)/(burn-done);ratio=1;color=heat<.5f?"4FCB7A":heat<.8f?"E8973A":"E1543B";}
+     else if(item.Kind==KitchenItemKind.BurntPatty){ratio=1;color="3A2A26";}
+    }else if(item!=null&&s.CatalogId=="prep_bench"&&(item.Kind==KitchenItemKind.RawGreens||item.Kind==KitchenItemKind.RawSauce)){
+     float d=(item.Kind==KitchenItemKind.RawSauce?4:3)*(Game.State.FluxResearch?.65f:1);ratio=s.Progress/d;
+    }else if(item!=null&&s.CatalogId=="prep_bench"&&(item.Kind==KitchenItemKind.ChoppedGreens||item.Kind==KitchenItemKind.MidnightSauce)){ratio=1;color="4FCB7A";}
+    else if(item!=null&&s.CatalogId=="sink"&&item.Kind==KitchenItemKind.DirtyPlate){ratio=s.Progress/6;color="4FA3E1";}
+    progressBars.TryGetValue(s.InstanceId,out var bar);
+    if(ratio<0){if(bar)bar.SetActive(false);continue;}
+    if(!bar){bar=KitchenArt.ProgressBar(transform);progressBars[s.InstanceId]=bar;}
+    bar.SetActive(true);bar.transform.position=station.transform.position+Vector3.up*2.05f;KitchenArt.SetProgress(bar,ratio,color);
+    var look=bar.transform.position-eye;look.y=0;if(look.sqrMagnitude>.001f)bar.transform.rotation=Quaternion.LookRotation(look);
+   }
   }
  }
 }

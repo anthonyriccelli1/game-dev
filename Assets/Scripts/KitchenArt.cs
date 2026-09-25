@@ -108,6 +108,18 @@ namespace RestaurantCity {
             var collider=root.AddComponent<BoxCollider>();collider.center=new Vector3(0,id=="pantry"?.9f:.51f,0);collider.size=new Vector3(width,id=="pantry"?1.8f:1.02f,.9f);
             G("WorkPoint",p,new Vector3(0,0,1.05f));G("ItemPoint",p,new Vector3(-.3f,1.06f,.05f)); if(id=="pantry"||id=="sink")root.transform.localScale=new Vector3(.5f,1,1); return root;
         }
+        // World-space progress bar shown above a station (cooking, chopping, washing). No colliders.
+        public static GameObject ProgressBar(Transform parent) {
+            var root=G("Progress bar",parent,new Vector3(0,2.05f,0));
+            S("Bar frame",root.transform,Block(),Vector3.zero,new Vector3(.98f,.16f,.05f),M("1B2A30"));
+            var fill=S("Bar fill",root.transform,Block(),new Vector3(0,0,-.03f),new Vector3(.9f,.1f,.05f),M("E8C34A"));
+            return root;
+        }
+        public static void SetProgress(GameObject bar,float ratio,string hex) {
+            ratio=Mathf.Clamp01(ratio);var fill=bar.transform.Find("Bar fill");if(!fill)return;
+            fill.localScale=new Vector3(Mathf.Max(.001f,.9f*ratio),.1f,.05f);fill.localPosition=new Vector3(-.45f+.45f*ratio,0,-.03f);
+            var r=fill.GetComponent<MeshRenderer>();var m=M(hex);if(r.sharedMaterial!=m)r.sharedMaterial=m;
+        }
         static GameObject Plate(Transform p,Vector3 position,float scale=1) {
             return S("Glazed cream plate",p,Profile("plate",new[]{0f,.012f,.024f,.045f,.055f,.049f,.033f,.025f,.025f},new[]{0f,.11f,.17f,.22f,.235f,.24f,.215f,.165f,0f},16),position,Vector3.one*scale,M("FFF1D1"));
         }
