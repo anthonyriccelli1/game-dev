@@ -290,7 +290,7 @@ namespace RestaurantCity {
             Feedback(message); Game.Save();
         }
         // Stage two adds arrivals, world navigation and visible staff tasks.
-        public void Advance(float seconds) { Data.Tick(Game.State, seconds); Game.State.Kitchen.Tick(Game.State, seconds); TickServiceActors(seconds); TickPhysicalService(seconds); AnimateRival(seconds); }
+        public void Advance(float seconds) { Data.Tick(Game.State, seconds); Game.State.Kitchen.Tick(Game.State, seconds); TickServiceActors(seconds); TickPhysicalService(seconds); AnimateRival(seconds); TickStreet(seconds); }
         partial void TickServiceActors(float seconds);
     }
 }

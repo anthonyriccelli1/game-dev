@@ -55,9 +55,9 @@ namespace RestaurantCity {
   static string StandTicket(GameState s){
    if(!s.StandBuilt)return "Set up your food stand ($10)\nthen buy patties & buns at Milo's.";
    string goal="<size=12>Goal: save $150 for the restaurant across the street</size>";
-   if(!s.HasOrder)return "Stand: waiting for a customer...\n"+goal;
+   if(!s.HasOrder)return (s.StandOpen?"Stand OPEN: a customer is on the way...":"Stand CLOSED: press E on the stand sign to open")+"\n"+goal;
    float ratio=Mathf.Clamp01(s.Patience/65f);string c=ratio>.55f?"#4FCB7A":ratio>.25f?"#E8C34A":"#E1543B";int f=Mathf.Max(1,Mathf.CeilToInt(ratio*8));
-   return "Stand order \u2014 Burger [bun+patty]  <color="+c+">"+new string('|',f)+"</color>"+new string('.',8-f)+"\n"+goal;
+   return "Stand order \u2014 "+(s.StandDish=="midnight"?"Midnight burger [bun+patty+sauce]":"Burger [bun+patty]")+"  <color="+c+">"+new string('|',f)+"</color>"+new string('.',8-f)+"\n"+goal;
   }
   // Ticket rail (A4): one card per waiting order with table, dish, its components, and a colored patience bar.
   static string TicketRail(RestaurantState r){

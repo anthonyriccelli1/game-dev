@@ -325,14 +325,55 @@ namespace RestaurantCity {
             }
             g.AddComponent<CharacterMotion>();return g;
         }
+        // Luxury pieces only the rival restaurant has (for now).
+        public static GameObject CreateLuxury(string id,Transform parent) {
+            var g=Group("Luxury_"+id,parent);var p=g.transform;var gold=Mat("LuxGold",C("E2AE48"),.9f);var obsidian=Mat("LuxObsidian",C("1C1B2B"),.3f);
+            switch(id){
+            case "chandelier":
+                Rod("ChandelierChain",p,new Vector3(0,3.7f,0),new Vector3(0,4.5f,0),.03f,C("E2AE48"));
+                for(int t=0;t<3;t++){float r=.95f-t*.3f,y=3.35f+t*.28f;Lathe("ChandelierRing"+t,p,new Vector3(0,y,0),new[]{0f,.05f},new[]{r,r},gold,24);
+                    int n=10-t*3;for(int i=0;i<n;i++){float a=i*Mathf.PI*2/n;Shape("Crystal",p,Profile("gem",new[]{-.5f,-.35f,0,.35f,.5f},new[]{0f,.38f,.5f,.38f,0f}),new Vector3(Mathf.Cos(a)*r,y-.12f,Mathf.Sin(a)*r),new Vector3(.08f,.2f,.08f),Mat("Crystal",C("FFF1C9"),0,true));}}
+                break;
+            case "gold_column":
+                Lathe("ColumnBase",p,Vector3.zero,new[]{0f,.15f,.25f},new[]{.38f,.38f,.28f},gold);
+                Lathe("ColumnShaft",p,new Vector3(0,.25f,0),new[]{0f,4f},new[]{.24f,.2f},obsidian,10);
+                Lathe("ColumnCapital",p,new Vector3(0,4.2f,0),new[]{0f,.12f,.3f},new[]{.24f,.36f,.38f},gold);
+                for(int i=0;i<3;i++)Lathe("ColumnBand"+i,p,new Vector3(0,1.2f+i*1.1f,0),new[]{0f,.05f},new[]{.23f,.23f},gold,12);
+                break;
+            case "wine_wall":
+                Box("WineCabinet",p,new Vector3(0,1.5f,0),new Vector3(1.9f,3f,.45f),obsidian);
+                Box("Backlight",p,new Vector3(0,1.55f,.2f),new Vector3(1.7f,2.7f,.03f),Mat("WineGlow",C("FFB85C"),0,true));
+                for(int row=0;row<5;row++){Box("WineShelf",p,new Vector3(0,.35f+row*.55f,.25f),new Vector3(1.8f,.04f,.3f),gold);
+                    for(int i=0;i<7;i++)Lathe("WineBottle",p,new Vector3(-.75f+i*.25f,.37f+row*.55f,.28f),new[]{0f,.24f,.3f,.4f},new[]{.055f,.055f,.022f,.022f},Mat(i%3==0?"Rose":"Bordeaux",i%3==0?C("E27A8C"):C("5A0F24"),.5f),8);}
+                break;
+            case "aquarium":
+                Box("TankStand",p,new Vector3(0,.45f,0),new Vector3(1.9f,.9f,.6f),obsidian);
+                Box("TankWater",p,new Vector3(0,1.55f,0),new Vector3(1.8f,1.3f,.5f),Mat("TankWater",C("2FB5C9"),0,true));
+                Box("TankLid",p,new Vector3(0,2.25f,0),new Vector3(1.95f,.1f,.65f),gold);
+                for(int i=0;i<6;i++)Round("GlowFish",p,new Vector3(-.6f+i*.25f,1.2f+(i%3)*.3f,.28f),new Vector3(.2f,.1f,.06f),i%2==0?C("FF8A5C"):C("FFE066"));
+                for(int i=0;i<4;i++)Lathe("Seaweed"+i,p,new Vector3(-.7f+i*.45f,.92f,0),new[]{0f,.5f},new[]{.05f,0f},Mat("Seaweed",C("3FAE6B")),6);
+                break;
+            case "statue":
+                Box("Plinth",p,new Vector3(0,.5f,0),new Vector3(.8f,1f,.8f),obsidian);
+                Lathe("OrbitRing",p,new Vector3(0,1.6f,0),new[]{0f,.06f},new[]{.45f,.45f},gold,24).transform.localRotation=Quaternion.Euler(70,0,20);
+                Round("OrbitCore",p,new Vector3(0,1.6f,0),Vector3.one*.4f,C("E2AE48"));
+                Round("OrbitMoon",p,new Vector3(.42f,1.85f,0),Vector3.one*.14f,C("FFF1C9"));
+                break;
+            case "velvet_curtain":
+                for(int i=0;i<4;i++)Box("CurtainFold",p,new Vector3(-.3f+i*.2f,2.1f,(i%2)*.06f),new Vector3(.2f,4.2f,.1f),Mat("Velvet",C("5B1E4F")));
+                Box("CurtainTie",p,new Vector3(0,1.4f,.1f),new Vector3(.85f,.08f,.14f),gold);
+                break;
+            }
+            return g;
+        }
         // Rival restaurant staff: built on the base bodies, restyled so nobody in the player's crew looks like them.
         public static GameObject CreateEliteCharacter(int variant,Transform parent) {
-            int[] bases={6,2,8,1};variant=Mathf.Clamp(variant,0,3);
+            int[] bases={6,2,8,1,7,3,0};variant=Mathf.Clamp(variant,0,6);
             var g=CreateCharacter(bases[variant],parent);var b=g.transform.Find("BodyRig");var head=b?b.Find("HeadRig"):null;
-            string[] names={"Maestro Vey / head chef","Nyx / sommelier","K-9 / line cook","Aurora / maitre d'"};g.name=names[variant];
-            Color[] coats={C("F7F4EE"),C("15121F"),C("B9C3CC"),C("3A1D3F")};
+            string[] names={"Maestro Vey / head chef","Nyx / sommelier","K-9 / line cook","Aurora / maitre d'","Seraphine / pastry chef","Obsidian Titan / doorman","Lumen / mixologist"};g.name=names[variant];
+            Color[] coats={C("F7F4EE"),C("15121F"),C("B9C3CC"),C("3A1D3F"),C("FFF6F0"),C("0E0D12"),C("F2F2F7")};
             var coat=Mat("EliteCoat"+variant,coats[variant],variant==2?.85f:0);var trousers=Mat("EliteTrousers",C("121017"));
-            var gold=Mat("EliteGold",C("E2AE48"),.9f);Color[] glow={C("B77CFF"),C("6EF2FF"),C("39F5C9"),C("FFD36E")};var neon=Mat("EliteGlow"+variant,glow[variant],0,true);
+            var gold=Mat("EliteGold",C("E2AE48"),.9f);Color[] glow={C("B77CFF"),C("6EF2FF"),C("39F5C9"),C("FFD36E"),C("FF9BD2"),C("FF3B3B"),C("4FE3FF")};var neon=Mat("EliteGlow"+variant,glow[variant],0,true);
             foreach(var r in g.GetComponentsInChildren<MeshRenderer>()){
                 string n=r.gameObject.name;
                 if(n.StartsWith("TailoredTorso"))r.sharedMaterial=coat;
@@ -359,6 +400,21 @@ namespace RestaurantCity {
                 for(int s=-1;s<=1;s+=2)Box("GoldLapel",b,new Vector3(s*.09f,1.16f,.27f),new Vector3(.07f,.28f,.03f),gold);
                 Box("BowTie",b,new Vector3(0,1.3f,.29f),new Vector3(.18f,.07f,.04f),neon);
                 Lathe("Monocle",head,new Vector3(.14f,.04f,.28f),new[]{0f,.02f},new[]{.07f,.07f},neon,14).transform.localRotation=Quaternion.Euler(90,0,0);
+                break;
+            case 4: // Gilded wings, pearl coat, a glowing whisk.
+                for(int s=-1;s<=1;s+=2){var wing=Round("GoldWing",b,new Vector3(s*.42f,1.35f,-.28f),new Vector3(.18f,.9f,.5f),C("E2AE48"));wing.transform.localRotation=Quaternion.Euler(-15,0,s*-35);}
+                Lathe("PastryToque",head,new Vector3(0,.3f,0),new[]{0f,.06f,.32f,.4f},new[]{.22f,.24f,.3f,.22f},Mat("PearlToque",C("FFF6F0")));
+                var whiskHand=b.Find("ArmR");if(whiskHand)Lathe("GlowWhisk",whiskHand,new Vector3(0,-.5f,.1f),new[]{0f,.08f,.25f},new[]{.02f,.07f,0f},neon,8);
+                break;
+            case 5: // Towering obsidian doorman: gold crown horns, pauldrons, red eyes.
+                g.transform.localScale=Vector3.one*1.25f;
+                for(int s=-1;s<=1;s+=2){var horn=Lathe("CrownHorn",head,new Vector3(s*.2f,.28f,0),new[]{0f,.35f},new[]{.07f,0f},gold,8);horn.transform.localRotation=Quaternion.Euler(0,0,s*-25);Round("Pauldron",b,new Vector3(s*.42f,1.3f,0),new Vector3(.34f,.2f,.36f),C("1C1B2B"));}
+                Box("GoldSash",b,new Vector3(0,1.0f,.27f),new Vector3(.08f,.6f,.03f),gold);
+                break;
+            case 6: // White suit, neon crest, cocktail shaker.
+                for(int i=0;i<5;i++)Round("NeonCrest",head,new Vector3(0,.3f+i*.02f,.15f-i*.09f),new Vector3(.08f,.26f-i*.03f,.12f),glow[6]).GetComponent<MeshRenderer>().sharedMaterial=neon;
+                var shakerHand=b.Find("ArmR");if(shakerHand)Lathe("Shaker",shakerHand,new Vector3(0,-.5f,.1f),new[]{0f,.2f,.26f},new[]{.06f,.06f,.03f},Mat("Chrome",C("DDE3E8"),.9f));
+                Box("BlackTie",b,new Vector3(0,1.25f,.29f),new Vector3(.05f,.25f,.03f),Mat("TieBlack",C("0E0D12")));
                 break;
             }
             return g;

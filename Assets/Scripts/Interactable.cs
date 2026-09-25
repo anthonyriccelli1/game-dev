@@ -1,7 +1,7 @@
 using UnityEngine;
 
 namespace RestaurantCity {
-    public enum InteractionKind { Supplier, Stand, Prep, Grill, Serve, Bin, Recipe, FutureRestaurant, SupplyProtein, SupplyProduce }
+    public enum InteractionKind { Supplier, Stand, Prep, Grill, Serve, Bin, Recipe, FutureRestaurant, SupplyProtein, SupplyProduce, StandSign }
     public class Interactable : MonoBehaviour {
         public InteractionKind Kind;
         public string Prompt(CityGame game) {

@@ -179,6 +179,7 @@ namespace RestaurantCity {
             for(int i=0;i<3;i++){var food=CreateItem(contents=="protein"?"RawProtein":contents=="buns"?"Bun":"RawGreens",p);food.transform.localPosition=new Vector3(-.23f+i*.23f,.13f,0);}
         }
         // Market display crate for Milo's shop: a big crate heaped with one kind of ingredient.
+        public static Material Material(string hex) => M(hex);
         public static GameObject SupplyCrate(Transform parent,string contents) {
             var root=G(contents=="protein"?"Meat crate":"Produce crate",parent);
             Box("Crate stand",root.transform,new Vector3(0,.45f,0),new Vector3(1.1f,.9f,.9f),"317E79");

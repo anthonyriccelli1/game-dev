@@ -263,7 +263,8 @@ namespace RestaurantCity {
 
         void BuildStaff(RectTransform sheet) {
             Label(sheet, "Recruit the city's odd regulars with Flux. Everyone can do any job; each is fastest at their specialty.   Your Flux: " + Owner.Game.State.Flux, 30, 140, 1144, 35, 16, ink);
-            int rows = Mathf.CeilToInt(RestaurantCatalog.Staff.Length / 2f);
+            string[] rivals = { "Maestro Vey|Head chef. Gold toque, glowing eyes. Runs a kitchen like an orchestra.", "Nyx|Sommelier with a crystal halo. Guests tip double when she pours.", "K-9|Chrome line cook with four arms and a neon visor. Never tires.", "Aurora|Maitre d'. Her monocle sees every empty seat before you do.", "Seraphine|Winged pastry chef. Desserts so good customers float out.", "Obsidian Titan|Doorman. Nobody makes a scene with him at the door.", "Lumen|Mixologist with a neon crest. Every drink glows." };
+            int rows = Mathf.CeilToInt(RestaurantCatalog.Staff.Length / 2f) + Mathf.CeilToInt(rivals.Length / 2f) + 1;
             var content = Scroller(sheet, 30, 189, 1160, 462, rows * 320 + 20);
             int index = 0;
             foreach (var worker in RestaurantCatalog.Staff) {
@@ -275,6 +276,17 @@ namespace RestaurantCity {
                 string trust = "";
                 Label(card, "Specialty: " + entry.Role + "    /    " + price + trust, 25, 172, 520, 28, 16, ink, true);
                 BuildWorkerActions(card, entry);
+            }
+            // The Gilded Orbit's elite crew: visible, desirable, and not available yet.
+            int rivalTop = Mathf.CeilToInt(RestaurantCatalog.Staff.Length / 2f) * 320;
+            Label(content, "THE GILDED ORBIT'S CREW  /  Rival exclusives", 22, rivalTop + 10, 1110, 40, 24, ink, true);
+            for (int i = 0; i < rivals.Length; i++) {
+                var parts = rivals[i].Split('|');
+                var card = Block(content, parts[0], (i % 2) * 580, rivalTop + 60 + (i / 2) * 320, 562, 303, ink);
+                Label(card, parts[0], 25, 24, 495, 45, 26, paper, true);
+                Label(card, parts[1], 25, 78, 507, 70, 17, paper);
+                Label(card, "25 Flux    /    Rival exclusive", 25, 172, 520, 28, 16, paper, true);
+                Button(card, "Locked: they only work at a four-star restaurant", 25, 233, 508, 43, () => { }, pale, ink, false);
             }
         }
 

@@ -130,6 +130,7 @@ namespace RestaurantCity {
                 if (State.Restaurant.Owned) return "Your restaurant, your rules\nB to decorate inside. Tab to manage service, menu and staff.";
                 if (!State.StandBuilt) return "Make it yours\nSet up the coral food stand for $10.";
                 if (State.Restaurant.Protein == 0 || State.Restaurant.Produce == 0) return "Stock the kitchen\nBuy patties and buns from Milo's crates across the street.";
+                if (!State.StandOpen && State.Served == 0) return "Open for business\nPress E on the sign by your stand to start serving.";
                 if (State.Served == 0) return "Your first customer\nPatty on the grill > paper plate > bun > cooked patty > serve.";
                 if (!State.RecipeUnlocked) return State.IsNight ? "A recipe after dark\nExplore the marked rival alley. You can retreat." : "Build your reputation\nKeep serving. The alley stash opens at night.";
                 if (State.Cash < 150) return "A place of your own\nSell midnight burgers. Save $150 for your future restaurant.";

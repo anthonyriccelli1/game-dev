@@ -169,7 +169,8 @@ namespace RestaurantCity {
   public bool ServeStand(GameState game,string actor,out string message){
    var item=Hold(actor);string dish=RecipeOf(item);
    if(!game.HasOrder)return Fail("No one is waiting yet. A customer will walk up soon.",out message);
-   if(dish!="burger"&&dish!="midnight")return Fail("They want a burger: paper plate + bun + cooked patty.",out message);
+   string want=game.StandDish=="midnight"?"midnight":"burger";
+   if(dish!=want)return Fail(want=="midnight"?"They want a MIDNIGHT burger: bun + cooked patty + midnight sauce.":"They want a burger: paper plate + bun + cooked patty.",out message);
    int price=(dish=="midnight"?18:12)*(game.IsNight?3:2)/2;
    game.Cash+=price;game.Served++;game.HasOrder=false;game.NextCustomer=6;Items.Remove(item);
    message="+$"+price+"  "+(dish=="midnight"?"A midnight burger! They'll tell their friends.":"Another happy customer!");return true;
@@ -177,8 +178,9 @@ namespace RestaurantCity {
   public string StandPreview(GameState game,string actor){
    var item=Hold(actor);string dish=RecipeOf(item);
    if(!game.HasOrder)return "Waiting for a customer";
-   if(dish=="burger"||dish=="midnight")return "E / A  Serve "+(dish=="midnight"?"midnight burger":"burger")+"  /  $"+((dish=="midnight"?18:12)*(game.IsNight?3:2)/2);
-   return "Wants a burger: paper plate + bun + cooked patty";
+   string want=game.StandDish=="midnight"?"midnight":"burger";
+   if(dish==want)return "E / A  Serve "+(dish=="midnight"?"midnight burger":"burger")+"  /  $"+((dish=="midnight"?18:12)*(game.IsNight?3:2)/2);
+   return want=="midnight"?"Wants a midnight burger: bun + cooked patty + midnight sauce":"Wants a burger: paper plate + bun + cooked patty";
   }
   public int DirtyAtTable(int table)=>Items.Count(i=>i.Kind==KitchenItemKind.DirtyPlate&&i.TableInstanceId==table&&i.Holder.StartsWith("table:"));
   public bool ClearTable(GameState game,string actor,int table,out string message){

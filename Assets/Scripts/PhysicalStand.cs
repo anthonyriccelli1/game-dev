@@ -36,13 +36,61 @@ namespace RestaurantCity {
                 standObjects[id] = obj;
             }
             BuildMilo(world);
+            BuildStandSign();
+        }
+
+        TextMesh standSignText;
+        GameObject standGuest; int standGuestType = -1; TextMesh standGuestBubble;
+
+        void BuildStandSign() {
+            if (standSignText) return;
+            var sign = new GameObject("Stand open sign"); sign.transform.SetParent(Game.Stand.transform, false);
+            sign.transform.position = new Vector3(-3.9f, 0, 7.4f);
+            var body = GameObject.CreatePrimitive(PrimitiveType.Cube); body.name = "Chalkboard"; body.transform.SetParent(sign.transform, false);
+            body.transform.localPosition = new Vector3(0, .75f, 0); body.transform.localScale = new Vector3(.9f, 1.1f, .08f);
+            body.GetComponent<Renderer>().sharedMaterial = KitchenArt.Material("1B2A30");
+            var legs = GameObject.CreatePrimitive(PrimitiveType.Cube); legs.name = "Sign legs"; legs.transform.SetParent(sign.transform, false);
+            legs.transform.localPosition = new Vector3(0, .1f, 0); legs.transform.localScale = new Vector3(.95f, .2f, .3f);
+            legs.GetComponent<Renderer>().sharedMaterial = KitchenArt.Material("895343");
+            sign.AddComponent<Interactable>().Kind = InteractionKind.StandSign;
+            standSignText = WorldCaption(sign.transform, "", new Vector3(0, .8f, -.06f), .02f);
+            standSignText.transform.rotation = Quaternion.identity;
+        }
+
+        // Stand customers are the same odd residents who visit the restaurant.
+        void TickStreet(float seconds) {
+            var s = Game.State;
+            if (standSignText) { standSignText.text = s.StandOpen ? "<color=#4FCB7A>OPEN</color>\nBurgers" : "<color=#E1543B>CLOSED</color>"; }
+            if (!Game.Customer) return;
+            foreach (var r in Game.Customer.GetComponentsInChildren<MeshRenderer>()) if (r.enabled) r.enabled = false;
+            if (!s.HasOrder) { if (standGuest) standGuest.SetActive(false); return; }
+            if (!standGuest || standGuestType != s.StandCustomerType) {
+                if (standGuest) Destroy(standGuest);
+                standGuestType = s.StandCustomerType;
+                standGuest = RestaurantArt.CreateCharacter(standGuestType, Game.Stand ? Game.Stand.transform.parent : transform);
+                standGuestBubble = WorldCaption(standGuest.transform, "", new Vector3(0, 2.4f, 0), .02f);
+            }
+            standGuest.SetActive(true);
+            var target = Game.Customer.transform.position; var last = standGuest.transform.position;
+            standGuest.transform.position = new Vector3(target.x, 0, target.z);
+            var motion = standGuest.GetComponent<CharacterMotion>();
+            bool walking = (last - standGuest.transform.position).sqrMagnitude > .00001f;
+            if (motion) { motion.Walking = walking; motion.SetMood(Mathf.Clamp01(s.Patience / 65f)); }
+            standGuest.transform.rotation = Quaternion.Euler(0, walking ? 270 : 0, 0);
+            var name = RestaurantCatalog.Customers[Mathf.Clamp(standGuestType, 0, RestaurantCatalog.Customers.Length - 1)].Name;
+            SetBubble(standGuestBubble, name + "\n" + (s.StandDish == "midnight" ? "A midnight burger, please!" : "One burger, please!"));
         }
 
         void BuildMilo(Transform world) {
             if (!world || world.Find("Milo shopkeeper")) return;
             var old = world.Find("Milo"); if (old) old.gameObject.SetActive(false);
+            // Clear the old placeholder produce and lower the counter so Milo is visible.
+            foreach (Transform child in world) {
+                if (child.name == "Produce crate" || child.name == "Produce") child.gameObject.SetActive(false);
+                var tm = child.GetComponent<TextMesh>(); if (tm && tm.text.StartsWith("FRESH PACKS")) child.gameObject.SetActive(false);
+            }
             var counter = world.Find("Supplier counter");
-            if (counter) { var legacy = counter.GetComponent<Interactable>(); if (legacy) Destroy(legacy); }
+            if (counter) { var legacy = counter.GetComponent<Interactable>(); if (legacy) Destroy(legacy); counter.localScale = new Vector3(counter.localScale.x, .8f, counter.localScale.z); counter.position = new Vector3(counter.position.x, .4f, counter.position.z); }
             var milo = RestaurantArt.CreateCharacter(5, world); milo.name = "Milo shopkeeper";
             milo.transform.position = new Vector3(-12, 0, 10.3f); milo.transform.rotation = Quaternion.Euler(0, 180, 0);
             var motion = milo.GetComponent<CharacterMotion>(); if (motion) motion.SetMood(.9f);
@@ -74,6 +122,12 @@ namespace RestaurantCity {
                     if (!Data.Restock(Game.State, protein, out m) && Game.State.Cash < (protein ? 10 : 6)) Data.RequestSupplyHelp(Game.State, out m);
                     Feedback(m); Game.Save();
                 }
+                return true;
+            }
+            if (city.Kind == InteractionKind.StandSign) {
+                var st = Game.State;
+                prompts[actor] = "Stand sign\nE / A  " + (st.StandOpen ? "Close the stand (no new customers)" : "Open the stand for customers");
+                if (pressed) { st.StandOpen = !st.StandOpen; if (st.StandOpen && !st.HasOrder) st.NextCustomer = Mathf.Min(st.NextCustomer, 3); Feedback(st.StandOpen ? "Stand open! Customers will start walking up." : "Stand closed. Finish the current customer."); Game.Save(); }
                 return true;
             }
             if (city.Kind == InteractionKind.Serve && city.gameObject == Game.Customer) {

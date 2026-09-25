@@ -10,7 +10,8 @@ namespace RestaurantCity {
         public bool FluxResearch, FluxIntroduced;
         public KitchenState Kitchen = new KitchenState();
         public RestaurantState Restaurant = new RestaurantState();
-        public bool StandBuilt, RecipeUnlocked, HasOrder;
+        public bool StandBuilt, RecipeUnlocked, HasOrder, StandOpen;
+        public int StandCustomerType; public string StandDish = "burger";
         public float Clock, CookSeconds, Patience;
         public float NextCustomer = 1;
         public bool SignatureDish;
@@ -72,13 +73,16 @@ namespace RestaurantCity {
             Clock += seconds;
             while (Clock >= 240) { Clock -= 240; Day++; }
             if (Food == FoodStage.Cooking) CookSeconds += seconds;
-            if (Restaurant != null && Restaurant.Open) { HasOrder = false; return; }
             if (HasOrder) {
                 Patience -= seconds;
                 if (Patience <= 0) { HasOrder = false; Missed++; NextCustomer = 6; }
-            } else if (StandBuilt) {
+            } else if (StandBuilt && StandOpen) {
                 NextCustomer -= seconds;
-                if (NextCustomer <= 0) { HasOrder = true; Patience = 65; }
+                if (NextCustomer <= 0) {
+                    HasOrder = true; Patience = 65;
+                    StandCustomerType = (StandCustomerType + 3) % 10;
+                    StandDish = RecipeUnlocked && (Served + Day) % 3 == 0 ? "midnight" : "burger";
+                }
             }
         }
     }
