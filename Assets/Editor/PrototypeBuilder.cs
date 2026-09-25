@@ -156,7 +156,8 @@ public static class PrototypeBuilder {
         if (!game || !game.Player || !game.Player.View || !game.Guard || !game.Stand || !game.SetupMarker || !game.Customer || !game.Sun) throw new Exception("Scene is missing required references");
         var kinds = new HashSet<InteractionKind>();
         foreach (var item in UnityEngine.Object.FindObjectsByType<Interactable>(FindObjectsInactive.Include, FindObjectsSortMode.None)) kinds.Add(item.Kind);
-        foreach (InteractionKind kind in Enum.GetValues(typeof(InteractionKind))) if (!kinds.Contains(kind)) throw new Exception("Missing interaction: " + kind);
+        // Milo's supply crates are created at runtime by PhysicalStand.
+        foreach (InteractionKind kind in Enum.GetValues(typeof(InteractionKind))) if (kind != InteractionKind.SupplyProtein && kind != InteractionKind.SupplyProduce && !kinds.Contains(kind)) throw new Exception("Missing interaction: " + kind);
         foreach (var renderer in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None)) {
             if (!renderer.sharedMaterial || !renderer.sharedMaterial.shader) throw new Exception("Missing material: " + renderer.name);
         }
