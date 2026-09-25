@@ -352,7 +352,7 @@ namespace RestaurantCity {
             else if (Owner.Game.Player) markers.Add((Block(sheet, "You", 0, 0, 12, 12, coral), Owner.Game.Player.transform));
             tickLabels.Add(() => { foreach (var (m, t) in markers) if (m && t) { var q = P(t.position.x, t.position.z); m.anchoredPosition = new Vector2(q.x - 6, -(q.y - 6)); } });
             tickLabels[tickLabels.Count - 1]();
-            var home = P(-8, 12); Label(sheet, "Stand, Milo's, Gilded Orbit", home.x - 60, home.y - 30, 150, 16, 10, white, true);
+            var homeSpot = P(-8, 12); Label(sheet, "Stand, Milo's, Gilded Orbit", homeSpot.x - 60, homeSpot.y - 30, 150, 16, 10, white, true);
 
             float rx = mx + mw + 26, rw = 1190 - rx;
             Label(sheet, "REPUTATION", rx, 140, rw, 20, 13, muted, true);
