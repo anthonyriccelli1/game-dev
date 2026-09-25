@@ -53,7 +53,7 @@ public static class PrototypeBuilder {
         if (!city) { Building("Milo's Supply", -13, 17, 12, 10, teal, world); Building("Apartments", -1, 19, 10, 14, coral, world); }
         RivalRestaurantShell(world);
         if (!city) Building("Corner cafe", -20, -15, 7, 9, Mat("Sage", "8DAB91"), world);
-        Building("Future Restaurant", -10, -15, 10, 11, Mat("Brick", "BC896D"), world);
+        if (!city) Building("Future Restaurant", -10, -15, 10, 11, Mat("Brick", "BC896D"), world);
         if (!city) { Building("Records", 2, -16, 10, 14, teal, world); Building("Bodega", 16, -15, 13, 10, Mat("Mustard", "CEAE70"), world); }
         if (city) CityMap.Build(world);
         else {
@@ -113,6 +113,7 @@ public static class PrototypeBuilder {
         Cube("Alley right post", new Vector3(14.3f, 1.9f, 14), new Vector3(.15f, 3.8f, .15f), dark, world);
         var stash = Cube("Midnight recipe stash", new Vector3(11.6f, .7f, 26), new Vector3(1.3f, 1.4f, 1), gold, world);
         stash.AddComponent<Interactable>().Kind = InteractionKind.Recipe;
+        if (city && CityMap.FitGeneric("Props/SM_Gen_Prop_Chest_01", new Vector3(11.6f, 0, 26), 180, 1.4f, world)) stash.GetComponent<MeshRenderer>().enabled = false;
         Label("MIDNIGHT RECIPE", new Vector3(11.6f, 1.85f, 25.5f), .14f, cream.color, world);
         game.RecipeGlow = Sphere("Recipe beacon", new Vector3(11.6f, 2.4f, 26), Vector3.one * .45f, gold, world);
         var guardObject = new GameObject("Alley rival"); guardObject.transform.SetParent(world); guardObject.transform.position = new Vector3(11.6f, 0, 21);
@@ -120,8 +121,8 @@ public static class PrototypeBuilder {
         var guardBody = Person("Rival body", guardObject.transform.position, Mat("Rival coat", "483055"), guardObject.transform);
         game.Guard.Body = guardBody.transform; game.Guard.Coat = guardBody.transform.Find("Torso").GetComponent<Renderer>();
 
-        for (int i = -2; i <= 2; i++) { StreetLamp(new Vector3(i * 10, 0, -6), world); if (i != 0) StreetLamp(new Vector3(i * 10, 0, 6), world); }
-        StreetLamp(new Vector3(13.5f, 0, 25), world);
+        for (int i = -2; i <= 2; i++) { if (!(city && i == -1)) StreetLamp(new Vector3(i * 10, 0, -6), world); if (i != 0) StreetLamp(new Vector3(i * 10, 0, 6), world); }
+        StreetLamp(new Vector3(city ? 12.6f : 13.5f, 0, city ? 30.5f : 25), world);
         ArtPackDressing.Dress(world);
         Tree(new Vector3(-20, 0, 7), world); Tree(new Vector3(20, 0, 7), world);
         Tree(new Vector3(6, 0, -8), world); Tree(new Vector3(-3, 0, -8), world);
@@ -217,6 +218,9 @@ public static class PrototypeBuilder {
         var root = new GameObject("Rival restaurant / The Gilded Orbit").transform; root.parent = parent;
         var obsidian = Mat("Obsidian", "1C1B2B"); var gold = Mat("Rival gold", "D9A441"); var plum = Mat("Plum velvet", "4A2548");
         var marble = Mat("Marble floor", "E9E1D3"); var glassDark = Mat("Smoked glass", "3E5B73");
+        // In the city build the frontage uses the city pack's own window glass, so you can see the dining room inside.
+        var packGlass = AssetDatabase.LoadAssetAtPath<Material>("Assets/Synty/PolygonCity/Materials/Misc/Glass_01.mat");
+        if (CityMap.Available && packGlass) glassDark = packGlass;
         float x0 = 14, x1 = 24.3f, zf = 16.5f, zb = 29.4f, h = 4.6f; float cx0 = (x0 + x1) / 2, cz = (zf + zb) / 2, depth = zb - zf, width = x1 - x0;
         Cube("Marble floor", new Vector3(cx0, .04f, cz), new Vector3(width, .08f, depth), marble, root);
         Cube("Back wall", new Vector3(cx0, h / 2, zb - .1f), new Vector3(width, h, .2f), plum, root);

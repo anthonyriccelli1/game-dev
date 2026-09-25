@@ -229,9 +229,76 @@ public static class CityMap {
             for (int i = 0; i < 3; i++) Module("Buildings/SM_Bld_Apartment_Corner_02", x0, z0, f, 4.6f + 3 * i, parent);
             Module("Buildings/SM_Bld_Apartment_Roof_Corner_02", x0, z0, f, 13.6f, parent);
         }
+        // Clad the walk-in ground floor's alley and back walls (thin slices of apartment modules, 4.6 m tall).
+        var clad = new Vector3(.86f, 1.53f, .08f);
+        foreach (float pz in new[] { 20.8f, 25.1f, 29.4f }) ModuleS("Buildings/SM_Bld_Apartment_01", 13.6f, pz - 5, 3, 0, clad, parent);
+        foreach (float x0 in new[] { 14.15f, 19.3f }) ModuleS("Buildings/SM_Bld_Apartment_01", x0, 29.8f - 5, 0, 0, new Vector3(1.03f, 1.53f, .08f), parent);
+        StripColliders(parent);
         Recolor(parent, 4);
         Put("Buildings/SM_Bld_Spire_01", new Vector3(19.3f, 14.2f, 21.5f), 0, parent);
         Put("Props/SM_Prop_Roof_Aircon_03", new Vector3(16, 14.2f, 25), 0, parent);
+    }
+    // ---------- Wrapping our hand-built gameplay buildings in city-pack architecture ----------
+    static GameObject ModuleS(string rel, float x0, float z0, int facing, float y, Vector3 scale, Transform parent) {
+        var go = Module(rel, x0, z0, facing, y, parent); if (go) go.transform.localScale = scale; return go;
+    }
+    static void StripColliders(Transform t) { foreach (var c in t.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c); }
+    // Places a PolygonGeneric prop scaled so its footprint width is `width`, standing on y = pos.y.
+    public static GameObject FitGeneric(string rel, Vector3 pos, float yaw, float width, Transform parent) {
+        var go = PutGeneric(rel, pos, yaw, parent); if (!go) return null;
+        var rs = go.GetComponentsInChildren<Renderer>(); if (rs.Length == 0) return go;
+        var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+        float s = width / Mathf.Max(.01f, Mathf.Max(b.size.x, b.size.z)); go.transform.localScale *= s;
+        b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+        go.transform.position += Vector3.up * (pos.y - b.min.y); StripColliders(go.transform); return go;
+    }
+    // Your restaurant becomes the ground floor of a city building: three apartment floors above it and two narrow
+    // neighbours closing the gaps at either side, so no blank walls show from Main Street.
+    static void RestaurantBuilding() {
+        var p = new GameObject("Your restaurant's building").transform; p.SetParent(root, false);
+        var up = new Vector3(.88f, 1, 1);
+        foreach (float px in new[] { -3.4f, -7.8f, -12.2f }) {
+            ModuleS("Buildings/SM_Bld_Apartment_Stack_02", px - 5, -14, 0, 4.42f, up, p);
+            ModuleS("Buildings/SM_Bld_Apartment_Roof_02", px - 5, -14, 0, 13.42f, up, p);
+        }
+        foreach (float x0 in new[] { -16.6f, -12.2f, -7.8f }) {
+            ModuleS("Buildings/SM_Bld_Apartment_Stack_02", x0, -19, 2, 4.42f, up, p);
+            ModuleS("Buildings/SM_Bld_Apartment_Roof_02", x0, -19, 2, 13.42f, up, p);
+        }
+        Put("Buildings/SM_Prop_Water_Tower_01", new Vector3(-6.5f, 13.9f, -15), 20, p);
+        Put("Props/SM_Prop_Roof_Aircon_02", new Vector3(-13, 13.9f, -12), 0, p);
+        Recolor(p, 6);
+        StripColliders(p);
+        Narrow(-21.6f, -15, 0, .68f, 1, true, 2);
+        Narrow(-5f, -15, 0, .68f, 1, true, 9);
+    }
+    // A slim building squeezed into a gap: modules scaled along the facade (sx).
+    static void Narrow(float x0, float z0, int facing, float sx, int stacks, bool shop, int palette) {
+        int s = seed++; int family = s % 3 + 1; var sc = new Vector3(sx, 1, 1);
+        var parent = new GameObject("Narrow building").transform; parent.SetParent(root, false);
+        ModuleS(shop ? "Buildings/SM_Bld_Shop_0" + ShopGround[s % 5] : "Buildings/SM_Bld_Apartment_0" + family, x0, z0, facing, 0, sc, parent);
+        for (int i = 0; i < stacks; i++) ModuleS("Buildings/SM_Bld_Apartment_Stack_0" + family, x0, z0, facing, 3 + 9 * i, sc, parent);
+        ModuleS("Buildings/SM_Bld_Apartment_Roof_0" + family, x0, z0, facing, 3 + 9 * stacks, sc, parent);
+        Recolor(parent, palette);
+    }
+    // Rival Alley: a slim corner building forms its west wall; dumpsters, bags, crates and a chest-stash dress the dead end.
+    static void RivalAlley() {
+        var p = new GameObject("Rival alley dressing").transform; p.SetParent(root, false);
+        var sc = new Vector3(1, 1, .78f);
+        ModuleS("Buildings/SM_Bld_Apartment_Corner_03", 3.9f, 15, 1, 0, sc, p);
+        for (int i = 0; i < 6; i++) ModuleS("Buildings/SM_Bld_Apartment_Corner_03", 3.9f, 15, 1, 3 + 3 * i, sc, p);
+        ModuleS("Buildings/SM_Bld_Apartment_Roof_Corner_03", 3.9f, 15, 1, 21, sc, p);
+        var fe = Put("Buildings/SM_Bld_FireEscape_02", new Vector3(8.95f, 3.3f, 17.8f), 90, p);
+        Recolor(p, 11);
+        // Dead-end clutter kept out of the fight corridor (x 9.35-13.85, z 14-24).
+        Put("Props/SM_Prop_Skip_01", new Vector3(12.4f, 0, 28), 90, p);
+        Put("Props/SM_Prop_Skip_02", new Vector3(9.9f, 0, 29.2f), 0, p);
+        foreach (var (x, z, k) in new[] { (12.9f, 25.2f, 1), (12.5f, 25.6f, 2), (13.1f, 26.1f, 3), (9.6f, 25.5f, 1), (9.3f, 26.2f, 3) })
+            Put("Props/SM_Prop_TrashBag_0" + k, new Vector3(x, 0, z), x * 40, p);
+        Put("Props/SM_Prop_CardboardBox_03", new Vector3(9.5f, 0, 27.6f), 15, p);
+        Put("Props/SM_Prop_CardboardBox_01", new Vector3(9.6f, .78f, 27.5f), 40, p);
+        Put("Props/SM_Prop_Pallet_01", new Vector3(8.2f, 0, 23.5f), 80, p);
+        Put("Props/SM_Prop_Pipe_Small_01", new Vector3(8.95f, 0, 21.4f), 90, p);
     }
     // Milo's corner store: glass shopfronts with stocked shelves visible inside.
     static void MilosStore() {
@@ -262,6 +329,8 @@ public static class CityMap {
         MilosStore();
         foreach (var x0 in new[] { -5f, 0f }) Tower(x0, 15f, 2, 2, false, "Buildings/SM_Bld_Apartment_Door_0" + (x0 < -1 ? 1 : 2), 0);
         GildedTower();
+        RestaurantBuilding();
+        RivalAlley();
         // City blocks: storefront rows on every street side, corner buildings where two streets meet.
         //      x range        z range      N      S      E      W     shops  stacks  low-rise %
         Block(-30, 30,   10, 40,  true,  true,  true,  true,  true,  1, 2, 35);   // north of Main Street (gameplay strip reserved)
