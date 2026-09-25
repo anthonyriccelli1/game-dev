@@ -35,6 +35,13 @@ namespace RestaurantCity {
             ("16_main_east_day", new Vector3(30, 0, -3), 90, 0, 60),
             ("17_alley_night", new Vector3(8, 0, 11), 25, -6, 190),
             ("18_restaurant_street_day", new Vector3(-10, 0, 4), 180, -14, 60),
+            ("00_city_map_day", new Vector3(180, 620, 25), 0, 90, 60),
+            ("24_aerial_day", new Vector3(-260, 200, -330), 42, 28, 60),
+            ("19_docks_day", new Vector3(-40, 0, -150), 180, 0, 60),
+            ("20_neon_night", new Vector3(172, 0, -2), 90, 0, 190),
+            ("21_greenleaf_day", new Vector3(40, 0, 150), 0, 0, 60),
+            ("22_gold_day", new Vector3(420, 0, 60), 0, -6, 60),
+            ("23_bridge_day", new Vector3(440, 0, -100), 180, 4, 60),
         };
 
         IEnumerator Start() {
@@ -45,6 +52,7 @@ namespace RestaurantCity {
             Game.State.StandBuilt = true; Game.SetPaused(false); Game.SyncWorld();
             foreach (var shot in Shots) {
                 Game.State.Clock = shot.clock; Game.SyncWorld();
+                RenderSettings.fog = !(shot.name.Contains("map") || shot.name.Contains("aerial"));
                 var p = Game.Player; p.Teleport(shot.pos + Vector3.up * .1f);
                 var cc = p.GetComponent<CharacterController>(); if (cc) cc.enabled = false;
                 p.transform.position = shot.pos; p.transform.rotation = Quaternion.Euler(0, shot.yaw, 0);

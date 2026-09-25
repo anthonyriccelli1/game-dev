@@ -36,7 +36,7 @@ public static class PrototypeBuilder {
         game.gameObject.AddComponent<CityHud>().Game = game;
         var world = new GameObject("Market Row / World").transform;
         bool city = CityMap.Available;
-        if (city) Cube("Ground", new Vector3(0, -.6f, 0), new Vector3(200, .6f, 200), stone, world);
+        if (city) Cube("Ground", new Vector3(0, -.6f, 0), new Vector3(170, .6f, 170), stone, world);
         else {
         Cube("Ground", new Vector3(0, -.35f, 8), new Vector3(60, .6f, 62), stone, world);
         Cube("Street", new Vector3(0, -.025f, 0), new Vector3(48, .05f, 10), asphalt, world);
@@ -55,7 +55,7 @@ public static class PrototypeBuilder {
         if (!city) Building("Corner cafe", -20, -15, 7, 9, Mat("Sage", "8DAB91"), world);
         if (!city) Building("Future Restaurant", -10, -15, 10, 11, Mat("Brick", "BC896D"), world);
         if (!city) { Building("Records", 2, -16, 10, 14, teal, world); Building("Bodega", 16, -15, 13, 10, Mat("Mustard", "CEAE70"), world); }
-        if (city) CityMap.Build(world);
+        if (city) { CityMap.Build(world); CityGreybox.Build(world); }
         else {
             Cube("North district boundary", new Vector3(0, 2, 32), new Vector3(58, 4, 1), dark, world);
             Cube("West boundary", new Vector3(-25, 3, 6), new Vector3(1, 6, 54), teal, world);
@@ -140,7 +140,7 @@ public static class PrototypeBuilder {
         var controller = player.AddComponent<CharacterController>(); controller.height = 1.8f; controller.radius = .3f; controller.center = new Vector3(0, .9f, 0); controller.stepOffset = .3f;
         game.Player = player.AddComponent<FirstPersonPlayer>(); game.Player.Game = game;
         var camera = new GameObject("Player camera").AddComponent<Camera>(); camera.tag = "MainCamera"; camera.transform.parent = player.transform; camera.transform.localPosition = new Vector3(0, 1.65f, 0);
-        camera.nearClipPlane = .05f; camera.farClipPlane = city ? 520 : 180; camera.fieldOfView = 72; camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.nearClipPlane = .05f; camera.farClipPlane = city ? 1400 : 180; camera.fieldOfView = 72; camera.clearFlags = CameraClearFlags.SolidColor;
         camera.backgroundColor = new Color(.61f, .80f, .83f); camera.gameObject.AddComponent<AudioListener>(); game.Player.View = camera;
         var tool = new GameObject("Spatula").transform; tool.SetParent(camera.transform); tool.localPosition = new Vector3(.38f, -.4f, .75f); tool.localRotation = Quaternion.Euler(-25, -10, -16); tool.localScale = Vector3.one * .6f;
         var handle = Cube("Spatula handle", Vector3.zero, new Vector3(.05f, .45f, .05f), wood, tool, false); handle.transform.localPosition = Vector3.zero;
@@ -199,7 +199,7 @@ public static class PrototypeBuilder {
     static GameObject Cube(string n, Vector3 p, Vector3 s, Material m, Transform t, bool collision = true) => Shape(n, PrimitiveType.Cube, p, s, m, t, collision);
     static GameObject Sphere(string n, Vector3 p, Vector3 s, Material m, Transform t) => Shape(n, PrimitiveType.Sphere, p, s, m, t, false);
     static GameObject Cylinder(string n, Vector3 p, Vector3 s, Material m, Transform t) => Shape(n, PrimitiveType.Cylinder, p, s, m, t);
-    static GameObject Label(string text, Vector3 p, float size, Color color, Transform parent) {
+    internal static GameObject Label(string text, Vector3 p, float size, Color color, Transform parent) {
         var obj = new GameObject(text); obj.transform.parent = parent; obj.transform.position = p;
         var label = obj.AddComponent<TextMesh>(); label.font = textFont; label.text = text; label.characterSize = size * .25f; label.fontSize = 64; label.anchor = TextAnchor.MiddleCenter; label.alignment = TextAlignment.Center; label.color = color;
         obj.GetComponent<MeshRenderer>().sharedMaterial = textMaterial;

@@ -341,10 +341,10 @@ public static class CityMap {
         Park ( 50, 80,  -40, -10, 65, -30);                                         // fenced park off Main Street
         Block(-80, -50,  60, 80,  false, true,  true,  false, false, 1, 3, 0);
         Block(-30, 30,   60, 80,  false, true,  true,  true,  true,  1, 3, 20);
-        Block( 50, 80,   60, 80,  false, true,  false, true,  false, 1, 3, 0);
-        Block(-80, -50, -80, -60, true,  false, true,  false, false, 1, 3, 0);
-        Block(-30, 30,  -80, -60, true,  false, true,  true,  true,  1, 3, 20);
-        Block( 50, 80,  -80, -60, true,  false, false, true,  false, 1, 3, 0);
+        Block( 50, 80,   60, 80,  true,  true,  true,  true,  false, 1, 3, 0);
+        Block(-80, -50, -80, -60, true,  true,  true,  true,  false, 1, 3, 0);
+        Block(-30, 30,  -80, -60, true,  true,  true,  true,  true,  1, 3, 20);
+        Block( 50, 80,  -80, -60, true,  true,  true,  true,  false, 1, 3, 0);
         // Landmarks in the outer blocks.
         Put("Buildings/SM_Bld_CityHall_01", new Vector3(-67, 0, 25), 180);
         Put("Buildings/SM_Bld_OfficeRound_01", new Vector3(-67, 0, -25), 0);
@@ -352,7 +352,7 @@ public static class CityMap {
         Put("Buildings/SM_Bld_OfficeOctagon_01", new Vector3(-67, 0, 72), 0);
         Put("Buildings/SM_Bld_OfficeOld_Small_01", new Vector3(20, 0, 80), 0);
         Put("Buildings/SM_Bld_Station_01", new Vector3(0, 0, -30), 0);
-        Put("Environments/Custom/SM_Env_Skyline_01", Vector3.zero, 0);
+        var sky = Put("Environments/Custom/SM_Env_Skyline_01", new Vector3(180, -2, 25), 0); if (sky) sky.transform.localScale = Vector3.one * 3.6f;
         // Street life: parked cars, trees, benches, hydrants, a hotdog cart, bus stop, rooftop signs.
         string[] cars = { "SM_Veh_Car_Sedan_01", "SM_Veh_Car_Taxi_01", "SM_Veh_Car_Van_01", "SM_Veh_Car_Small_01", "SM_Veh_Car_Medium_01", "SM_Veh_Car_Muscle_01" };
         int c = 0;
@@ -373,9 +373,6 @@ public static class CityMap {
         foreach (float x in new[] { -26f, 26, -60, 60 }) Put("Props/SM_Prop_Trashbin_01", new Vector3(x, 0, -6.2f), 0);
         foreach (float x in new[] { -60f, -20, 20, 60 }) { Put("Props/SM_Prop_LightPole_Base_01", new Vector3(x, 0, 44.2f), 0); Put("Props/SM_Prop_LightPole_Base_01", new Vector3(x, 0, -44.2f), 180); }
         Clutter(curbTiles);
-        // Invisible edge of the playable city.
-        foreach (var (pos, size) in new[] { (new Vector3(0, 5, Half + 1), new Vector3(2 * Half, 10, 1)), (new Vector3(0, 5, -Half - 1), new Vector3(2 * Half, 10, 1)), (new Vector3(Half + 1, 5, 0), new Vector3(1, 10, 2 * Half)), (new Vector3(-Half - 1, 5, 0), new Vector3(1, 10, 2 * Half)) }) {
-            var wall = new GameObject("City edge"); wall.transform.SetParent(root, false); wall.transform.position = pos; wall.AddComponent<BoxCollider>().size = size;
-        }
+        // The playable edge is now the Saffron Bay shoreline (CityGreybox).
     }
 }
