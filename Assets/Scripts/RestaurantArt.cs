@@ -325,5 +325,43 @@ namespace RestaurantCity {
             }
             g.AddComponent<CharacterMotion>();return g;
         }
+        // Rival restaurant staff: built on the base bodies, restyled so nobody in the player's crew looks like them.
+        public static GameObject CreateEliteCharacter(int variant,Transform parent) {
+            int[] bases={6,2,8,1};variant=Mathf.Clamp(variant,0,3);
+            var g=CreateCharacter(bases[variant],parent);var b=g.transform.Find("BodyRig");var head=b?b.Find("HeadRig"):null;
+            string[] names={"Maestro Vey / head chef","Nyx / sommelier","K-9 / line cook","Aurora / maitre d'"};g.name=names[variant];
+            Color[] coats={C("F7F4EE"),C("15121F"),C("B9C3CC"),C("3A1D3F")};
+            var coat=Mat("EliteCoat"+variant,coats[variant],variant==2?.85f:0);var trousers=Mat("EliteTrousers",C("121017"));
+            var gold=Mat("EliteGold",C("E2AE48"),.9f);Color[] glow={C("B77CFF"),C("6EF2FF"),C("39F5C9"),C("FFD36E")};var neon=Mat("EliteGlow"+variant,glow[variant],0,true);
+            foreach(var r in g.GetComponentsInChildren<MeshRenderer>()){
+                string n=r.gameObject.name;
+                if(n.StartsWith("TailoredTorso"))r.sharedMaterial=coat;
+                else if(n.StartsWith("Trouser"))r.sharedMaterial=trousers;
+                else if(n=="Pupil")r.sharedMaterial=neon;
+            }
+            if(!b||!head)return g;
+            switch(variant){
+            case 0: // Towering gold toque, double-breasted gold buttons, epaulettes.
+                Lathe("EliteToque",head,new Vector3(0,.3f,0),new[]{0f,.08f,.5f,.62f},new[]{.25f,.27f,.33f,.26f},gold);
+                for(int i=0;i<3;i++)for(int s=-1;s<=1;s+=2)Round("CoatButton",b,new Vector3(s*.1f,1.2f-i*.14f,.3f),Vector3.one*.06f,C("E2AE48"));
+                for(int s=-1;s<=1;s+=2)Box("Epaulette",b,new Vector3(s*.38f,1.34f,0),new Vector3(.2f,.05f,.26f),gold);
+                break;
+            case 1: // Floating crystal halo, gold chain, a bottle of something rare.
+                Lathe("EliteHalo",head,new Vector3(0,.55f,0),new[]{0f,.03f},new[]{.34f,.34f},neon,20);
+                Box("GoldChain",b,new Vector3(0,1.18f,.27f),new Vector3(.3f,.035f,.03f),gold);
+                var hand=b.Find("ArmR");if(hand)Lathe("RareBottle",hand,new Vector3(0,-.45f,.12f),new[]{0f,.22f,.28f,.38f},new[]{.07f,.07f,.03f,.03f},Mat("BottleGlass",C("3D1030"),.6f));
+                break;
+            case 2: // Chrome automaton with a neon visor and a second pair of arms.
+                Box("NeonVisor",head,new Vector3(0,.03f,.27f),new Vector3(.46f,.1f,.05f),neon);
+                for(int s=-1;s<=1;s+=2)Limb(b,s<0?"ExtraArmL":"ExtraArmR",new Vector3(s*.36f,1.0f,.05f),C("B9C3CC"),.5f,.14f);
+                break;
+            case 3: // Tux with gold lapels, bow tie and a glowing monocle.
+                for(int s=-1;s<=1;s+=2)Box("GoldLapel",b,new Vector3(s*.09f,1.16f,.27f),new Vector3(.07f,.28f,.03f),gold);
+                Box("BowTie",b,new Vector3(0,1.3f,.29f),new Vector3(.18f,.07f,.04f),neon);
+                Lathe("Monocle",head,new Vector3(.14f,.04f,.28f),new[]{0f,.02f},new[]{.07f,.07f},neon,14).transform.localRotation=Quaternion.Euler(90,0,0);
+                break;
+            }
+            return g;
+        }
     }
 }

@@ -262,7 +262,7 @@ namespace RestaurantCity {
         }
 
         void BuildStaff(RectTransform sheet) {
-            Label(sheet, "Hire help for cash, or win over the city's odd regulars and recruit them with Flux. Flux: " + Owner.Game.State.Flux, 30, 140, 1144, 35, 16, ink);
+            Label(sheet, "Recruit the city's odd regulars with Flux. Everyone can do any job; each is fastest at their specialty.   Your Flux: " + Owner.Game.State.Flux, 30, 140, 1144, 35, 16, ink);
             int rows = Mathf.CeilToInt(RestaurantCatalog.Staff.Length / 2f);
             var content = Scroller(sheet, 30, 189, 1160, 462, rows * 320 + 20);
             int index = 0;
@@ -272,7 +272,7 @@ namespace RestaurantCity {
                 Label(card, entry.Name, 25, 24, 495, 45, 26, ink, true);
                 Label(card, entry.Description, 25, 78, 507, 70, 17, muted);
                 string price = entry.Special ? "Recruit for " + entry.FluxCost + " Flux" : "Hire for $" + entry.Cost;
-                string trust = entry.Special ? "    /    Won over " + Mathf.Min(Owner.Data.ServedByType[entry.CustomerType], entry.RequiredServes) + "/" + entry.RequiredServes : "";
+                string trust = "";
                 Label(card, "Specialty: " + entry.Role + "    /    " + price + trust, 25, 172, 520, 28, 16, ink, true);
                 BuildWorkerActions(card, entry);
             }
@@ -284,10 +284,7 @@ namespace RestaurantCity {
             foreach (var worker in Owner.Data.Workers) if (WorkerId(worker) == workerId) { hired = worker; break; }
             if (hired == null) {
                 if (entry.Special) {
-                    int have = Owner.Data.ServedByType[entry.CustomerType];
-                    bool trusted = have >= entry.RequiredServes;
-                    string label = !trusted ? "Serve them happily " + (entry.RequiredServes - have) + " more time(s)" : "Recruit for " + entry.FluxCost + " Flux";
-                    Button(card, label, 25, 233, 508, 43, () => Owner.Hire(workerId), teal, white, trusted && Owner.Game.State.Flux >= entry.FluxCost);
+                    Button(card, "Recruit for " + entry.FluxCost + " Flux", 25, 233, 508, 43, () => Owner.Hire(workerId), teal, white, Owner.Game.State.Flux >= entry.FluxCost);
                 } else Button(card, "Hire for $" + entry.Cost, 25, 233, 508, 43, () => Owner.Hire(workerId), teal, white, Owner.Game.State.Cash >= entry.Cost);
                 return;
             }

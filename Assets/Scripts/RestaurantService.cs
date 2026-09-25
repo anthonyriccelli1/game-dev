@@ -114,7 +114,7 @@ namespace RestaurantCity {
                     float patience = Mathf.Clamp01(1 - order.Wait / def.Patience); view.Motion.SetMood(patience);
                     string status = order.Stage == RestaurantOrderStage.Ready ? "Dish ready!" : patience < .35f ? "I'm getting hungry..." : order.Stage == RestaurantOrderStage.Cooking ? "Smells good!" : "I'd like " + dish;
                     var recruit = RestaurantCatalog.Staff.FirstOrDefault(w => w.Special && w.CustomerType == order.CustomerType);
-                    if (recruit != null && !Data.Workers.Any(w => w.Id == recruit.Id)) status += Data.ServedByType[recruit.CustomerType] >= recruit.RequiredServes ? "\n<color=#E8C34A>I'd work here... (" + recruit.FluxCost + " Flux)</color>" : "\n<color=#9FD8C8>Win me over: " + Data.ServedByType[recruit.CustomerType] + "/" + recruit.RequiredServes + "</color>";
+                    if (recruit != null && !Data.Workers.Any(w => w.Id == recruit.Id)) status += "\n<color=#E8C34A>Recruitable: " + recruit.FluxCost + " Flux</color>";
                     SetBubble(view.Bubble, def.Name + "\n" + status);
                 }
             }

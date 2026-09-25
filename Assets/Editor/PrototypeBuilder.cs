@@ -47,7 +47,7 @@ public static class PrototypeBuilder {
         }
         Building("Milo's Supply", -13, 17, 12, 10, teal, world);
         Building("Apartments", -1, 19, 10, 14, coral, world);
-        Building("Rival warehouse", 19, 20, 10, 12, Mat("Warehouse", "74748C"), world);
+        RivalRestaurantShell(world);
         Building("Corner cafe", -20, -15, 7, 9, Mat("Sage", "8DAB91"), world);
         Building("Future Restaurant", -10, -15, 10, 11, Mat("Brick", "BC896D"), world);
         Building("Records", 2, -16, 10, 14, teal, world);
@@ -204,6 +204,42 @@ public static class PrototypeBuilder {
     static void Awning(Vector3 p, float width, Material mat, Transform parent) {
         int count = Mathf.CeilToInt(width / .45f);
         for (int i = 0; i < count; i++) Cube("Striped awning", p + new Vector3(-width / 2 + (i + .5f) * width / count, 0, 0), new Vector3(width / count, .18f, 2.8f), i % 2 == 0 ? mat : cream, parent);
+    }
+    // Walk-in shell of the rival four-star restaurant (x 14..24, z 16.5..23.5). Interior is furnished at runtime.
+    static void RivalRestaurantShell(Transform parent) {
+        var root = new GameObject("Rival restaurant / The Gilded Orbit").transform; root.parent = parent;
+        var obsidian = Mat("Obsidian", "1C1B2B"); var gold = Mat("Rival gold", "D9A441"); var plum = Mat("Plum velvet", "4A2548");
+        var marble = Mat("Marble floor", "E9E1D3"); var glassDark = Mat("Smoked glass", "3E5B73");
+        float x0 = 14, x1 = 24, zf = 16.5f, zb = 23.5f, h = 4.6f;
+        Cube("Marble floor", new Vector3(19, .04f, 20), new Vector3(10, .08f, 7), marble, root);
+        Cube("Back wall", new Vector3(19, h / 2, zb - .1f), new Vector3(10, h, .2f), plum, root);
+        Cube("Left wall", new Vector3(x0 + .1f, h / 2, 20), new Vector3(.2f, h, 7), plum, root);
+        Cube("Right wall", new Vector3(x1 - .1f, h / 2, 20), new Vector3(.2f, h, 7), plum, root);
+        Cube("Upper floors", new Vector3(19, h + 3.8f, 20), new Vector3(10.2f, 7.6f, 7.2f), obsidian, root);
+        Cube("Roof cornice", new Vector3(19, h + 7.7f, 20), new Vector3(10.6f, .4f, 7.6f), gold, root);
+        for (float wx = 15.2f; wx < 23.5f; wx += 2.1f) for (float y = 6.4f; y < 11.8f; y += 2.6f) {
+            Cube("Gold window frame", new Vector3(wx, y, zf - .02f), new Vector3(1.4f, 1.9f, .16f), gold, root, false);
+            Cube("Lit window", new Vector3(wx, y, zf - .08f), new Vector3(1.15f, 1.62f, .08f), Mat("Warm window", "F2C27A"), root, false);
+        }
+        // Glass frontage with a centered doorway.
+        foreach (var seg in new[] { new Vector2(x0, 18.1f), new Vector2(19.9f, x1) }) {
+            float cx = (seg.x + seg.y) / 2, w = seg.y - seg.x;
+            Cube("Front base", new Vector3(cx, .3f, zf), new Vector3(w, .6f, .3f), obsidian, root);
+            Cube("Front glass", new Vector3(cx, 2.25f, zf), new Vector3(w, 3.3f, .08f), glassDark, root);
+            for (float px = seg.x; px <= seg.y + .01f; px += w / 2) Cube("Gold mullion", new Vector3(px, 2.25f, zf - .05f), new Vector3(.1f, 3.3f, .14f), gold, root, false);
+        }
+        Cube("Front header", new Vector3(19, 4.2f, zf), new Vector3(10, .8f, .3f), obsidian, root);
+        Cube("Door frame left", new Vector3(18.05f, 2, zf - .05f), new Vector3(.12f, 4, .2f), gold, root);
+        Cube("Door frame right", new Vector3(19.95f, 2, zf - .05f), new Vector3(.12f, 4, .2f), gold, root);
+        Cube("Red carpet", new Vector3(19, .03f, zf - 1.2f), new Vector3(1.6f, .04f, 2.4f), Mat("Carpet", "A3243B"), root, false);
+        for (int s = -1; s <= 1; s += 2) {
+            Cube("Rope post", new Vector3(19 + s * 1.1f, .5f, zf - 1.9f), new Vector3(.12f, 1, .12f), gold, root);
+            Cube("Velvet rope", new Vector3(19 + s * 1.1f, .85f, zf - 1.2f), new Vector3(.05f, .05f, 1.4f), plum, root, false);
+        }
+        Cube("Marquee", new Vector3(19, 5.1f, zf - .45f), new Vector3(9.2f, 1.1f, .6f), obsidian, root);
+        Cube("Marquee trim", new Vector3(19, 4.52f, zf - .76f), new Vector3(9.4f, .08f, .1f), gold, root, false);
+        var name = Label("THE GILDED ORBIT", new Vector3(19, 5.22f, zf - .78f), .3f, new Color(.98f, .78f, .35f), root);
+        var stars = Label("FOUR STARS  *  *  *  *   RESERVATIONS ONLY", new Vector3(19, 4.78f, zf - .78f), .11f, new Color(1, .93f, .8f), root);
     }
     static void Building(string name, float x, float z, float width, float height, Material mat, Transform parent) {
         var root = new GameObject(name).transform; root.parent = parent;

@@ -122,15 +122,17 @@ namespace RestaurantCity {
             new CustomerDefinition(4,"Gloop","soup",130,.7f,.5f,"Jelly creature. Relaxed, patient, and fond of soup."),
             new CustomerDefinition(5,"Morel","soup",100,1.1f,1.5f,"Mushroom gardener. Enjoys comforting food and clean spaces."),
             new CustomerDefinition(6,"Bront","burger",85,.6f,.8f,"Broad horned dockworker. Hungry for a hearty burger."),
-            new CustomerDefinition(7,"Professor Ink","midnight",115,1.5f,1.2f,"Tentacled scholar. Savors rare recipes and good ambience.")
+            new CustomerDefinition(7,"Professor Ink","midnight",115,1.5f,1.2f,"Tentacled scholar. Savors rare recipes and good ambience."),
+            new CustomerDefinition(8,"Ember","burger",95,.8f,1.1f,"Brass kitchen automaton on its day off. Critiques every sear."),
+            new CustomerDefinition(9,"Moss","salad",120,1.3f,.9f,"Mushroom sprite who loves fresh greens and tidy tables.")
         };
         public static readonly StaffDefinition[] Staff = {
-            new StaffDefinition("ember","Ember / brass robot",StaffJob.Cook,70,"Reliable cook for hire. $1 wage per served order while assigned.",8),
-            new StaffDefinition("moss","Moss / mushroom sprite",StaffJob.Serve,55,"Reliable server and dishwasher for hire. $1 wage per served order while assigned.",9),
-            new StaffDefinition("bront","Bront / horned dockworker",StaffJob.Cook,3,6,2,"Win him over with burgers. A powerhouse cook: works twice as fast as hired help."),
-            new StaffDefinition("velvet","Velvet / moth artist",StaffJob.Serve,3,2,2,"Win her over with salads. Glides between tables: the fastest server in the city."),
-            new StaffDefinition("p04","Unit P-04 / robot inspector",StaffJob.Clean,3,3,2,"Impress the inspector. Scrubs dishes and tables at machine speed."),
-            new StaffDefinition("ink","Professor Ink / tentacled scholar",StaffJob.Cook,5,7,2,"Serve the professor midnight burgers. Eight arms, one very fast kitchen.")
+            new StaffDefinition("ember","Ember",StaffJob.Cook,2,8,0,"Brass automaton. Specialty: grill work. Can do any job."),
+            new StaffDefinition("moss","Moss",StaffJob.Serve,2,9,0,"Mushroom sprite. Specialty: serving and clearing. Can do any job."),
+            new StaffDefinition("velvet","Velvet",StaffJob.Serve,3,2,0,"Moth artist. Specialty: the fastest server in the city. Can do any job."),
+            new StaffDefinition("p04","Unit P-04",StaffJob.Clean,3,3,0,"Robot inspector. Specialty: dishes and tables at machine speed. Can do any job."),
+            new StaffDefinition("bront","Bront",StaffJob.Cook,3,6,0,"Horned dockworker. Specialty: a powerhouse cook. Can do any job."),
+            new StaffDefinition("ink","Professor Ink",StaffJob.Cook,5,7,0,"Tentacled scholar. Specialty: eight arms and a master of midnight burgers. Can do any job.")
         };
         public static CatalogItem Find(string id) => Array.Find(Items,i=>i.Id==id);
         public static DishDefinition Dish(string id) => Array.Find(Dishes,i=>i.Id==id);
@@ -153,7 +155,7 @@ namespace RestaurantCity {
         public List<RestaurantOrder> Orders=new List<RestaurantOrder>();
         public List<RestaurantReview> Reviews=new List<RestaurantReview>();
         public List<WorkerState> Workers=new List<WorkerState>();
-        public int[] ServedByType=new int[8];
+        public int[] ServedByType=new int[10];
         public int Stars => Rank;
         public bool CanCustomize => Owned && !Open && Orders.Count==0;
         public int Seats => Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.Seats??0);
@@ -319,10 +321,8 @@ namespace RestaurantCity {
             var d=RestaurantCatalog.Worker(id);if(!Owned||d==null)return Fail("Worker unavailable.",out message);
             if(Workers.Exists(w=>w.Id==id))return Fail("This worker already works here.",out message);
             if(d.Special){
-                int have=ServedByType[d.CustomerType];
-                if(have<d.RequiredServes)return Fail($"{d.Name} doesn't trust you yet. Serve them happily {d.RequiredServes-have} more time(s).",out message);
                 if(wallet.Flux<d.FluxCost)return Fail($"Recruiting {d.Name} costs {d.FluxCost} Flux. Earn Flux from the rival's stash at night.",out message);
-                wallet.Flux-=d.FluxCost;Workers.Add(new WorkerState{Id=id,Job=d.Role});message=$"{d.Name} joined your crew for {d.FluxCost} Flux! Assigned {d.Role}.";return true;
+                wallet.Flux-=d.FluxCost;Workers.Add(new WorkerState{Id=id,Job=d.Role});message=$"{d.Name} joined your crew for {d.FluxCost} Flux! Specialty: {d.Role}. Assign any job in the Staff tab.";return true;
             }
             if(wallet.Cash<d.Cost)return Fail($"Hiring {d.Name} costs ${d.Cost}.",out message);
             wallet.Cash-=d.Cost;Workers.Add(new WorkerState{Id=id,Job=d.Role});message=$"Hired {d.Name}. Assigned {d.Role}. $1 per served order while assigned.";return true;
@@ -336,8 +336,8 @@ namespace RestaurantCity {
             var assigned=Workers.Where(w=>w.Job==job).ToList();if(assigned.Count==0)return 8;
             Func<StaffDefinition,bool> Specialty=d=>d.Role==job||(d.Role==StaffJob.Serve&&job==StaffJob.Clean);
             var defs=assigned.Select(w=>RestaurantCatalog.Worker(w.Id)).Where(d=>d!=null).ToList();
-            if(defs.Any(d=>d.Special&&Specialty(d)))return 1.5f;
-            return defs.Any(Specialty)?3:7;
+            // Everyone can do every job; specialists are much faster at their own.
+            return defs.Any(Specialty)?1.5f:3.5f;
         }
         public void Tick(GameState wallet,float seconds) {
             if(!Owned||seconds<=0||float.IsNaN(seconds)||float.IsInfinity(seconds))return;
@@ -355,7 +355,7 @@ namespace RestaurantCity {
         }
         static float Clamp(float value,float min,float max)=>float.IsNaN(value)||float.IsInfinity(value)?min:Math.Max(min,Math.Min(max,value));
         public void SanitizeAfterLoad() {
-            Layout=Layout??new List<PlacedItem>();ActiveMenu=ActiveMenu??new List<string>{"burger","salad"};Orders=Orders??new List<RestaurantOrder>();Reviews=Reviews??new List<RestaurantReview>();Workers=Workers??new List<WorkerState>();if(ServedByType==null||ServedByType.Length<8){var grown=new int[8];if(ServedByType!=null)Array.Copy(ServedByType,grown,ServedByType.Length);ServedByType=grown;}
+            Layout=Layout??new List<PlacedItem>();ActiveMenu=ActiveMenu??new List<string>{"burger","salad"};Orders=Orders??new List<RestaurantOrder>();Reviews=Reviews??new List<RestaurantReview>();Workers=Workers??new List<WorkerState>();if(ServedByType==null||ServedByType.Length<10){var grown=new int[10];if(ServedByType!=null)Array.Copy(ServedByType,grown,ServedByType.Length);ServedByType=grown;}
             Rank=Math.Max(1,Math.Min(2,Rank));
             Layout.RemoveAll(p=>p==null||RestaurantCatalog.Find(p.CatalogId)==null);Workers.RemoveAll(w=>w==null||RestaurantCatalog.Worker(w.Id)==null);
             var incoming=Layout;Layout=new List<PlacedItem>();var seenIds=new HashSet<int>();
