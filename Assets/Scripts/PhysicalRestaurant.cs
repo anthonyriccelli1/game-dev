@@ -55,6 +55,7 @@ namespace RestaurantCity {
    return false;
   }
   public bool InspectPlayerRay(FirstPersonPlayer p,RaycastHit hit,bool pressed,bool held){
+   if(!hit.collider)return false;
    var city=hit.collider.GetComponentInParent<Interactable>();
    if(city&&InspectStreet(p,city,pressed))return true;
    if(city&&city.Kind==InteractionKind.Supplier&&Data.Owned){supplierChoice.TryGetValue(p.ActorId,out int choice);bool protein=choice%2==0;prompts[p.ActorId]="Milo's market / E or A: buy 6 "+(protein?"protein / $10":"produce / $6")+"\nQ / B switches supplies. Your partner keeps working.";if(pressed){if(!Data.Restock(Game.State,protein,out var m)&&Game.State.Cash<(protein?10:6))Data.RequestSupplyHelp(Game.State,out m);Feedback(m);Game.Save();}return true;}

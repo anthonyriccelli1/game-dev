@@ -94,6 +94,8 @@ namespace RestaurantCity {
                     hit = wideHit; direct = true; hasTarget = true;
                 }
             }
+            // A remembered target can be destroyed (a served customer walks off); forget it.
+            if (hasSticky && !stickyHit.collider) { hasSticky = false; stickyKey = null; }
             float dt = Time.deltaTime;
             if (!direct) {
                 candidateKey = null; candidateTimer = 0;

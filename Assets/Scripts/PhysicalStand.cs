@@ -26,7 +26,7 @@ namespace RestaurantCity {
             for (int i = 0; i < KitchenState.StandKit.Length; i++) {
                 int id = KitchenState.StandBase + 1 + i; string kind = KitchenState.StandKit[i];
                 if (standObjects.TryGetValue(id, out var existing) && existing) continue;
-                var obj = kind == "stand_plates" ? KitchenArt.CreateStation("plate_rack", Game.Stand.transform) : CreateFurnishing(kind, Game.Stand.transform);
+                var obj = kind == "stand_plates" ? KitchenArt.CreateStation("counter", Game.Stand.transform) : CreateFurnishing(kind, Game.Stand.transform);
                 obj.name = "Stand " + kind;
                 obj.transform.position = new Vector3(StandX[i], 0, StandZ);
                 obj.transform.rotation = Quaternion.Euler(0, 180, 0);
@@ -61,6 +61,20 @@ namespace RestaurantCity {
         readonly Dictionary<int, TextMesh> standBubbles = new Dictionary<int, TextMesh>();
         TextMesh standPlatesText, standSinkText;
         static readonly Vector3 StandFront = new Vector3(2.2f, 0, 5.9f);
+        readonly List<GameObject> cleanStack = new List<GameObject>(), dirtyStack = new List<GameObject>();
+
+        // Visible plate stacks: clean plates on the plate counter, dirty ones piled on the sink.
+        void SyncPlateStack(List<GameObject> stack, int stationId, int count, string kind, Vector3 basePos) {
+            if (!standObjects.TryGetValue(stationId, out var station) || !station) return;
+            stack.RemoveAll(o => !o);
+            while (stack.Count < count) {
+                // Parent beside the station (some stations are scaled) and place in its local frame.
+                var plate = KitchenArt.CreateItem(kind, station.transform.parent);
+                plate.transform.position = station.transform.TransformPoint(basePos) + Vector3.up * (.05f * stack.Count);
+                stack.Add(plate);
+            }
+            while (stack.Count > count) { Destroy(stack[stack.Count - 1]); stack.RemoveAt(stack.Count - 1); }
+        }
 
         void TickStreet(float seconds) {
             var s = Game.State;
@@ -71,6 +85,8 @@ namespace RestaurantCity {
             if (standPlatesText) { standPlatesText.text = "Clean plates: " + s.StandClean; standPlatesText.transform.rotation = Quaternion.identity; }
             if (standSinkText) { standSinkText.text = s.StandDirty > 0 ? "<color=#E8C34A>Dirty: " + s.StandDirty + "</color>\nHold E to wash" : "Sink"; standSinkText.transform.rotation = Quaternion.identity; }
             if (Game.Customer && Game.Customer.activeSelf) Game.Customer.SetActive(false);
+            SyncPlateStack(cleanStack, KitchenState.StandBase + 4, s.StandClean, "Plate", new Vector3(0, 1.04f, 0));
+            SyncPlateStack(dirtyStack, KitchenState.StandBase + 5, s.StandDirty, "DirtyPlate", new Vector3(.3f, 1.12f, 0));
             var world = Game.Stand ? Game.Stand.transform.parent : transform;
             var live = new HashSet<int>();
             for (int i = 0; i < s.StandQueue.Count; i++) {
