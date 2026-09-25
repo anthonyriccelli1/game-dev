@@ -22,7 +22,12 @@ namespace RestaurantCity {
             ("03_milo_day", new Vector3(-12, 0, 3.5f), 0, 5, 60),
             ("04_rival_day", new Vector3(16, 0, 8), 35, -8, 60),
             ("05_overview_day", new Vector3(0, 30, -45), 0, 28, 60),
-            ("06_street_night", new Vector3(-2, 0, -3), 20, 0, 190),
+            ("06_restaurant_day", new Vector3(-9, 0, -2), 180, 0, 60),
+            ("08_intersection_day", new Vector3(-33, 0, -3), 60, 0, 60),
+            ("09_north_ave_day", new Vector3(-20, 0, 50), 90, 0, 60),
+            ("10_east_st_day", new Vector3(40, 0, -30), 0, 0, 60),
+            ("11_street_night", new Vector3(-2, 0, -3), 20, 0, 190),
+            ("12_north_ave_night", new Vector3(-20, 0, 50), 90, 0, 190),
             ("07_overview_night", new Vector3(0, 30, -45), 0, 28, 190),
         };
 

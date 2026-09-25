@@ -45,6 +45,8 @@ namespace RestaurantCity {
     v.Top.text="$"+Game.State.Cash+"   "+r.Stars+" star   "+phase+"\n<size=12>Plates "+k.CleanPlates+"/"+KitchenState.PlateCapacity(r)+(k.SinkPile>0?" ("+k.SinkPile+" dirty)":"")+"  |  Protein "+r.Protein+"  |  Produce "+r.Produce+(Game.State.FluxIntroduced?"  |  Flux "+Game.State.Flux:"")+(Game.State.StandBuilt?"  |  P phone":"")+"</size>";
     string tickets=!r.Owned?StandTicket(Game.State):TicketRail(r)+(Game.State.StandWorker!=null?(TicketRail(r)==""?"":"\n")+"<size=12><color=#9FD8C8>Stand: "+Game.State.StandWorkerStatus+" (+$"+Game.State.StandWorkerEarned+")</color></size>":"");
     v.Tickets.transform.parent.gameObject.SetActive(tickets!="");v.Tickets.text=tickets;
+    // Size the ticket card to its text instead of a fixed half-screen box.
+    int lineCount=tickets==""?0:tickets.Split('\n').Length;var card=(RectTransform)v.Tickets.transform.parent;card.anchorMin=new Vector2(.7f,Mathf.Max(.45f,1-(.035f*lineCount+.03f)));
     string prompt=Game.Restaurant.PromptFor(p.ActorId);if(prompt==""&&p.Target)prompt="E / A  "+p.Target.Prompt(Game);
     var held=k.Hold(p.ActorId);string checklist=Game.Restaurant.HeldPlateChecklist(p.ActorId);
     string holding=held==null?"":"<size=14><color=#9FD8C8>Holding: "+k.Label(held)+(checklist==""?"":"  |  "+checklist)+"</color></size>\n";

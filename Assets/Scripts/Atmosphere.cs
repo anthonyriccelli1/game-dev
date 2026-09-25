@@ -13,6 +13,8 @@ namespace RestaurantCity {
         readonly System.Collections.Generic.List<Renderer> windows = new System.Collections.Generic.List<Renderer>();
         readonly System.Collections.Generic.List<Material> windowDay = new System.Collections.Generic.List<Material>();
         Material windowNight; bool nightWindows;
+        // Art-pack building materials that ship an emissive window map: switched on after dark.
+        readonly System.Collections.Generic.List<Material> packGlow = new System.Collections.Generic.List<Material>();
 
         public static void Install(CityGame game, Transform parent) {
             if (!game || FindFirstObjectByType<Atmosphere>()) return;   // only one look/lighting rig, even if setup runs again
@@ -40,6 +42,9 @@ namespace RestaurantCity {
                     windows.Add(r); windowDay.Add(r.sharedMaterial);
                 }
             }
+            var seen = new System.Collections.Generic.HashSet<Material>();
+            foreach (var r in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+                foreach (var m in r.sharedMaterials) if (m && seen.Add(m) && m.HasProperty("_Enable_Emission") && m.name.StartsWith("PolygonCity_0")) packGlow.Add(m);
             warm = new[] {
                 Warm(new Vector3(0, 3.0f, 8.1f), 2.2f, 7f),      // food stand, under the awning
                 Warm(new Vector3(-12, 3.0f, 8.6f), 1.8f, 6f),    // Milo's market
@@ -67,6 +72,12 @@ namespace RestaurantCity {
             balance.temperature.value = Mathf.Lerp(8f, -18f, dusk) + golden * 14f;
             grade.postExposure.value = Mathf.Lerp(.25f, .75f, dusk);
             bool night = dusk > .55f;
+            if (night != nightWindows) foreach (var m in packGlow) {
+                m.SetFloat("_Enable_Emission", night ? 1 : 0);
+                var glow = night ? new Color(1f, .78f, .45f) * 1.4f : Color.black;
+                if (m.HasProperty("_Emission_Color")) m.SetColor("_Emission_Color", glow);
+                if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", glow);
+            }
             if (night != nightWindows && windowNight) { nightWindows = night; for (int i = 0; i < windows.Count; i++) if (windows[i]) windows[i].sharedMaterial = night ? windowNight : windowDay[i]; }
             grade.colorFilter.Override(Color.Lerp(Color.white, new Color(.82f, .88f, 1f), dusk));
             bloom.intensity.value = Mathf.Lerp(.45f, 1.1f, dusk);
