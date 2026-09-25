@@ -1,7 +1,7 @@
 using UnityEngine;
 
 namespace RestaurantCity {
-    public enum InteractionKind { Supplier, Stand, Prep, Grill, Serve, Bin, Recipe, FutureRestaurant }
+    public enum InteractionKind { Supplier, Stand, Prep, Grill, Serve, Bin, Recipe, FutureRestaurant, SupplyProtein, SupplyProduce }
     public class Interactable : MonoBehaviour {
         public InteractionKind Kind;
         public string Prompt(CityGame game) {
@@ -16,6 +16,8 @@ namespace RestaurantCity {
                 case InteractionKind.Serve: return s.HasOrder ? "Serve customer  /  $" + s.SalePrice : "Next customer arriving soon";
                 case InteractionKind.Bin: return "Discard current dish";
                 case InteractionKind.Recipe: return s.LastStashDay == s.Day ? "Stash emptied tonight. The rival restocks tomorrow night" : !s.IsNight ? "Rival stash opens at night" : !game.Guard.Defeated ? "Defeat the rival before opening the stash" : s.RecipeUnlocked ? "Raid the stash  /  +2 Flux" : "Take the midnight recipe  /  +3 Flux";
+                case InteractionKind.SupplyProtein: return "Buy 6 patties  /  $10";
+                case InteractionKind.SupplyProduce: return "Buy 6 buns & greens  /  $6";
                 default: return s.Restaurant.Owned ? "Manage your restaurant" : "Buy your own restaurant  /  $150";
             }
         }

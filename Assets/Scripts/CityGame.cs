@@ -113,8 +113,8 @@ namespace RestaurantCity {
             Customer.SetActive(State.HasOrder);
             if (State.HasOrder) Customer.transform.position = Vector3.MoveTowards(Customer.transform.position, customerPosition, Time.deltaTime * 2.5f);
             lastOrder = State.HasOrder;
-            GrillFood.SetActive(State.Food == FoodStage.Cooking);
-            HandFood.SetActive((!Restaurant || !Restaurant.PlacementActive) && (State.Food == FoodStage.Prepared || State.Food == FoodStage.Plated));
+            GrillFood.SetActive(false);
+            HandFood.SetActive(false);
             RecipeGlow.SetActive(State.IsNight && !State.RecipeUnlocked);
             float dusk = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(125, 160, State.Clock));
             if (State.Clock > 220) dusk = 1 - Mathf.SmoothStep(0, 1, Mathf.InverseLerp(220, 240, State.Clock));
@@ -129,8 +129,8 @@ namespace RestaurantCity {
             get {
                 if (State.Restaurant.Owned) return "Your restaurant, your rules\nB to decorate inside. Tab to manage service, menu and staff.";
                 if (!State.StandBuilt) return "Make it yours\nSet up the coral food stand for $10.";
-                if (State.Stock == 0 && State.Food == FoodStage.Empty) return "Stock the kitchen\nBuy ingredients at the green supplier.";
-                if (State.Served == 0) return "Your first customer\nPrep > grill > plate > serve.";
+                if (State.Restaurant.Protein == 0 || State.Restaurant.Produce == 0) return "Stock the kitchen\nBuy patties and buns from Milo's crates across the street.";
+                if (State.Served == 0) return "Your first customer\nPatty on the grill > paper plate > bun > cooked patty > serve.";
                 if (!State.RecipeUnlocked) return State.IsNight ? "A recipe after dark\nExplore the marked rival alley. You can retreat." : "Build your reputation\nKeep serving. The alley stash opens at night.";
                 if (State.Cash < 150) return "A place of your own\nSell midnight burgers. Save $150 for your future restaurant.";
                 return "A place of your own\nBuy the $150 restaurant across the street.";

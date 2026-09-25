@@ -43,14 +43,21 @@ namespace RestaurantCity {
    for(int i=0;i<views.Count;i++){var v=views[i];var p=Game.CoOp.Players[i];v.Canvas.enabled=Game.Started&&!Game.Paused&&!Game.Restaurant.PanelOpen&&!Game.Restaurant.PlacementActive;if(!v.Canvas.enabled)continue;
     string phase=r.Open?"<color=#4FCB7A>OPEN</color>":r.Orders.Count>0?"<color=#E8C34A>LAST GUESTS</color>":"CLOSED";
     v.Top.text="$"+Game.State.Cash+"   "+r.Stars+" star   "+phase+"\n<size=12>Plates "+k.CleanPlates+"  |  Protein "+r.Protein+"  |  Produce "+r.Produce+(Game.State.FluxIntroduced?"  |  Flux "+Game.State.Flux:"")+"</size>";
-    string tickets=!r.Owned?"Earn $150 at your stand, then buy Little Flame.\nStock "+Game.State.Stock+" | Health "+(i==0?Game.State.Health:p.Health):TicketRail(r);
+    string tickets=!r.Owned?StandTicket(Game.State):TicketRail(r);
     v.Tickets.transform.parent.gameObject.SetActive(tickets!="");v.Tickets.text=tickets;
-    string prompt=Game.Restaurant.PromptFor(p.ActorId);if(prompt==""&&p.Target)prompt="E / A: "+p.Target.Kind;
+    string prompt=Game.Restaurant.PromptFor(p.ActorId);if(prompt==""&&p.Target)prompt="E / A  "+p.Target.Prompt(Game);
     var held=k.Hold(p.ActorId);string checklist=Game.Restaurant.HeldPlateChecklist(p.ActorId);
     string holding=held==null?"":"<size=14><color=#9FD8C8>Holding: "+k.Label(held)+(checklist==""?"":"  |  "+checklist)+"</color></size>\n";
     v.Prompt.text=holding+prompt;
     v.Notice.text=Game.Notice;
    }
+  }
+  static string StandTicket(GameState s){
+   if(!s.StandBuilt)return "Set up your food stand ($10)\nthen buy patties & buns at Milo's.";
+   string goal="<size=12>Goal: save $150 for the restaurant across the street</size>";
+   if(!s.HasOrder)return "Stand: waiting for a customer...\n"+goal;
+   float ratio=Mathf.Clamp01(s.Patience/65f);string c=ratio>.55f?"#4FCB7A":ratio>.25f?"#E8C34A":"#E1543B";int f=Mathf.Max(1,Mathf.CeilToInt(ratio*8));
+   return "Stand order \u2014 Burger [bun+patty]  <color="+c+">"+new string('|',f)+"</color>"+new string('.',8-f)+"\n"+goal;
   }
   // Ticket rail (A4): one card per waiting order with table, dish, its components, and a colored patience bar.
   static string TicketRail(RestaurantState r){

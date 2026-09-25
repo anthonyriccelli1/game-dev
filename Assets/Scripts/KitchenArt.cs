@@ -178,6 +178,15 @@ namespace RestaurantCity {
             for(int n=0;n<2;n++)for(int side=-1;side<=1;side+=2){Box("Crate long slat",p,new Vector3(0,.09f+n*.12f,side*.31f),new Vector3(.8f,.095f,.035f),"AD7851");Box("Crate end slat",p,new Vector3(side*.38f,.09f+n*.12f,0),new Vector3(.04f,.095f,.62f),"AD7851");}
             for(int i=0;i<3;i++){var food=CreateItem(contents=="protein"?"RawProtein":contents=="buns"?"Bun":"RawGreens",p);food.transform.localPosition=new Vector3(-.23f+i*.23f,.13f,0);}
         }
+        // Market display crate for Milo's shop: a big crate heaped with one kind of ingredient.
+        public static GameObject SupplyCrate(Transform parent,string contents) {
+            var root=G(contents=="protein"?"Meat crate":"Produce crate",parent);
+            Box("Crate stand",root.transform,new Vector3(0,.45f,0),new Vector3(1.1f,.9f,.9f),"317E79");
+            Crate(root.transform,new Vector3(0,.9f,0),contents,1.25f);
+            Crate(root.transform,new Vector3(0,1.08f,.05f),contents=="protein"?"protein":"buns",1.0f);
+            if(contents!="protein")Crate(root.transform,new Vector3(0,1.26f,-.05f),"greens",.8f);
+            return root;
+        }
         public static void DecorateStreet(Transform parent) {
             var root=G("Original market and restaurant details",parent);
             // Produce rests above the existing supplier crates; the pavement and counter interaction remain clear.

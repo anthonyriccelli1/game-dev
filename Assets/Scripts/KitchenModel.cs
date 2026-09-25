@@ -8,7 +8,7 @@ namespace RestaurantCity {
  // invoking the very same Apply callback it returned, so the on-screen prompt and the executed action can
  // never disagree (Stage A / A1).
  public struct KitchenAction { public bool Allowed; public string Label; public KitchenActionKind Kind; public string FailReason; public Func<string> Apply; }
- [Serializable] public class KitchenItem { public int Id,Parts,TableInstanceId; public KitchenItemKind Kind; public float Quality=1,Age; public string Holder; public List<string> Components=new List<string>(); }
+ [Serializable] public class KitchenItem { public int Id,Parts,TableInstanceId; public KitchenItemKind Kind; public float Quality=1,Age; public string Holder; public List<string> Components=new List<string>(); public bool Disposable; }
  [Serializable] public class KitchenStation { public int InstanceId; public string CatalogId,WorkOwner,InputAction; public float Progress; }
  [Serializable] public class ShiftReport { public int GrossSales,Wages,Net,Served,Lost,StarsBefore,StarsAfter; public float IngredientCosts,Satisfaction; public List<string> Comments=new List<string>(); public string StaffSummary; }
  [Serializable] public class KitchenState {
@@ -20,6 +20,13 @@ namespace RestaurantCity {
   static KitchenAction NeedsHold(string label)=>new KitchenAction{Allowed=false,Kind=KitchenActionKind.Hold,FailReason=label,Label=label};
   static KitchenAction Tap(string label,Func<string> apply)=>new KitchenAction{Allowed=true,Kind=KitchenActionKind.Tap,Label=label,FailReason="",Apply=apply};
   public const float WashSeconds=3.5f;
+  // The street food stand is a small fixed kitchen that uses the same stations and rules as the restaurant.
+  public const int StandBase=90000;
+  public static readonly string[] StandKit={"pantry","grill","counter","paper_plates","trash"};
+  public static bool IsStandStation(int id)=>id>StandBase&&id<=StandBase+StandKit.Length;
+  public void EnsureStandStations(){
+   for(int i=0;i<StandKit.Length;i++){int id=StandBase+1+i;if(!Stations.Exists(s=>s.InstanceId==id))Stations.Add(new KitchenStation{InstanceId=id,CatalogId=StandKit[i]});}
+  }
   public KitchenItem Hold(string actor)=>Items.Find(i=>i.Holder==actor);
   public KitchenItem At(int station)=>Hold("station:"+station);
   KitchenItem Create(KitchenItemKind kind,string holder){var item=new KitchenItem{Id=NextItemId++,Kind=kind,Holder=holder};Items.Add(item);return item;}
@@ -27,7 +34,8 @@ namespace RestaurantCity {
    restaurant.EnsurePhysicalKit();
    var layout=restaurant.Layout.Where(p=>RestaurantCatalog.Find(p.CatalogId)?.Category==CatalogCategory.Kitchen).ToList();
    foreach(var p in layout)if(!Stations.Exists(s=>s.InstanceId==p.InstanceId))Stations.Add(new KitchenStation{InstanceId=p.InstanceId,CatalogId=p.CatalogId});
-   foreach(var stale in Stations.Where(s=>!layout.Exists(p=>p.InstanceId==s.InstanceId)).ToList()){
+   EnsureStandStations();
+   foreach(var stale in Stations.Where(s=>!IsStandStation(s.InstanceId)&&!layout.Exists(p=>p.InstanceId==s.InstanceId)).ToList()){
     var item=At(stale.InstanceId);if(item!=null){if(item.Kind==KitchenItemKind.Plate||item.Kind==KitchenItemKind.DirtyPlate){item.Kind=KitchenItemKind.DirtyPlate;item.Components.Clear();item.Holder="table:returned"+item.Id;item.TableInstanceId=restaurant.Layout.Find(p=>RestaurantCatalog.Find(p.CatalogId).Seats>0)?.InstanceId??0;}else Items.Remove(item);}Stations.Remove(stale);
    }
   }
@@ -72,7 +80,8 @@ namespace RestaurantCity {
    return Tap("Take "+PantryLabel(choice),()=>{game.Restaurant.Protein-=protein;game.Restaurant.Produce-=produce;ShiftCosts+=protein*10f/6+produce;var created=Create(kind,actor);return "Picked up "+Label(created);});
   }
   public KitchenAction Preview(GameState game,string actor,int stationId,string subId){
-   if(!game.Restaurant.Owned)return Blocked("Buy the restaurant first.");
+   bool stand=IsStandStation(stationId);
+   if(stand?!game.StandBuilt:!game.Restaurant.Owned)return Blocked(stand?"Set up your stand first.":"Buy the restaurant first.");
    EnsureStations(game.Restaurant);
    var s=Stations.Find(x=>x.InstanceId==stationId);
    if(s==null)return Blocked("Station unavailable.");
@@ -82,7 +91,7 @@ namespace RestaurantCity {
    if(s.CatalogId=="trash"){
     if(hand==null)return Blocked("Trash can. Bring food you want to throw away.");
     if(hand.Kind==KitchenItemKind.DirtyPlate)return Blocked("Wash dirty plates at the sink.");
-    if(hand.Kind==KitchenItemKind.Plate&&hand.Components.Count==0)return Blocked("That plate is clean. Keep it or set it down.");
+    if(hand.Kind==KitchenItemKind.Plate&&hand.Components.Count==0&&!hand.Disposable)return Blocked("That plate is clean. Keep it or set it down.");
     string what=hand.Kind==KitchenItemKind.Plate?"the food (keep the plate)":Label(hand).ToLower();
     return Tap("Throw away "+what,()=>{Discard(game,actor,out string msg);return msg;});
    }
@@ -90,6 +99,10 @@ namespace RestaurantCity {
     if(hand!=null)return Blocked("Your hands are full.");
     if(CleanPlates<=0)return Blocked("No clean plates. Clear a table and wash a dirty plate.");
     return Tap("Take a clean plate",()=>{CleanPlates--;Create(KitchenItemKind.Plate,actor);return "Clean plate collected.";});
+   }
+   if(s.CatalogId=="paper_plates"){
+    if(hand!=null)return Blocked("Your hands are full.");
+    return Tap("Take a paper plate",()=>{var p=Create(KitchenItemKind.Plate,actor);p.Disposable=true;return "Paper plate. Build a burger on it: bun + cooked patty.";});
    }
    // Fewer-press shortcuts: while carrying a plate, a finished ingredient at its own station slides
    // straight onto it instead of needing a separate pickup-then-assembly trip.
@@ -149,7 +162,23 @@ namespace RestaurantCity {
    if(!game.Restaurant.CompleteServing(game,orderId,out message)){order.Stage=RestaurantOrderStage.Waiting;return false;}
    int gross=game.Cash-before+wages,bonus=ShiftNight?(int)Math.Round(gross*.3f):0;game.Cash+=bonus;game.Restaurant.Earnings+=bonus;ShiftGross+=gross+bonus;ShiftWages+=wages;
    if(bonus>0)message+=" Night premium +$"+bonus+".";
+   if(item.Disposable){Items.Remove(item);return true;}
    item.Holder="table:"+orderId;item.TableInstanceId=order.SeatInstanceId;return true;
+  }
+  // Serve the single street customer at the food stand.
+  public bool ServeStand(GameState game,string actor,out string message){
+   var item=Hold(actor);string dish=RecipeOf(item);
+   if(!game.HasOrder)return Fail("No one is waiting yet. A customer will walk up soon.",out message);
+   if(dish!="burger"&&dish!="midnight")return Fail("They want a burger: paper plate + bun + cooked patty.",out message);
+   int price=(dish=="midnight"?18:12)*(game.IsNight?3:2)/2;
+   game.Cash+=price;game.Served++;game.HasOrder=false;game.NextCustomer=6;Items.Remove(item);
+   message="+$"+price+"  "+(dish=="midnight"?"A midnight burger! They'll tell their friends.":"Another happy customer!");return true;
+  }
+  public string StandPreview(GameState game,string actor){
+   var item=Hold(actor);string dish=RecipeOf(item);
+   if(!game.HasOrder)return "Waiting for a customer";
+   if(dish=="burger"||dish=="midnight")return "E / A  Serve "+(dish=="midnight"?"midnight burger":"burger")+"  /  $"+((dish=="midnight"?18:12)*(game.IsNight?3:2)/2);
+   return "Wants a burger: paper plate + bun + cooked patty";
   }
   public int DirtyAtTable(int table)=>Items.Count(i=>i.Kind==KitchenItemKind.DirtyPlate&&i.TableInstanceId==table&&i.Holder.StartsWith("table:"));
   public bool ClearTable(GameState game,string actor,int table,out string message){
@@ -159,11 +188,12 @@ namespace RestaurantCity {
   public bool Discard(GameState game,string actor,out string message){
    var item=Hold(actor);if(item==null)return Fail("Your hands are empty.",out message);
    if(item.Kind==KitchenItemKind.DirtyPlate)return Fail("Wash the dirty plate at the sink.",out message);
+   if(item.Kind==KitchenItemKind.Plate&&item.Disposable){Items.Remove(item);message=item.Components.Count>0?"Food and paper plate tossed.":"Paper plate tossed.";return true;}
    if(item.Kind==KitchenItemKind.Plate&&item.Components.Count>0){item.Kind=KitchenItemKind.DirtyPlate;item.Components.Clear();message="Food discarded. Wash the plate.";return true;}
    if(item.Kind==KitchenItemKind.Plate)CleanPlates++;Items.Remove(item);message="Item discarded; clean plates return to the rack.";return true;
   }
   public string RecipeOf(KitchenItem item)=>item==null||item.Kind!=KitchenItemKind.Plate?"":RecipeBook.Match(item.Components);
-  public string Label(KitchenItem item){if(item==null)return "Empty hands";string dish=RecipeOf(item);if(dish!="")return RestaurantCatalog.Dish(dish).Name;switch(item.Kind){case KitchenItemKind.RawProtein:return "Raw patty";case KitchenItemKind.PreparedPatty:return "Prepared patty";case KitchenItemKind.CookedPatty:return "Cooked patty";case KitchenItemKind.BurntPatty:return "Burnt patty";case KitchenItemKind.RawGreens:return "Uncut greens";case KitchenItemKind.ChoppedGreens:return "Chopped greens";case KitchenItemKind.RawSauce:return "Midnight ingredients";case KitchenItemKind.MidnightSauce:return "Midnight sauce";case KitchenItemKind.DirtyPlate:return "Dirty plate";case KitchenItemKind.Plate:return item.Components.Count==0?"Clean plate":"Partly assembled dish";default:return "Bun";}}
+  public string Label(KitchenItem item){if(item==null)return "Empty hands";string dish=RecipeOf(item);if(dish!="")return RestaurantCatalog.Dish(dish).Name;switch(item.Kind){case KitchenItemKind.RawProtein:return "Raw patty";case KitchenItemKind.PreparedPatty:return "Prepared patty";case KitchenItemKind.CookedPatty:return "Cooked patty";case KitchenItemKind.BurntPatty:return "Burnt patty";case KitchenItemKind.RawGreens:return "Uncut greens";case KitchenItemKind.ChoppedGreens:return "Chopped greens";case KitchenItemKind.RawSauce:return "Midnight ingredients";case KitchenItemKind.MidnightSauce:return "Midnight sauce";case KitchenItemKind.DirtyPlate:return "Dirty plate";case KitchenItemKind.Plate:return item.Components.Count==0?(item.Disposable?"Paper plate":"Clean plate"):"Partly assembled dish";default:return "Bun";}}
   public void Tick(GameState game,float seconds){
    if(seconds<=0||float.IsNaN(seconds)||float.IsInfinity(seconds))return;
    foreach(var s in Stations){var item=At(s.InstanceId);if((s.CatalogId!="grill"&&s.CatalogId!="oven")||item==null)continue;if(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.CookedPatty){s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=24){item.Kind=KitchenItemKind.BurntPatty;item.Quality=0;}else if(s.Progress>=(s.CatalogId=="oven"?6:8))item.Kind=KitchenItemKind.CookedPatty;}}
@@ -202,11 +232,12 @@ namespace RestaurantCity {
    foreach(var item in Items.Where(i=>i.Holder.StartsWith("player:")||i.Holder.StartsWith("staff:")).ToList()){
     var free=Stations.Find(s=>At(s.InstanceId)==null&&((item.Kind==KitchenItemKind.DirtyPlate&&s.CatalogId=="sink")||(item.Kind==KitchenItemKind.Plate&&s.CatalogId=="assembly")||(item.Kind!=KitchenItemKind.DirtyPlate&&item.Kind!=KitchenItemKind.Plate&&s.CatalogId=="prep_bench")));
     if(free!=null)item.Holder="station:"+free.InstanceId;
+    else if(item.Disposable)Items.Remove(item);
     else if(item.Kind==KitchenItemKind.Plate&&item.Components.Count==0){Items.Remove(item);CleanPlates++;}
     else if(item.Kind==KitchenItemKind.Plate||item.Kind==KitchenItemKind.DirtyPlate){item.Kind=KitchenItemKind.DirtyPlate;item.Components.Clear();item.Holder="table:returned"+item.Id;item.TableInstanceId=game.Restaurant.Layout.Find(p=>RestaurantCatalog.Find(p.CatalogId).Seats>0)?.InstanceId??0;}
     else Items.Remove(item);
    }
-   CleanPlates=Math.Max(0,Math.Min(6-Items.Count(i=>i.Kind==KitchenItemKind.Plate||i.Kind==KitchenItemKind.DirtyPlate),CleanPlates));ShiftActive=false;
+   CleanPlates=Math.Max(0,Math.Min(6-Items.Count(i=>!i.Disposable&&(i.Kind==KitchenItemKind.Plate||i.Kind==KitchenItemKind.DirtyPlate)),CleanPlates));ShiftActive=false;
   }
  }
 }

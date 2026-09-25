@@ -25,7 +25,7 @@ namespace RestaurantCity {
     var task=plan.Peek();Vector3 destination;KitchenStation stationData=null;
     if(task.Station=="guest"){if(!guests.TryGetValue(task.Target,out var guest)||!guest.Seat){plan.Clear();continue;}destination=guest.Seat.position;}
     else if(task.Station=="table"){if(!Furnishings.TryGetValue(task.Target,out var table)){plan.Clear();continue;}destination=table.transform.position+Vector3.forward;}
-    else{stationData=k.Stations.FirstOrDefault(s=>s.CatalogId==task.Station&&(task.Target==0||s.InstanceId==task.Target));if(stationData==null)continue;var furniture=Furnishings[stationData.InstanceId];var wp=furniture.transform.Find("WorkPoint");destination=wp?wp.position:furniture.transform.position+Vector3.forward;}
+    else{stationData=k.Stations.FirstOrDefault(s=>!KitchenState.IsStandStation(s.InstanceId)&&s.CatalogId==task.Station&&(task.Target==0||s.InstanceId==task.Target));if(stationData==null)continue;var furniture=Furnishings[stationData.InstanceId];var wp=furniture.transform.Find("WorkPoint");destination=wp?wp.position:furniture.transform.position+Vector3.forward;}
     destination.y=.055f;worker.Energy=Mathf.Max(0,worker.Energy-dt*.3f);
     SetBubble(view.Bubble,worker.Id+" / "+task.Station.Replace('_',' ')+" / "+(int)worker.Energy+" energy");
     if(Vector3.Distance(view.Root.transform.position,destination)>1.2f){if(view.Path.Count==0)AppendRoute(view.Path,view.Root.transform.position,destination);view.Motion.Walking=Follow(view.Root.transform,view.Path,dt*(worker.Energy<25?1.5f:2.7f));continue;}

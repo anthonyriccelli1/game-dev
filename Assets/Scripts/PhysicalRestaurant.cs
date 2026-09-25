@@ -29,7 +29,7 @@ namespace RestaurantCity {
   static string ComponentDisplay(string id)=>id=="bun"?"bun":id=="cooked_patty"?"cooked patty":id=="chopped_greens"?"chopped greens":id=="midnight_sauce"?"midnight sauce":id;
   GameObject CreateFurnishing(string id,Transform parent)=>id=="counter"||id=="trash"?KitchenArt.CreateStation(id,parent):new[]{"pantry","plate_rack","sink","assembly"}.Contains(id)?KitchenArt.CreateStation(id,parent):RestaurantArt.CreateFurniture(id,parent);
   GameObject menuBoard;
-  void PhysicalSetup(){Game.State.Kitchen.EnsureStations(Data);RebuildLayout();KitchenArt.DecorateStreet(transform);RefreshMenuBoard();}
+  void PhysicalSetup(){Game.State.Kitchen.EnsureStations(Data);RebuildLayout();BuildStreetKitchen();KitchenArt.DecorateStreet(transform);RefreshMenuBoard();}
   // A4: a wall board prop showing the active-menu recipes, alongside the Cookbook management tab.
   public void RefreshMenuBoard(){
    if(menuBoard)Destroy(menuBoard);
@@ -56,10 +56,11 @@ namespace RestaurantCity {
   }
   public bool InspectPlayerRay(FirstPersonPlayer p,RaycastHit hit,bool pressed,bool held){
    var city=hit.collider.GetComponentInParent<Interactable>();
+   if(city&&InspectStreet(p,city,pressed))return true;
    if(city&&city.Kind==InteractionKind.Supplier&&Data.Owned){supplierChoice.TryGetValue(p.ActorId,out int choice);bool protein=choice%2==0;prompts[p.ActorId]="Milo's market / E or A: buy 6 "+(protein?"protein / $10":"produce / $6")+"\nQ / B switches supplies. Your partner keeps working.";if(pressed){if(!Data.Restock(Game.State,protein,out var m)&&Game.State.Cash<(protein?10:6))Data.RequestSupplyHelp(Game.State,out m);Feedback(m);Game.Save();}return true;}
    var target=hit.collider.GetComponentInParent<RestaurantTarget>();if(!target)return false;
    string actor=p.ActorId,message="";var k=Game.State.Kitchen;
-   if(!Data.Owned){prompts[actor]="Buy this restaurant at the front sign / $150";return true;}
+   if(!Data.Owned&&!KitchenState.IsStandStation(target.InstanceId)){prompts[actor]="Buy this restaurant at the front sign / $150";return true;}
    if(target.Kind=="Management"){prompts[actor]=Data.Open?"E / A: stop new arrivals":k.Hold(actor)!=null?"Carrying "+k.Label(k.Hold(actor))+". Tab for management after placing it.":"E / A: manage restaurant";if(pressed){if(Data.Open)ToggleService();else if(k.Hold(actor)==null)ShowPanel("Service");}return true;}
    if(target.Kind=="Customer"){var o=Data.Orders.Find(x=>x.Id==target.OrderId);prompts[actor]=o==null?"Guest leaving":"E / A: serve #"+o.Id+" "+RestaurantCatalog.Dish(o.DishId).Name;if(pressed){k.Serve(Game.State,actor,target.OrderId,out message);Feedback(message);}return true;}
    var station=k.Stations.Find(s=>s.InstanceId==target.InstanceId);
@@ -96,7 +97,7 @@ namespace RestaurantCity {
     Transform parent=transform;Vector3 pos=Vector3.zero;bool found=false;
     if(item.Holder.StartsWith("player:")){var p=Game.CoOp?.Players.FirstOrDefault(v=>v.ActorId==item.Holder);if(p){parent=p.Elevated?p.transform:p.View.transform;pos=p.Elevated?new Vector3(.3f,1,.6f):new Vector3(.32f,-.32f,.7f);found=true;}}
     else if(item.Holder.StartsWith("staff:")){if(employees.TryGetValue(item.Holder.Substring(6),out var w)){parent=w.Root.transform;pos=new Vector3(.25f,1,.45f);found=true;}}
-    else{int id;if(item.Holder.StartsWith("station:")&&int.TryParse(item.Holder.Substring(8),out id)&&Furnishings.TryGetValue(id,out var s)){parent=s.transform;pos=new Vector3(0,1.08f,0);found=true;}else if(item.TableInstanceId>0&&Furnishings.TryGetValue(item.TableInstanceId,out var t)){parent=t.transform;pos=new Vector3((item.Id%2-.5f)*.4f,.94f,0);found=true;}}
+    else{int id;if(item.Holder.StartsWith("station:")&&int.TryParse(item.Holder.Substring(8),out id)&&StationObject(id) is GameObject s&&s){parent=s.transform;pos=new Vector3(0,1.08f,0);found=true;}else if(item.TableInstanceId>0&&Furnishings.TryGetValue(item.TableInstanceId,out var t)){parent=t.transform;pos=new Vector3((item.Id%2-.5f)*.4f,.94f,0);found=true;}}
     obj.SetActive(found);obj.transform.SetParent(parent,false);obj.transform.localPosition=pos;
    }
    DrawProgressBars();
@@ -107,7 +108,8 @@ namespace RestaurantCity {
   void DrawProgressBars(){
    var k=Game.State.Kitchen;var eye=Game.Player&&Game.Player.View?Game.Player.View.transform.position:Vector3.zero;
    foreach(var s in k.Stations){
-    if(!Furnishings.TryGetValue(s.InstanceId,out var station)||!station||!station.activeInHierarchy){if(progressBars.TryGetValue(s.InstanceId,out var stale)&&stale)stale.SetActive(false);continue;}
+    var station=StationObject(s.InstanceId);
+    if(!station||!station.activeInHierarchy){if(progressBars.TryGetValue(s.InstanceId,out var stale)&&stale)stale.SetActive(false);continue;}
     var item=k.At(s.InstanceId);float ratio=-1;string color="E8C34A";
     if(item!=null&&(s.CatalogId=="grill"||s.CatalogId=="oven")){
      float done=s.CatalogId=="oven"?6:8,burn=24;

@@ -261,7 +261,7 @@ namespace RestaurantCity {
             ActiveMenu.Add(id);message="Dish added to the menu. New customers can order it.";return true;
         }
         public bool Restock(GameState wallet,bool protein,out string message) {
-            if(!Owned)return Fail("Buy the restaurant first.",out message);
+            if(!Owned&&!wallet.StandBuilt)return Fail("Set up your food stand first ($10).",out message);
             int stock=protein?Protein:Produce,price=protein?10:6;
             if(stock+6>StockLimit)return Fail($"Not enough storage; limit {StockLimit}. Buy a fridge for 48.",out message);
             if(wallet.Cash<price)return Fail($"Six portions cost ${price}.",out message);
@@ -269,7 +269,7 @@ namespace RestaurantCity {
         }
         public bool RequestSupplyHelp(GameState wallet,out string message) {
             // Anti-softlock: if you are broke AND can't cook anything, Milo fronts a small crate.
-            if(!Owned||wallet.Cash>=6||(Protein>0&&Produce>0))return Fail("Six portions cost $6 (produce) or $10 (protein).",out message);
+            if((!Owned&&!wallet.StandBuilt)||wallet.Cash>=6||(Protein>0&&Produce>0))return Fail("Six portions cost $6 (produce) or $10 (protein).",out message);
             if(Protein==0)Protein=3;if(Produce==0)Produce=3;message="Milo fronts you a starter crate: 3 protein, 3 produce. Pay it forward.";return true;
         }
         public bool StartService(GameState wallet,out string message) {
