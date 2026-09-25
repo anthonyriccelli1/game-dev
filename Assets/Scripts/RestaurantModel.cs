@@ -5,7 +5,7 @@ using System.Linq;
 namespace RestaurantCity {
     public enum CatalogCategory { Kitchen, Seating, Finishes, Lighting, Decor, Exterior }
     public enum RestaurantOrderStage { Waiting, Cooking, Ready, Eating, Leaving }
-    public enum StaffJob { Off, Cook, Serve, Clean, Stand }
+    public enum StaffJob { Off, Cook, Serve, Clean, Stand, Any }
 
     public class CatalogItem {
         public string Id, Name, Description;
@@ -343,7 +343,7 @@ namespace RestaurantCity {
             w.Job=job;message=job==StaffJob.Stand?$"{RestaurantCatalog.Worker(id).Name} is running your food stand. They use your pantry and keep the money coming.":$"{RestaurantCatalog.Worker(id).Name}: {job}.";return true;
         }
         public float WorkerActionSeconds(StaffJob job) {
-            var assigned=Workers.Where(w=>w.Job==job).ToList();if(assigned.Count==0)return 8;
+            var assigned=Workers.Where(w=>w.Job==job||w.Job==StaffJob.Any).ToList();if(assigned.Count==0)return 8;
             Func<StaffDefinition,bool> Specialty=d=>d.Role==job||(d.Role==StaffJob.Serve&&job==StaffJob.Clean);
             var defs=assigned.Select(w=>RestaurantCatalog.Worker(w.Id)).Where(d=>d!=null).ToList();
             // Everyone can do every job; specialists are much faster at their own.

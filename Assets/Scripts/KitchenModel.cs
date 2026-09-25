@@ -13,13 +13,17 @@ namespace RestaurantCity {
  [Serializable] public class ShiftReport { public int GrossSales,Wages,Net,Served,Lost,StarsBefore,StarsAfter; public float IngredientCosts,Satisfaction; public List<string> Comments=new List<string>(); public string StaffSummary; }
  [Serializable] public class KitchenState {
   public List<KitchenItem> Items=new List<KitchenItem>(); public List<KitchenStation> Stations=new List<KitchenStation>();
-  public int CleanPlates=6,NextItemId=1,PoorShifts; public ShiftReport LastReport; public bool ShiftActive,ShiftNight;
+  public int CleanPlates=4,NextItemId=1,PoorShifts,SinkPile; public ShiftReport LastReport; public bool ShiftActive,ShiftNight;
   public int ShiftServed,ShiftLost,ShiftStars,ShiftGross,ShiftWages; public float ShiftCosts;
   static bool Fail(string text,out string message){message=text;return false;}
   static KitchenAction Blocked(string reason)=>new KitchenAction{Allowed=false,Kind=KitchenActionKind.None,FailReason=reason,Label=reason};
   static KitchenAction NeedsHold(string label)=>new KitchenAction{Allowed=false,Kind=KitchenActionKind.Hold,FailReason=label,Label=label};
   static KitchenAction Tap(string label,Func<string> apply)=>new KitchenAction{Allowed=true,Kind=KitchenActionKind.Tap,Label=label,FailReason="",Apply=apply};
   public const float WashSeconds=3.5f;
+  // Restaurant plates: 4 per plate rack you own. Dirty plates stack beside the sink and are washed one at a time.
+  public static int PlateCapacity(RestaurantState r)=>Math.Max(1,r.Layout.Count(p=>p.CatalogId=="plate_rack"))*4;
+  int PlatesInPlay=>Items.Count(i=>!i.Disposable&&!i.StandPlate&&(i.Kind==KitchenItemKind.Plate||i.Kind==KitchenItemKind.DirtyPlate));
+  void BalancePlates(RestaurantState r){if(!r.Owned)return;int missing=PlateCapacity(r)-(CleanPlates+SinkPile+PlatesInPlay);if(missing>0)CleanPlates+=missing;else if(missing<0)CleanPlates=Math.Max(0,CleanPlates+missing);}
   // The street food stand is a small fixed kitchen that uses the same stations and rules as the restaurant.
   public const int StandBase=90000;
   public static readonly string[] StandKit={"pantry","grill","counter","stand_plates","sink","trash"};
@@ -119,6 +123,10 @@ namespace RestaurantCity {
     if(hand!=null)return Blocked("Your hands are full.");
     if(game.StandClean<=0)return Blocked("No clean plates! Wash dirty ones at the stand sink.");
     return Tap("Take a plate ("+game.StandClean+" clean)",()=>{game.StandClean--;var p=Create(KitchenItemKind.Plate,actor);p.StandPlate=true;return "Plate ready. Build it: bun + cooked patty.";});
+   }
+   if(!stand&&s.CatalogId=="sink"){
+    if(hand!=null&&hand.Kind==KitchenItemKind.DirtyPlate&&!hand.StandPlate&&item!=null){var d=hand;return Tap("Stack the dirty plate by the sink ("+(SinkPile+1)+" waiting)",()=>{Items.Remove(d);SinkPile++;return "Stacked. Wash them one at a time.";});}
+    if(hand==null&&item==null&&SinkPile>0)return Tap("Put a dirty plate in the sink ("+SinkPile+" waiting)",()=>{SinkPile--;Create(KitchenItemKind.DirtyPlate,"station:"+stationId);s.Progress=0;return "Hold E to wash it.";});
    }
    if(stand&&s.CatalogId=="sink"&&item==null&&hand==null){
     // Dirty plates pile up beside the stand sink; move them in one at a time, then hold to wash.
@@ -223,6 +231,7 @@ namespace RestaurantCity {
   public string Label(KitchenItem item){if(item==null)return "Empty hands";string dish=RecipeOf(item);if(dish!="")return RestaurantCatalog.Dish(dish).Name;switch(item.Kind){case KitchenItemKind.RawProtein:return "Raw patty";case KitchenItemKind.PreparedPatty:return "Prepared patty";case KitchenItemKind.CookedPatty:return "Cooked patty";case KitchenItemKind.BurntPatty:return "Burnt patty";case KitchenItemKind.RawGreens:return "Uncut greens";case KitchenItemKind.ChoppedGreens:return "Chopped greens";case KitchenItemKind.RawSauce:return "Midnight ingredients";case KitchenItemKind.MidnightSauce:return "Midnight sauce";case KitchenItemKind.DirtyPlate:return "Dirty plate";case KitchenItemKind.Plate:return item.Components.Count==0?(item.Disposable?"Paper plate":"Clean plate"):"Partly assembled dish";default:return "Bun";}}
   public void Tick(GameState game,float seconds){
    if(seconds<=0||float.IsNaN(seconds)||float.IsInfinity(seconds))return;
+   BalancePlates(game.Restaurant);
    foreach(var s in Stations){var item=At(s.InstanceId);if((s.CatalogId!="grill"&&s.CatalogId!="oven")||item==null)continue;if(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.CookedPatty){s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=24){item.Kind=KitchenItemKind.BurntPatty;item.Quality=0;}else if(s.Progress>=(s.CatalogId=="oven"?6:8))item.Kind=KitchenItemKind.CookedPatty;}}
    foreach(var item in Items){if(!item.Holder.StartsWith("table:"))continue;int id;if(!int.TryParse(item.Holder.Substring(6),out id))continue;var order=game.Restaurant.Orders.Find(o=>o.Id==id);if(order==null||order.Stage==RestaurantOrderStage.Leaving){item.Kind=KitchenItemKind.DirtyPlate;item.Components.Clear();}}
    foreach(var item in Items)if(!item.Holder.StartsWith("station:")&&(item.Kind==KitchenItemKind.CookedPatty||item.Kind==KitchenItemKind.Plate&&item.Components.Count>0)){item.Age+=seconds;item.Quality=Math.Min(item.Quality,Math.Max(.4f,1-Math.Max(0,item.Age-40)*.008f));}
@@ -265,7 +274,7 @@ namespace RestaurantCity {
     else if(item.Kind==KitchenItemKind.Plate||item.Kind==KitchenItemKind.DirtyPlate){item.Kind=KitchenItemKind.DirtyPlate;item.Components.Clear();item.Holder="table:returned"+item.Id;item.TableInstanceId=game.Restaurant.Layout.Find(p=>RestaurantCatalog.Find(p.CatalogId).Seats>0)?.InstanceId??0;}
     else Items.Remove(item);
    }
-   CleanPlates=Math.Max(0,Math.Min(6-Items.Count(i=>!i.Disposable&&(i.Kind==KitchenItemKind.Plate||i.Kind==KitchenItemKind.DirtyPlate)),CleanPlates));ShiftActive=false;
+   SinkPile=Math.Max(0,SinkPile);CleanPlates=Math.Max(0,Math.Min(PlateCapacity(game.Restaurant)-SinkPile-PlatesInPlay,CleanPlates));BalancePlates(game.Restaurant);ShiftActive=false;
   }
  }
 }

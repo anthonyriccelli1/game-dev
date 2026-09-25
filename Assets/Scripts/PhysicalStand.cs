@@ -92,7 +92,11 @@ namespace RestaurantCity {
 
         // Visible plate stacks: clean plates on the plate counter, dirty ones piled on the sink.
         void SyncPlateStack(List<GameObject> stack, int stationId, int count, string kind, Vector3 basePos) {
-            if (!standObjects.TryGetValue(stationId, out var station) || !station) return;
+            if (standObjects.TryGetValue(stationId, out var station)) SyncPlateStack(stack, station, count, kind, basePos);
+        }
+        void SyncPlateStack(List<GameObject> stack, GameObject station, int count, string kind, Vector3 basePos) {
+            if (!station) { foreach (var o in stack) if (o) Destroy(o); stack.Clear(); return; }
+            if (stack.Count > 0 && stack[0] && stack[0].transform.parent != station.transform.parent) { foreach (var o in stack) if (o) Destroy(o); stack.Clear(); }
             stack.RemoveAll(o => !o);
             while (stack.Count < count) {
                 // Parent beside the station (some stations are scaled) and place in its local frame.
