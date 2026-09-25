@@ -18,6 +18,11 @@ namespace RestaurantCity {
             yield return null;
                 Game.State.Cash = 300;
                 Require(R.Data.BuyRestaurant(Game.State, out _), "isolated restaurant acquired");
+                // Buying now gives an empty room: install the kitchen the way a player would.
+                Game.State.Cash = 2000;
+                foreach (var (id, x, z) in new[] { ("pantry", 0, 0), ("plate_rack", 2, 0), ("prep_bench", 4, 0), ("assembly", 8, 0), ("grill", 0, 4), ("sink", 9, 4), ("cafe_table", 8, 7) })
+                    if (!R.Data.Place(Game.State, id, x, z, 0, out _)) InstallFirstFree(id);
+                Game.State.Kitchen.EnsureStations(R.Data);
                 R.RebuildLayout();
                 Game.SetPaused(false);
                 R.ClosePanel();
@@ -149,6 +154,9 @@ namespace RestaurantCity {
             Debug.Log("INTERACTION_RUNTIME_" + (failures == 0 ? "PASS " : "FAIL ") + checks + " checks, " + failures + " failures");
             Application.logMessageReceived -= OnLog;
             Application.Quit(failures == 0 ? 0 : 1);
+        }
+        void InstallFirstFree(string id) {
+            for (int z = 0; z < 10; z++) for (int x = 0; x < 12; x++) if (R.Data.CanPlace(id, x, z, 0, -1, out _)) { R.Data.Place(Game.State, id, x, z, 0, out _); return; }
         }
         int Station(string id) => R.Data.Layout.First(x => x.CatalogId == id).InstanceId;
         static int TargetId(RaycastHit hit) { var t = hit.collider ? hit.collider.GetComponentInParent<RestaurantTarget>() : null; return t ? t.InstanceId : -1; }

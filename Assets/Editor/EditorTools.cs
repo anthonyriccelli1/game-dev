@@ -100,4 +100,15 @@ public static class EditorTools {
         File.WriteAllText("EditorOutput/shop-mesh.txt", sb.ToString());
         return "ok";
     }
+
+    // Acceptance runs of the Windows build; each writes its player log to Acceptance/<name>.log.
+    static string RunBuild(string name, string args) {
+        var exe = Path.GetFullPath("Builds/Windows/RestaurantCity.exe"); if (!File.Exists(exe)) return "no build";
+        Directory.CreateDirectory("Acceptance"); var log = Path.GetFullPath("Acceptance/" + name + ".log"); if (File.Exists(log)) File.Delete(log);
+        System.Diagnostics.Process.Start(exe, args + " -screen-fullscreen 0 -screen-width 1280 -screen-height 720 -logFile \"" + log + "\"");
+        return "launched " + name;
+    }
+    public static string RunInteractionAcceptance() => RunBuild("interaction", "--interaction-test");
+    public static string RunPhysicalAcceptance() => RunBuild("physical", "--physical-test");
+    public static string RunRestaurantAcceptance() => RunBuild("restaurant", "--restaurant-stage2");
 }
