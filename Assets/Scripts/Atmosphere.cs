@@ -15,7 +15,7 @@ namespace RestaurantCity {
         Material windowNight; bool nightWindows;
 
         public static void Install(CityGame game, Transform parent) {
-            if (!game || game.GetComponentInChildren<Atmosphere>()) return;
+            if (!game || FindFirstObjectByType<Atmosphere>()) return;   // only one look/lighting rig, even if setup runs again
             var go = new GameObject("Atmosphere"); go.transform.SetParent(parent, false);
             var a = go.AddComponent<Atmosphere>(); a.Game = game; a.Build();
         }
@@ -40,7 +40,6 @@ namespace RestaurantCity {
                     windows.Add(r); windowDay.Add(r.sharedMaterial);
                 }
             }
-            Debug.LogWarning("Atmosphere: night windows " + windows.Count + ", shader " + (shader ? shader.name : "missing"));
             warm = new[] {
                 Warm(new Vector3(0, 3.0f, 8.1f), 2.2f, 7f),      // food stand, under the awning
                 Warm(new Vector3(-12, 3.0f, 8.6f), 1.8f, 6f),    // Milo's market
