@@ -316,7 +316,7 @@ namespace RestaurantCity {
 
         // The phone map: districts (locked ones dimmed), key places, where every player is, and the reputation ladder.
         void BuildMap(RectTransform sheet) {
-            var st = Owner.Game.State; int xp = st.Xp, rank = Reputation.Rank(xp);
+            var st = Owner.Game.State; int xp = st.Xp, rank = st.RankEarned;
             float mx = 30, my = 138, mh = 520, sc = mh / (CityDistricts.MaxZ - CityDistricts.MinZ), mw = (CityDistricts.MaxX - CityDistricts.MinX) * sc;
             Vector2 P(float x, float z) => new Vector2(mx + (x - CityDistricts.MinX) * sc, my + (CityDistricts.MaxZ - z) * sc);
             Block(sheet, "Bay", mx, my, mw, mh, new Color(.17f, .36f, .44f));
@@ -338,7 +338,7 @@ namespace RestaurantCity {
             }
             var bridgeA = P(434, -126); Block(sheet, "Bridge", bridgeA.x, bridgeA.y, 12 * sc, 64 * sc, new Color(.78f, .76f, .70f));
             foreach (var place in CityDistricts.Places) {
-                var d = CityDistricts.At(place.X, place.Z); bool open = CityDistricts.Unlocked(d, xp);
+                var d = CityDistricts.At(place.X, place.Z); bool open = CityDistricts.Unlocked(d, rank);
                 Color k = place.Kind == "rival" ? coral : place.Kind == "supply" ? teal : place.Kind == "restaurant" ? new Color(.95f, .76f, .3f) : place.Kind == "recipe" ? new Color(.62f, .45f, .9f) : place.Kind == "you" ? white : new Color(.35f, .55f, .9f);
                 var q = P(place.X, place.Z);
                 Block(sheet, place.Name, q.x - 4, q.y - 4, 8, 8, open ? k : new Color(k.r, k.g, k.b, .45f));
@@ -358,12 +358,17 @@ namespace RestaurantCity {
             Label(sheet, "REPUTATION", rx, 140, rw, 20, 13, muted, true);
             Label(sheet, Reputation.Titles[rank], rx, 160, rw, 40, 30, ink, true);
             Block(sheet, "Rep bar", rx, 206, rw, 14, pale);
-            Block(sheet, "Rep fill", rx, 206, Mathf.Max(4, rw * Reputation.Progress(xp)), 14, teal);
-            var next = CityDistricts.OpenedAt(rank + 1);
-            Label(sheet, Reputation.IsMax(xp) ? xp + " reputation. The whole city is yours." : xp + " / " + Reputation.NextThreshold(xp) + " to " + Reputation.Titles[rank + 1] + (next != null ? ", which opens " + next.Name : ""), rx, 226, rw, 40, 14, ink);
-            Label(sheet, "Every dollar customers pay you, at the stand or the restaurant, is one reputation point.", rx, 266, rw, 40, 12, muted);
+            Block(sheet, "Rep fill", rx, 206, Mathf.Max(4, rw * Reputation.Progress(xp, rank)), 14, teal);
+            if (Reputation.IsMax(rank)) Label(sheet, xp + " reputation. The whole city is yours.", rx, 226, rw, 22, 14, ink);
+            else {
+                var next = CityDistricts.OpenedAt(rank + 1); bool keyDone = st.KeystoneMet(rank + 1);
+                Label(sheet, "Next: " + Reputation.Titles[rank + 1] + (next != null ? " (opens " + next.Name + ")" : ""), rx, 224, rw, 20, 14, ink, true);
+                Label(sheet, (xp >= Reputation.Thresholds[rank + 1] ? "DONE   " : "") + xp + " / " + Reputation.Thresholds[rank + 1] + " reputation", rx, 244, rw, 18, 13, xp >= Reputation.Thresholds[rank + 1] ? teal : ink);
+                Label(sheet, (keyDone ? "DONE   " : "GOAL   ") + Reputation.Keystones[rank + 1], rx, 262, rw, 18, 13, keyDone ? teal : coral, true);
+            }
+            Label(sheet, "Happy guest +3   OK guest +1   Walk-out -1   New star +50   Hidden recipe +40   Beat a rival +40   Recruit +20   New kind of guest +10", rx, 284, rw, 34, 11, muted);
             for (int i = 0; i < Reputation.Titles.Length; i++) {
-                var d = CityDistricts.OpenedAt(i); bool got = rank >= i; float y = 318 + i * 44;
+                var d = CityDistricts.OpenedAt(i); bool got = rank >= i; float y = 322 + i * 44;
                 Block(sheet, "Rank row", rx, y, rw, 38, got ? new Color(teal.r, teal.g, teal.b, .16f) : new Color(pale.r, pale.g, pale.b, .55f));
                 Label(sheet, (got ? "OPEN   " : Reputation.Thresholds[i] + "   ") + Reputation.Titles[i], rx + 10, y + 3, rw - 20, 18, 14, got ? teal : ink, true);
                 Label(sheet, d != null ? d.Name : "", rx + 10, y + 20, rw - 20, 16, 12, muted);

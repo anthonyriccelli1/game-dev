@@ -8,7 +8,7 @@ namespace RestaurantCity {
     }
     public enum FoodStage { Empty, Prepared, Cooking, Plated }
     [Serializable] public class GameState {
-        public int Version = 5, Cash = 30, Xp, Stock, Served, Missed, Health = 100, Day = 1, Flux, LastStashDay;
+        public int Version = 6, Cash = 30, Xp, RankEarned, Stock, Served, Missed, Health = 100, Day = 1, Flux, LastStashDay;
         public bool FluxResearch, FluxIntroduced;
         public KitchenState Kitchen = new KitchenState();
         public RestaurantState Restaurant = new RestaurantState();
@@ -19,10 +19,19 @@ namespace RestaurantCity {
         [NonSerialized] public int Players = 1;
         // Reputation (XP) from every sale; RankUpTo is set for one frame when a sale crosses a rank threshold.
         [NonSerialized] public int RankUpTo = -1;
-        public void EarnReputation(int amount) {
-            if (amount <= 0) return; int before = Reputation.Rank(Xp);
-            Xp = Math.Min(999999, Xp + amount); int after = Reputation.Rank(Xp);
-            if (after > before) RankUpTo = after;
+        // Xp is reputation. It never drops below the floor of the rank you already hold, and a rank needs its keystone goal too.
+        public bool BeatAlleyRival; public List<string> Goals = new List<string>();
+        public void GainReputation(int amount) {
+            if (amount == 0) return;
+            Xp = Math.Max(Reputation.Thresholds[RankEarned], Math.Min(999999, Xp + amount)); CheckRankUp();
+        }
+        public bool KeystoneMet(int rank) {
+            if (rank == 1) return Restaurant != null && Restaurant.Stars >= 2;
+            if (rank == 4) return Restaurant != null && Restaurant.Stars >= 4;
+            var goal = Reputation.KeystoneGoal[rank]; return string.IsNullOrEmpty(goal) || (Goals != null && Goals.Contains(goal));
+        }
+        public void CheckRankUp() {
+            while (!Reputation.IsMax(RankEarned) && Xp >= Reputation.Thresholds[RankEarned + 1] && KeystoneMet(RankEarned + 1)) { RankEarned++; RankUpTo = RankEarned; }
         }
         // Passive income: a recruited worker assigned to the stand cooks, serves and washes on their own.
         public int StandWorkerEarned; [NonSerialized] public string StandWorkerStatus = ""; [NonSerialized] float standWorkTimer;
@@ -51,7 +60,7 @@ namespace RestaurantCity {
             if (washing) { StandDirty--; StandClean++; return; }
             Restaurant.Protein -= midnight ? 2 : 1; Restaurant.Produce--;
             int earned = (int)Math.Round(KitchenState.StandPrice(this, front.Dish) * (1 - StandWorkerCut));
-            Cash += earned; EarnReputation(earned); StandWorkerEarned += earned; Served++; w.TasksCompleted++;
+            Cash += earned; GainReputation(Reputation.OkCustomer); StandWorkerEarned += earned; Served++; w.TasksCompleted++;
             StandClean--; StandDirty++; StandQueue.RemoveAt(0); SyncStandFront();
         }
         public const int StandQueueMax = 3, StandPlates = 4;
@@ -90,11 +99,12 @@ namespace RestaurantCity {
         }
         public bool Serve() {
             if (!HasOrder || Food != FoodStage.Plated || IsBurnt) return false;
-            Cash += SalePrice; EarnReputation(SalePrice); Served++; Food = FoodStage.Empty; HasOrder = false; NextCustomer = 6; return true;
+            Cash += SalePrice; GainReputation(Reputation.OkCustomer); Served++; Food = FoodStage.Empty; HasOrder = false; NextCustomer = 6; return true;
         }
         public bool ClaimRecipe(bool guardDefeated) {
             // The rival guards his stash every night. First win: the midnight recipe + 3 Flux. After that: +2 Flux per night.
             if (!IsNight || !guardDefeated || LastStashDay == Day) return false;
+            GainReputation(RecipeUnlocked ? Reputation.NightlyStash : Reputation.HiddenRecipe);
             LastStashDay = Day; Flux += RecipeUnlocked ? 2 : 3; RecipeUnlocked = true; FluxIntroduced = true; return true;
         }
         public bool RequestHelp() {
@@ -108,9 +118,10 @@ namespace RestaurantCity {
         }
         public void SanitizeAfterLoad() {
             // Saves from before reputation existed get credit for what their restaurant already earned.
-            if (Version < 5 && Xp == 0 && Restaurant != null) Xp = Math.Max(0, Restaurant.Earnings);
-            Version = 5; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
-            Xp = Math.Max(0, Math.Min(999999, Xp)); RankUpTo = -1;
+            // v5 briefly counted dollars as reputation; v6 counts customers, stars and discoveries, so cap the carried-over amount.
+            if (Version == 5) Xp = Math.Min(Xp, Reputation.Thresholds[1] - 1);
+            Version = 6; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
+            Xp = Math.Max(0, Math.Min(999999, Xp)); RankUpTo = -1; Goals = Goals ?? new List<string>(); RankEarned = Math.Max(0, Math.Min(Reputation.Titles.Length - 1, RankEarned)); CheckRankUp();
             // Old saves kept stand "Stock" separately; it now lives in the one shared pantry.
             if (Stock > 0) { Restaurant.Protein += Stock; Restaurant.Produce += Stock; Stock = 0; }
             Kitchen = Kitchen ?? new KitchenState(); Kitchen.SanitizeAfterLoad(this); Flux = Math.Max(0, Flux);
@@ -124,11 +135,13 @@ namespace RestaurantCity {
         public void Tick(float seconds) {
             if (seconds <= 0 || float.IsNaN(seconds) || float.IsInfinity(seconds)) return;
             Clock += seconds;
+            if (Restaurant != null && Restaurant.PendingReputation != 0) { int rep = Restaurant.PendingReputation; Restaurant.PendingReputation = 0; GainReputation(rep); }
+            else CheckRankUp();
             while (Clock >= 240) { Clock -= 240; Day++; }
             if (Food == FoodStage.Cooking) CookSeconds += seconds;
             StandQueue = StandQueue ?? new List<StandOrder>();
             foreach (var o in StandQueue) o.Patience -= seconds;
-            Missed += StandQueue.RemoveAll(o => o.Patience <= 0);
+            int walked = StandQueue.RemoveAll(o => o.Patience <= 0); Missed += walked; if (walked > 0) GainReputation(walked * Reputation.LostCustomer);
             if (StandBuilt && StandOpen && StandQueue.Count < StandQueueMax) {
                 NextCustomer -= seconds;
                 if (NextCustomer <= 0) {

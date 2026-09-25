@@ -2,16 +2,20 @@ using System;
 namespace RestaurantCity {
     // Reputation rank (see claude/world-map.md): every dollar of sales is one reputation point, and each rank opens a district.
     // Stars stay a per-restaurant quality rating; rank is your standing across the whole city.
+    // Reputation rank (see claude/world-map.md). Rank measures how well you run things, not how much money you make:
+    // happy customers, stars, hidden recipes, rivals and recruits earn reputation, and every rank also needs one keystone goal.
+    // Money buys things (transport, tools, decor, properties) but never rank.
     public static class Reputation {
         public static readonly string[] Titles = { "Street Cook", "Line Cook", "Sous Chef", "Head Chef", "Restaurateur", "Mogul" };
-        public static readonly int[] Thresholds = { 0, 300, 1000, 2400, 5000, 9000 };
-        public static int Rank(int xp) { int r = 0; for (int i = 1; i < Thresholds.Length; i++) if (xp >= Thresholds[i]) r = i; return r; }
-        public static string Title(int xp) => Titles[Rank(xp)];
-        public static bool IsMax(int xp) => Rank(xp) == Thresholds.Length - 1;
-        public static int NextThreshold(int xp) { int r = Rank(xp); return r + 1 < Thresholds.Length ? Thresholds[r + 1] : Thresholds[r]; }
-        public static float Progress(int xp) {
-            int r = Rank(xp); if (r + 1 >= Thresholds.Length) return 1;
-            return Math.Max(0, Math.Min(1, (xp - Thresholds[r]) / (float)(Thresholds[r + 1] - Thresholds[r])));
+        public static readonly int[] Thresholds = { 0, 400, 1200, 2500, 5000, 9000 };
+        public static readonly string[] Keystones = { "", "The Odd Table reaches 2 stars", "Beat Captain Krill at the Docks", "Win the Neon Row cook-off", "Any restaurant reaches 4 stars", "Beat the Gilded Orbit flagship" };
+        public static readonly string[] KeystoneGoal = { "", "", "beat_krill", "win_cookoff", "", "beat_flagship" };
+        // Reputation awards.
+        public const int HappyCustomer = 3, OkCustomer = 1, LostCustomer = -1, NewStar = 50, HiddenRecipe = 40, NightlyStash = 10, BeatRival = 40, RematchRival = 10, Recruit = 20, NewResident = 10;
+        public static bool IsMax(int rank) => rank >= Thresholds.Length - 1;
+        public static float Progress(int rep, int rank) {
+            if (IsMax(rank)) return 1;
+            return Math.Max(0, Math.Min(1, (rep - Thresholds[rank]) / (float)(Thresholds[rank + 1] - Thresholds[rank])));
         }
     }
     public class CityDistrict {
@@ -38,7 +42,7 @@ namespace RestaurantCity {
             return null;
         }
         public static CityDistrict ById(string id) { foreach (var d in All) if (d.Id == id) return d; return null; }
-        public static bool Unlocked(CityDistrict d, int xp) => d == null || Reputation.Rank(xp) >= d.Rank;
+        public static bool Unlocked(CityDistrict d, int rank) => d == null || rank >= d.Rank;
         public static CityDistrict OpenedAt(int rank) { foreach (var d in All) if (d.Rank == rank) return d; return null; }
         public static readonly CityPlace[] Places = {
             new CityPlace("Your stand", "you", 0, 8), new CityPlace("Milo's", "supply", -12, 10), new CityPlace("The Odd Table", "restaurant", -10, -15),

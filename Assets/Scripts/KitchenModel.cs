@@ -189,7 +189,7 @@ namespace RestaurantCity {
    if(RecipeOf(item)!=order.DishId)return Fail("They ordered "+RestaurantCatalog.Dish(order.DishId).Name+". Bring the matching dish.",out message);
    order.Quality=item.Quality;order.Stage=RestaurantOrderStage.Ready;order.StageTime=0;int before=game.Cash,wages=game.Restaurant.WagesPerOrder;
    if(!game.Restaurant.CompleteServing(game,orderId,out message)){order.Stage=RestaurantOrderStage.Waiting;return false;}
-   int gross=game.Cash-before+wages,bonus=ShiftNight?(int)Math.Round(gross*.3f):0;game.Cash+=bonus;game.Restaurant.Earnings+=bonus;game.EarnReputation(gross+bonus);ShiftGross+=gross+bonus;ShiftWages+=wages;
+   int gross=game.Cash-before+wages,bonus=ShiftNight?(int)Math.Round(gross*.3f):0;game.Cash+=bonus;game.Restaurant.Earnings+=bonus;ShiftGross+=gross+bonus;ShiftWages+=wages;
    if(bonus>0)message+=" Night premium +$"+bonus+".";
    if(item.Disposable||item.StandPlate){if(item.StandPlate)game.StandDirty++;Items.Remove(item);return true;}
    item.Holder="table:"+orderId;item.TableInstanceId=order.SeatInstanceId;return true;
@@ -202,9 +202,9 @@ namespace RestaurantCity {
    var order=game.StandQueue.Find(o=>o.Dish==dish);
    if(order==null)return Fail(dish=="midnight"?"Nobody in line ordered a midnight burger.":"Everyone in line wants a MIDNIGHT burger: add sauce from the sauce shelf.",out message);
    int price=StandPrice(game,dish);bool fast=order.Patience>order.MaxPatience*.6f;if(fast)price+=2;
-   game.Cash+=price;game.EarnReputation(price);game.Served++;game.StandQueue.Remove(order);game.SyncStandFront();
+   game.Cash+=price;game.GainReputation(fast?Reputation.HappyCustomer:Reputation.OkCustomer);game.Served++;game.StandQueue.Remove(order);game.SyncStandFront();
    if(item.StandPlate)game.StandDirty++;Items.Remove(item);
-   message="+$"+price+(fast?" (incl. $2 speed tip)":"")+"  "+(dish=="midnight"?"A midnight burger! They'll tell their friends.":"Another happy customer!");return true;
+   message="+$"+price+(fast?" (incl. $2 speed tip)":"")+"  +"+(fast?Reputation.HappyCustomer:Reputation.OkCustomer)+" rep  "+(dish=="midnight"?"A midnight burger! They'll tell their friends.":"Another happy customer!");return true;
   }
   public string StandPreview(GameState game,string actor){
    var item=Hold(actor);string dish=RecipeOf(item);

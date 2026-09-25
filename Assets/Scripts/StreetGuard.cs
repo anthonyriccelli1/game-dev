@@ -47,7 +47,7 @@ namespace RestaurantCity {
             if (!Game.State.IsNight || Defeated || Game.State.LastStashDay == Game.State.Day) return;
             HitsRemaining--; windup = 0; cooldown = .8f; stagger = .35f;
             Game.Notify(HitsRemaining > 0 ? "Rival staggered  /  " + HitsRemaining + " hits left" : "Rival defeated. The recipe stash is yours.");
-            if (HitsRemaining <= 0) { Defeated = true; Body.gameObject.SetActive(false); }
+            if (HitsRemaining <= 0) { Defeated = true; Body.gameObject.SetActive(false); Game.State.GainReputation(Game.State.BeatAlleyRival ? Reputation.RematchRival : Reputation.BeatRival); Game.State.BeatAlleyRival = true; }
         }
         public void ResetGuard() { Defeated = false; HitsRemaining = 3; windup = 0; cooldown = 2; transform.position = home; }
     }

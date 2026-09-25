@@ -11,7 +11,7 @@ namespace RestaurantCity {
         void Start() { Refresh(); }
         void Refresh() {
             if (Game == null || Game.State == null) return;
-            int rank = Reputation.Rank(Game.State.Xp); shownRank = rank;
+            int rank = Game.State.RankEarned; shownRank = rank;
             var root = GameObject.Find("District locks"); if (!root) return;
             foreach (var d in CityDistricts.All) { var t = root.transform.Find("Lock_" + d.Id); if (t) t.gameObject.SetActive(rank < d.Rank); }
         }
@@ -25,15 +25,15 @@ namespace RestaurantCity {
                 int r = Game.State.RankUpTo; Game.State.RankUpTo = -1; var opened = CityDistricts.OpenedAt(r);
                 Game.Notify("RANK UP!  You're a " + Reputation.Titles[r].ToUpper() + ".  " + (opened != null ? opened.Name + " is now open. Check the Map (M)." : ""), 10);
                 Refresh();
-            } else if (Reputation.Rank(Game.State.Xp) != shownRank) Refresh();
+            } else if (Game.State.RankEarned != shownRank) Refresh();
             if (Suspended) return;
             foreach (var player in Players()) {
                 var p = player.transform.position; var d = CityDistricts.At(p.x, p.z);
-                if (d != null && !CityDistricts.Unlocked(d, Game.State.Xp)) {
+                if (d != null && !CityDistricts.Unlocked(d, Game.State.RankEarned)) {
                     if (safe.TryGetValue(player, out var back)) player.Teleport(back);
                     if (Time.unscaledTime > nextNotice) {
                         nextNotice = Time.unscaledTime + 3;
-                        Game.Notify(d.Name.ToUpper() + " is closed to you.  Reach " + Reputation.Titles[d.Rank].ToUpper() + " (" + Game.State.Xp + "/" + Reputation.Thresholds[d.Rank] + " reputation). Earn it by serving customers.", 3);
+                        Game.Notify(d.Name.ToUpper() + " is closed to you.  Reach " + Reputation.Titles[d.Rank].ToUpper() + ": " + Reputation.Thresholds[d.Rank] + " reputation" + (string.IsNullOrEmpty(Reputation.Keystones[d.Rank]) ? "" : " and " + Reputation.Keystones[d.Rank].ToLower()) + ". Check the Map (M).", 3);
                     }
                 } else safe[player] = p;
             }
