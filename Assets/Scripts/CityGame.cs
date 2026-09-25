@@ -116,9 +116,9 @@ namespace RestaurantCity {
             RecipeGlow.SetActive(State.IsNight && !State.RecipeUnlocked);
             float dusk = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(125, 160, State.Clock));
             if (State.Clock > 220) dusk = 1 - Mathf.SmoothStep(0, 1, Mathf.InverseLerp(220, 240, State.Clock));
-            Sun.intensity = Mathf.Lerp(1.25f, .14f, dusk);
+            Sun.intensity = Mathf.Lerp(1.25f, .24f, dusk);
             Sun.color = Color.Lerp(new Color(1, .91f, .77f), new Color(.52f, .64f, 1), dusk);
-            RenderSettings.ambientLight = Color.Lerp(new Color(.66f, .74f, .78f), new Color(.20f, .25f, .39f), dusk);
+            RenderSettings.ambientLight = Color.Lerp(new Color(.66f, .74f, .78f), new Color(.30f, .34f, .52f), dusk);
             Player.View.backgroundColor = Color.Lerp(new Color(.61f, .80f, .83f), new Color(.055f, .075f, .16f), dusk);
             RenderSettings.fogColor = Player.View.backgroundColor;
             foreach (var lamp in Lamps) lamp.intensity = Mathf.Lerp(.2f, 4, dusk);

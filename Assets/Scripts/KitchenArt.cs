@@ -165,7 +165,7 @@ namespace RestaurantCity {
             } else if(kind=="Bun")Bun(p,Vector3.zero);
             else if(kind=="RawProtein") {var meat=Box("Raw cut of protein",p,new Vector3(0,.045f,0),new Vector3(.24f,.085f,.18f),"C96C64");meat.transform.localRotation=Quaternion.Euler(0,15,0);for(int i=0;i<3;i++){var fat=Box("Raw marbling",p,new Vector3((i-1)*.057f,.09f,0),new Vector3(.014f,.004f,.13f),"F0BC9D");fat.transform.localRotation=Quaternion.Euler(0,-22,0);}}
             else Patty(p,Vector3.zero,kind);
-            return root;
+            return ArtOverrides.Apply(root,"Items",kind);
         }
         static void PantryShelf(Transform parent,string subId,float x,float yLow,float yHigh) {
             var zone=G("Pantry shelf "+subId,parent,new Vector3(x,(yLow+yHigh)*.5f,.44f));
