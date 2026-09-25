@@ -65,6 +65,25 @@ public static class CityMap {
         for (int i = 0; i < stacks; i++) Module("Buildings/SM_Bld_Apartment_Stack_0" + family, x0, z0, facing, 3 + 9 * i, parent);
         Module("Buildings/SM_Bld_Apartment_Roof_0" + family, x0, z0, facing, 3 + 9 * stacks, parent);
     }
+    // Ring a block with buildings on the sides that face streets.
+    static void Block(float xa, float xb, float za, float zb, bool n, bool so, bool e, bool w, bool shops, int minStacks, int maxStacks) {
+        for (float x = xa; x < xb - .01f; x += 5) for (float z = za; z < zb - .01f; z += 5) {
+            bool onN = n && z >= zb - 5.01f, onS = so && z <= za + .01f, onE = e && x >= xb - 5.01f, onW = w && x <= xa + .01f;
+            if (!(onN || onS || onE || onW)) continue;
+            int span = maxStacks - minStacks + 1, stacks = minStacks + (((int)(x * 3 + z * 7) + seed) % span + span) % span;
+            if ((onN || onS) && (onE || onW)) { Corner(x, z, onN && onE ? 0 : onS && onE ? 1 : onS && onW ? 2 : 3, stacks, shops); continue; }
+            Tower(x, z, onN ? 0 : onS ? 2 : onE ? 1 : 3, stacks, shops);
+        }
+    }
+    // Corner building with facades on two street sides. facing 0 = +Z/+X, 1 = +X/-Z, 2 = -Z/-X, 3 = -X/+Z.
+    static void Corner(float x0, float z0, int facing, int stacks, bool shop) {
+        if (IsReserved(new Rect(x0, z0, 5, 5))) return;
+        int s = seed++; int family = s % 3 + 1;
+        var parent = new GameObject("Corner building").transform; parent.SetParent(root, false);
+        Module(shop ? "Buildings/SM_Bld_Shop_Corner_0" + (s % 2 + 1) : "Buildings/SM_Bld_Apartment_Corner_0" + family, x0, z0, facing, 0, parent);
+        for (int i = 0; i < stacks * 3; i++) Module("Buildings/SM_Bld_Apartment_Corner_0" + family, x0, z0, facing, 3 + 3 * i, parent);
+        Module("Buildings/SM_Bld_Apartment_Roof_Corner_0" + family, x0, z0, facing, 3 + 9 * stacks, parent);
+    }
     // A row of towers along a line. Rows facing +/-Z run along X; rows facing +/-X run along Z.
     static void Row(float from, float to, float fixedCoord, int facing, int minStacks, int maxStacks, bool shops) {
         for (float a = from; a + 5 <= to + .01f; a += 5) {
@@ -94,26 +113,27 @@ public static class CityMap {
         // Real facades for Milo's and the apartments next to the stand (inside the gameplay strip).
         foreach (var x0 in new[] { -18f, -13f }) ForceTower(x0, 13.5f, 2, 1, true);
         foreach (var x0 in new[] { -5f, 0f }) ForceTower(x0, 15f, 2, 2, false);
-        // Main Street's north side (outside the gameplay strip) and south side shop rows.
-        Row(-35, -20, 13.5f, 2, 1, 2, true);   Row(25, 35, 10, 2, 1, 2, true);
-        Row(-35, 35, -16.5f, 0, 1, 2, true);
-        Row(-80, -45, 10, 2, 1, 3, true);      Row(45, 80, 10, 2, 1, 3, true);
-        Row(-80, -45, -15, 0, 1, 3, true);     Row(45, 80, -15, 0, 1, 3, true);
-        // Block backs facing North / South Avenues, and side rows on West / East Streets.
-        Row(-35, 35, 35, 0, 1, 2, false);      Row(-35, 35, -40, 2, 1, 2, false);
-        Row(20, 35, -35, 3, 1, 2, false);      Row(20, 35, 30, 1, 1, 2, false);
-        Row(-30, -20, -35, 3, 1, 2, false);    Row(15, 30, -30, 3, 0, 1, false);
-        // Outer ring: tall apartment rows along the avenues.
-        Row(-80, 80, 60, 2, 2, 3, false);      Row(-80, 80, -65, 0, 2, 3, false);
-        Row(-80, -45, 40, 0, 1, 2, false);     Row(45, 80, 40, 0, 1, 2, false);
-        Row(-80, -45, -45 + 5, 2, 1, 2, false); Row(45, 80, -45 + 5, 2, 1, 2, false);
+        // City blocks: storefront rows on every street side, corner buildings where two streets meet.
+        //      x range        z range      N      S      E      W     shops  stacks
+        Block(-30, 30,   10, 40,  true,  true,  true,  true,  true,  1, 2);   // north of Main Street (gameplay strip reserved)
+        Block(-30, 30,  -40, -10, true,  true,  true,  true,  true,  1, 2);   // south of Main Street (your restaurant reserved)
+        Block(-80, -50,  10, 40,  false, true,  true,  false, true,  1, 2);   // city hall block (street sides only)
+        Block(-80, -50, -40, -10, true,  false, true,  false, true,  1, 2);
+        Block( 50, 80,   10, 40,  false, true,  false, true,  true,  1, 3);
+        Block( 50, 80,  -40, -10, true,  false, false, true,  true,  1, 3);
+        Block(-80, -50,  60, 80,  false, true,  true,  false, false, 2, 3);
+        Block(-30, 30,   60, 80,  false, true,  true,  true,  false, 2, 3);
+        Block( 50, 80,   60, 80,  false, true,  false, true,  false, 2, 3);
+        Block(-80, -50, -80, -60, true,  false, true,  false, false, 2, 3);
+        Block(-30, 30,  -80, -60, true,  false, true,  true,  false, 2, 3);
+        Block( 50, 80,  -80, -60, true,  false, false, true,  false, 2, 3);
         // Landmarks in the outer blocks.
-        Put("Buildings/SM_Bld_CityHall_01", new Vector3(-62, 0, 26), 180);
-        Put("Buildings/SM_Bld_OfficeRound_01", new Vector3(-62, 0, -28), 0);
-        Put("Buildings/SM_Bld_OfficeSquare_01", new Vector3(70, 0, 34), 0);
-        Put("Buildings/SM_Bld_OfficeOld_Large_01", new Vector3(70, 0, -18), 0);
-        Put("Buildings/SM_Bld_OfficeOctagon_01", new Vector3(-62, 0, 72), 0);
-        Put("Buildings/SM_Bld_OfficeOld_Small_01", new Vector3(20, 0, 76), 0);
+        Put("Buildings/SM_Bld_CityHall_01", new Vector3(-67, 0, 25), 180);
+        Put("Buildings/SM_Bld_OfficeRound_01", new Vector3(-67, 0, -25), 0);
+        Put("Buildings/SM_Bld_OfficeSquare_01", new Vector3(80, 0, 35), 0);
+        Put("Buildings/SM_Bld_OfficeOld_Large_01", new Vector3(80, 0, -15), 0);
+        Put("Buildings/SM_Bld_OfficeOctagon_01", new Vector3(-67, 0, 72), 0);
+        Put("Buildings/SM_Bld_OfficeOld_Small_01", new Vector3(20, 0, 80), 0);
         Put("Buildings/SM_Bld_Station_01", new Vector3(0, 0, -30), 0);
         Put("Environments/Custom/SM_Env_Skyline_01", Vector3.zero, 0);
         // Street life: parked cars, trees, benches, hydrants, a hotdog cart, bus stop, rooftop signs.
