@@ -70,7 +70,8 @@ namespace RestaurantCity {
             while (stack.Count < count) {
                 // Parent beside the station (some stations are scaled) and place in its local frame.
                 var plate = KitchenArt.CreateItem(kind, station.transform.parent);
-                plate.transform.position = station.transform.TransformPoint(basePos) + Vector3.up * (.05f * stack.Count);
+                plate.transform.localScale = Vector3.one * .7f;
+                plate.transform.position = station.transform.TransformPoint(basePos) + Vector3.up * (.04f * stack.Count);
                 stack.Add(plate);
             }
             while (stack.Count > count) { Destroy(stack[stack.Count - 1]); stack.RemoveAt(stack.Count - 1); }
@@ -83,10 +84,10 @@ namespace RestaurantCity {
             if (!standPlatesText && standObjects.TryGetValue(KitchenState.StandBase + 4, out var rack) && rack) { standPlatesText = WorldCaption(rack.transform, "", new Vector3(0, 2.1f, 0), .014f); }
             if (!standSinkText && standObjects.TryGetValue(KitchenState.StandBase + 5, out var sink) && sink) { standSinkText = WorldCaption(sink.transform, "", new Vector3(0, 2.1f, 0), .014f); }
             if (standPlatesText) { standPlatesText.text = "Clean plates: " + s.StandClean; standPlatesText.transform.rotation = Quaternion.identity; }
-            if (standSinkText) { standSinkText.text = s.StandDirty > 0 ? "<color=#E8C34A>Dirty: " + s.StandDirty + "</color>\nHold E to wash" : "Sink"; standSinkText.transform.rotation = Quaternion.identity; }
+            if (standSinkText) { standSinkText.text = s.StandDirty > 0 ? "<color=#E8C34A>Dirty pile: " + s.StandDirty + "</color>" : "Sink"; standSinkText.transform.rotation = Quaternion.identity; }
             if (Game.Customer && Game.Customer.activeSelf) Game.Customer.SetActive(false);
             SyncPlateStack(cleanStack, KitchenState.StandBase + 4, s.StandClean, "Plate", new Vector3(0, 1.04f, 0));
-            SyncPlateStack(dirtyStack, KitchenState.StandBase + 5, s.StandDirty, "DirtyPlate", new Vector3(.3f, 1.12f, 0));
+            SyncPlateStack(dirtyStack, KitchenState.StandBase + 5, s.StandDirty, "DirtyPlate", new Vector3(.75f, 1.08f, .2f));
             var world = Game.Stand ? Game.Stand.transform.parent : transform;
             var live = new HashSet<int>();
             for (int i = 0; i < s.StandQueue.Count; i++) {

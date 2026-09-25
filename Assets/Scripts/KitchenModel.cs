@@ -112,9 +112,10 @@ namespace RestaurantCity {
     if(game.StandClean<=0)return Blocked("No clean plates! Wash dirty ones at the stand sink.");
     return Tap("Take a plate ("+game.StandClean+" clean)",()=>{game.StandClean--;var p=Create(KitchenItemKind.Plate,actor);p.StandPlate=true;return "Plate ready. Build it: bun + cooked patty.";});
    }
-   if(stand&&s.CatalogId=="sink"){
-    if(hand!=null)return Blocked("Free your hands to wash.");
-    return game.StandDirty>0?NeedsHold("Wash a plate ("+game.StandDirty+" dirty)"):Blocked("No dirty plates right now.");
+   if(stand&&s.CatalogId=="sink"&&item==null&&hand==null){
+    // Dirty plates pile up beside the stand sink; move them in one at a time, then hold to wash.
+    if(game.StandDirty<=0)return Blocked("No dirty plates right now.");
+    return Tap("Put a dirty plate in the sink ("+game.StandDirty+" waiting)",()=>{game.StandDirty--;var d=Create(KitchenItemKind.DirtyPlate,"station:"+stationId);d.StandPlate=true;s.Progress=0;return "Hold E to wash it.";});
    }
    // Fewer-press shortcuts: while carrying a plate, a finished ingredient at its own station slides
    // straight onto it instead of needing a separate pickup-then-assembly trip.
@@ -153,14 +154,6 @@ namespace RestaurantCity {
   }
   public bool Work(GameState game,string actor,int stationId,float seconds,out string message){
    var s=Stations.Find(x=>x.InstanceId==stationId);var item=At(stationId);
-   if(s!=null&&IsStandStation(stationId)&&s.CatalogId=="sink"&&seconds>0&&!float.IsNaN(seconds)&&!float.IsInfinity(seconds)){
-    if(Hold(actor)!=null)return Fail("Free your hands before working.",out message);
-    if(game.StandDirty<=0)return Fail("No dirty plates.",out message);
-    if(!string.IsNullOrEmpty(s.WorkOwner)&&s.WorkOwner!=actor)return Fail("Someone else is washing here.",out message);
-    s.WorkOwner=actor;s.Progress+=seconds;
-    if(s.Progress<WashSeconds){message="Washing "+(int)(s.Progress/WashSeconds*100)+"%";return true;}
-    game.StandDirty--;game.StandClean++;s.Progress=0;s.WorkOwner=null;message="Clean plate back on the stack.";return true;
-   }
    if(s==null||item==null||seconds<=0||float.IsNaN(seconds)||float.IsInfinity(seconds))return Fail("Place an ingredient or dirty plate here first.",out message);
    if(Hold(actor)!=null)return Fail("Free your hands before working.",out message);
    bool prep=s.CatalogId=="prep_bench"&&Raw(item.Kind),wash=s.CatalogId=="sink"&&item.Kind==KitchenItemKind.DirtyPlate;
@@ -168,7 +161,7 @@ namespace RestaurantCity {
    if(!string.IsNullOrEmpty(s.WorkOwner)&&s.WorkOwner!=actor)return Fail("Someone else is working here.",out message);
    s.WorkOwner=actor;s.Progress+=seconds;float duration=wash?WashSeconds:item.Kind==KitchenItemKind.RawSauce?4:3;if(prep&&game.FluxResearch)duration*=.65f;
    if(s.Progress<duration){message=(wash?"Washing ":"Preparing ")+(int)(s.Progress/duration*100)+"%";return true;}
-   if(wash){Items.Remove(item);CleanPlates++;game.Restaurant.Cleanliness=Math.Min(100,game.Restaurant.Cleanliness+5);message="Clean plate returned to rack.";}
+   if(wash){Items.Remove(item);if(item.StandPlate){game.StandClean++;message="Clean plate back on the stand stack.";}else{CleanPlates++;game.Restaurant.Cleanliness=Math.Min(100,game.Restaurant.Cleanliness+5);message="Clean plate returned to rack.";}}
    else{item.Kind=item.Kind==KitchenItemKind.RawGreens?KitchenItemKind.ChoppedGreens:KitchenItemKind.MidnightSauce;message=Label(item)+" ready.";}
    s.Progress=0;s.WorkOwner=null;return true;
   }
