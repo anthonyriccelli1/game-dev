@@ -47,6 +47,30 @@ public static class CityMap {
         return Put(rel, p, yaw, parent);
     }
 
+    // Recolor a building with one of the pack's alternate palettes and dress its roof, so blocks don't read as clones.
+    static Material basePal; static readonly Dictionary<int, Material> pals = new Dictionary<int, Material>();
+    static void Dress(Transform b, float x0, float z0, float roofY, int s, bool corner) {
+        if (!basePal) basePal = AssetDatabase.LoadAssetAtPath<Material>("Assets/Synty/PolygonCity/Materials/Alts/PolygonCity_01_A.mat");
+        int pick = (s * 5 + 2) % 12;
+        if (pick != 0) {
+            if (!pals.TryGetValue(pick, out var m)) {
+                m = AssetDatabase.LoadAssetAtPath<Material>("Assets/Synty/PolygonCity/Materials/Alts/PolygonCity_0" + (pick / 3 + 1) + "_" + "ABC"[pick % 3] + ".mat");
+                pals[pick] = m;
+            }
+            if (m && basePal) foreach (var r in b.GetComponentsInChildren<Renderer>()) {
+                var mats = r.sharedMaterials; bool hit = false;
+                for (int i = 0; i < mats.Length; i++) if (mats[i] == basePal) { mats[i] = m; hit = true; }
+                if (hit) r.sharedMaterials = mats;
+            }
+        }
+        var c = new Vector3(x0 + 2.5f, roofY, z0 + 2.5f);
+        switch (s % 5) {
+            case 0: Put("Buildings/SM_Prop_Water_Tower_01", c + new Vector3(.6f, 0, -.4f), s * 37, b); break;
+            case 1: Put("Buildings/SM_Bld_Roof_Access_01", c + new Vector3(-.8f, 0, -.8f), 90 * (s % 4), b); Put("Props/SM_Prop_Roof_Aircon_02", c + new Vector3(1.2f, 0, 1f), 0, b); break;
+            case 2: Put("Props/SM_Prop_Roof_Aircon_03", c + new Vector3(-1, 0, .5f), 0, b); Put("Props/SM_Prop_Roof_Aircon_01", c + new Vector3(1.2f, 0, -1), 90, b); break;
+            case 3: Put("Props/SM_Prop_Roof_Aircon_02", c, s * 90, b); break;
+        }
+    }
     // One 5 m-wide building: shop or apartment ground floor, N apartment stacks (3 floors each), roof.
     static void Tower(float x0, float z0, int facing, int stacks, bool shop) {
         var r = new Rect(x0, z0, 5, 5); if (IsReserved(r)) return;
@@ -56,6 +80,7 @@ public static class CityMap {
         Module(ground, x0, z0, facing, 0, parent);
         for (int i = 0; i < stacks; i++) Module("Buildings/SM_Bld_Apartment_Stack_0" + family, x0, z0, facing, 3 + 9 * i, parent);
         Module("Buildings/SM_Bld_Apartment_Roof_0" + family, x0, z0, facing, 3 + 9 * stacks, parent);
+        Dress(parent, x0, z0, 3 + 9 * stacks + .5f, s, false);
     }
     static void ForceTower(float x0, float z0, int facing, int stacks, bool shop) { Tower2(x0, z0, facing, stacks, shop); }
     static void Tower2(float x0, float z0, int facing, int stacks, bool shop) {
@@ -83,6 +108,7 @@ public static class CityMap {
         Module(shop ? "Buildings/SM_Bld_Shop_Corner_0" + (s % 2 + 1) : "Buildings/SM_Bld_Apartment_Corner_0" + family, x0, z0, facing, 0, parent);
         for (int i = 0; i < stacks * 3; i++) Module("Buildings/SM_Bld_Apartment_Corner_0" + family, x0, z0, facing, 3 + 3 * i, parent);
         Module("Buildings/SM_Bld_Apartment_Roof_Corner_0" + family, x0, z0, facing, 3 + 9 * stacks, parent);
+        Dress(parent, x0, z0, 3 + 9 * stacks + .5f, s, true);
     }
     // A row of towers along a line. Rows facing +/-Z run along X; rows facing +/-X run along Z.
     static void Row(float from, float to, float fixedCoord, int facing, int minStacks, int maxStacks, bool shops) {

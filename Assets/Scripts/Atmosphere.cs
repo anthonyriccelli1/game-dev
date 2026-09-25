@@ -45,6 +45,13 @@ namespace RestaurantCity {
             var seen = new System.Collections.Generic.HashSet<Material>();
             foreach (var r in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
                 foreach (var m in r.sharedMaterials) if (m && seen.Add(m) && m.HasProperty("_Enable_Emission") && m.name.StartsWith("PolygonCity_0")) packGlow.Add(m);
+            // Alternate palettes ship without the window emission map; borrow it so they don't glow as solid blocks.
+            Texture windowMap = null;
+            foreach (var m in packGlow) if (m.HasProperty("_Emission_Map") && m.GetTexture("_Emission_Map")) { windowMap = m.GetTexture("_Emission_Map"); break; }
+            for (int i = packGlow.Count - 1; i >= 0; i--) {
+                var m = packGlow[i]; if (!m.HasProperty("_Emission_Map") || m.GetTexture("_Emission_Map")) continue;
+                if (windowMap) m.SetTexture("_Emission_Map", windowMap); else packGlow.RemoveAt(i);
+            }
             warm = new[] {
                 Warm(new Vector3(0, 3.0f, 8.1f), 2.2f, 7f),      // food stand, under the awning
                 Warm(new Vector3(-12, 3.0f, 8.6f), 1.8f, 6f),    // Milo's market
