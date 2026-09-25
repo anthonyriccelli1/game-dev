@@ -337,13 +337,13 @@ namespace RestaurantCity {
         }
         public bool Assign(string id,StaffJob job,out string message) {
             var w=Workers.Find(x=>x.Id==id);if(w==null)return Fail("Hire this worker first.",out message);
-            if(!Enum.IsDefined(typeof(StaffJob),job))return Fail("Choose a valid job.",out message);
+            if(!Enum.IsDefined(typeof(StaffJob),job)||job==StaffJob.Any)return Fail("Choose one job: cook, serve, wash or run the stand.",out message);
             // Only one worker can run the street stand at a time.
             if(job==StaffJob.Stand)foreach(var other in Workers)if(other!=w&&other.Job==StaffJob.Stand)other.Job=StaffJob.Off;
             w.Job=job;message=job==StaffJob.Stand?$"{RestaurantCatalog.Worker(id).Name} is running your food stand. They use your pantry and keep the money coming.":$"{RestaurantCatalog.Worker(id).Name}: {job}.";return true;
         }
         public float WorkerActionSeconds(StaffJob job) {
-            var assigned=Workers.Where(w=>w.Job==job||w.Job==StaffJob.Any).ToList();if(assigned.Count==0)return 8;
+            var assigned=Workers.Where(w=>w.Job==job).ToList();if(assigned.Count==0)return 8;
             Func<StaffDefinition,bool> Specialty=d=>d.Role==job||(d.Role==StaffJob.Serve&&job==StaffJob.Clean);
             var defs=assigned.Select(w=>RestaurantCatalog.Worker(w.Id)).Where(d=>d!=null).ToList();
             // Everyone can do every job; specialists are much faster at their own.
@@ -383,7 +383,7 @@ namespace RestaurantCity {
             // Unfinished service ends on load; durable restaurant layout, finances, menu, stock, reviews and workers survive.
             Orders.Clear();Open=false;Produce=Math.Max(0,Math.Min(StockLimit,Produce));Protein=Math.Max(0,Math.Min(StockLimit,Protein));
             Cleanliness=Clamp(Cleanliness,0,100);Satisfaction=Clamp(Satisfaction,0,100);Rank=Math.Max(1,Math.Min(2,Rank));Served=Math.Max(0,Served);Lost=Math.Max(0,Lost);UpdateRank();
-            foreach(var worker in Workers)worker.Energy=Clamp(worker.Energy,0,100);
+            foreach(var worker in Workers){worker.Energy=Clamp(worker.Energy,0,100);if(worker.Job==StaffJob.Any)worker.Job=RestaurantCatalog.Worker(worker.Id)?.Role??StaffJob.Cook;}
             EnsurePhysicalKit();
         }
     }

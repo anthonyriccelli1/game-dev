@@ -16,13 +16,8 @@ namespace RestaurantCity {
     // Stand workers are drawn at the street stand (PhysicalStand), not in the restaurant.
     view.Root.SetActive(worker.Job!=StaffJob.Stand);if(worker.Job==StaffJob.Stand){k.ReleaseWork(actor);continue;}
     if(worker.Job==StaffJob.Off||worker.Energy<=2||!ServiceInProgress){SetBubble(view.Bubble,worker.Id+" / resting / "+(int)worker.Energy+" energy");continue;}
-    // "Any job": pick whatever the restaurant needs most right now (serve ready food, then cook, then wash).
+    // Zombie Cafe rule: each worker does exactly the one job you assign.
     var job=worker.Job;
-    if(job==StaffJob.Any){
-     bool readyFood=k.Items.Any(i=>i.Holder.StartsWith("station:")&&k.RecipeOf(i)!=""&&Data.Orders.Any(o=>o.Stage==RestaurantOrderStage.Waiting&&o.DishId==k.RecipeOf(i)));
-     bool uncooked=Data.Orders.Any(o=>o.Stage==RestaurantOrderStage.Waiting&&!employees.Values.Any(v=>v!=view&&v.OrderId==o.Id)&&!k.Items.Any(i=>k.RecipeOf(i)==o.DishId));
-     job=readyFood?StaffJob.Serve:uncooked?StaffJob.Cook:StaffJob.Clean;
-    }
     if(plan.Count==0){
      var hand=k.Hold(actor);
      if(hand!=null){if(hand.Kind==KitchenItemKind.DirtyPlate){plan.Enqueue(new KitchenTask("sink"));plan.Enqueue(new KitchenTask("sink","work"));}else{var order=Data.Orders.FirstOrDefault(o=>o.Stage==RestaurantOrderStage.Waiting&&o.DishId==k.RecipeOf(hand));if(order!=null)plan.Enqueue(new KitchenTask("guest","serve",order.Id));else if(hand.Kind==KitchenItemKind.Plate)plan.Enqueue(new KitchenTask("assembly"));else k.Discard(Game.State,actor,out _);}}

@@ -306,10 +306,10 @@ namespace RestaurantCity {
             var current = WorkerJob(hired);
             Text workStatus = Label(card, "", 25, 207, 508, 24, 14, muted);
             tickLabels.Add(() => { if (workStatus) workStatus.text = "Energy " + hired.Energy.ToString("0") + "/100 / " + hired.TasksCompleted + " tasks completed"; });
-            StaffJob[] jobs = { StaffJob.Any, StaffJob.Cook, StaffJob.Serve, StaffJob.Clean, StaffJob.Stand, StaffJob.Off };
+            StaffJob[] jobs = { StaffJob.Cook, StaffJob.Serve, StaffJob.Clean, StaffJob.Stand, StaffJob.Off };
             for (int i = 0; i < jobs.Length; i++) {
                 var job = jobs[i]; bool active = current == job;
-                Button(card, job == StaffJob.Off ? "Rest" : job == StaffJob.Clean ? "Wash" : job == StaffJob.Stand ? "Stand" : job == StaffJob.Any ? "Any job" : job.ToString(), 25 + i * 85, 233, 80, 43, () => Owner.Assign(workerId, job), active ? teal : pale, active ? white : ink);
+                Button(card, job == StaffJob.Off ? "Rest" : job == StaffJob.Clean ? "Wash" : job == StaffJob.Stand ? "Stand" : job == StaffJob.Any ? "Any job" : job.ToString(), 25 + i * 102, 233, 97, 43, () => Owner.Assign(workerId, job), active ? teal : pale, active ? white : ink);
             }
         }
 
