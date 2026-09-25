@@ -127,6 +127,7 @@ namespace RestaurantCity {
         }
         public string Objective {
             get {
+                if (State.Restaurant.Owned && State.Restaurant.Layout.Count < 5) return "Furnish your kitchen\nKeep the stand running. Inside, press B to buy a pantry, grill, plate rack, assembly station, sink and a table.";
                 if (State.Restaurant.Owned) return "Your restaurant, your rules\nB to decorate inside. Tab to manage service, menu and staff.";
                 if (!State.StandBuilt) return "Make it yours\nSet up the coral food stand for $10.";
                 if (State.Restaurant.Protein == 0 || State.Restaurant.Produce == 0) return "Stock the kitchen\nBuy patties and buns from Milo's crates across the street.";

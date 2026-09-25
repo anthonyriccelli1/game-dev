@@ -171,10 +171,9 @@ namespace RestaurantCity {
         public bool BuyRestaurant(GameState wallet,out string message) {
             if(Owned)return Fail("This restaurant already belongs to you.",out message);
             if(wallet.Cash<150)return Fail("The lease costs $150. Keep earning at your stand.",out message);
-            wallet.Cash-=150;Owned=true;Produce=12;Protein=8;
-            AddPlaced("prep_bench",0,0,0,0);AddPlaced("grill",3,0,0,0);AddPlaced("cafe_table",0,3,0,0);
-            EnsurePhysicalKit();
-            message="Your first restaurant! Starter equipment and 20 ingredients included. Open service when ready.";return true;
+            // The lease is an empty, shabby room. Keep working the stand and buy the kitchen piece by piece.
+            wallet.Cash-=150;Owned=true;PhysicalKitInstalled=true;CounterInstalled=true;TrashInstalled=true;
+            message="It's yours: four walls and a lot of dust. Keep running your stand, then press B inside to buy a pantry, grill, plate rack, assembly station, sink and tables.";return true;
         }
         void AddPlaced(string id,int x,int z,int rotation,int paid) {Layout.Add(new PlacedItem{InstanceId=NextInstanceId++,CatalogId=id,X=x,Z=z,Rotation=rotation%4,Paid=paid});}
         public void EnsurePhysicalKit() {
@@ -281,7 +280,11 @@ namespace RestaurantCity {
         }
         public bool StartService(GameState wallet,out string message) {
             if(!Owned||Open)return Fail("Service is unavailable or already open.",out message);
-            if(Seats<1)return Fail("Install customer seating before opening.",out message);
+            var missing=new[]{"pantry","plate_rack","sink"}.Where(id=>!HasEquipment(id)).Select(id=>RestaurantCatalog.Find(id).Name).ToList();
+            if(!HasEquipment("assembly")&&!HasEquipment("counter"))missing.Add("an assembly station or counter");
+            if(!HasEquipment("grill")&&!HasEquipment("prep_bench"))missing.Add("a grill or prep bench");
+            if(Seats<1)missing.Add("a table");
+            if(missing.Count>0)return Fail("Not ready to open. Still need: "+string.Join(", ",missing)+". Press B inside to shop.",out message);
             if(!ActiveMenu.Any(id=>IsDishAvailable(wallet,id)))return Fail("Install equipment for at least one menu dish.",out message);
             Open=true;ServiceSeconds=0;message="OPEN! Customers can arrive. Close service at any time to stop new arrivals.";return true;
         }

@@ -210,13 +210,13 @@ public static class PrototypeBuilder {
         var root = new GameObject("Rival restaurant / The Gilded Orbit").transform; root.parent = parent;
         var obsidian = Mat("Obsidian", "1C1B2B"); var gold = Mat("Rival gold", "D9A441"); var plum = Mat("Plum velvet", "4A2548");
         var marble = Mat("Marble floor", "E9E1D3"); var glassDark = Mat("Smoked glass", "3E5B73");
-        float x0 = 14, x1 = 24, zf = 16.5f, zb = 23.5f, h = 4.6f;
-        Cube("Marble floor", new Vector3(19, .04f, 20), new Vector3(10, .08f, 7), marble, root);
-        Cube("Back wall", new Vector3(19, h / 2, zb - .1f), new Vector3(10, h, .2f), plum, root);
-        Cube("Left wall", new Vector3(x0 + .1f, h / 2, 20), new Vector3(.2f, h, 7), plum, root);
-        Cube("Right wall", new Vector3(x1 - .1f, h / 2, 20), new Vector3(.2f, h, 7), plum, root);
-        Cube("Upper floors", new Vector3(19, h + 3.8f, 20), new Vector3(10.2f, 7.6f, 7.2f), obsidian, root);
-        Cube("Roof cornice", new Vector3(19, h + 7.7f, 20), new Vector3(10.6f, .4f, 7.6f), gold, root);
+        float x0 = 14, x1 = 24.3f, zf = 16.5f, zb = 29.4f, h = 4.6f; float cx0 = (x0 + x1) / 2, cz = (zf + zb) / 2, depth = zb - zf, width = x1 - x0;
+        Cube("Marble floor", new Vector3(cx0, .04f, cz), new Vector3(width, .08f, depth), marble, root);
+        Cube("Back wall", new Vector3(cx0, h / 2, zb - .1f), new Vector3(width, h, .2f), plum, root);
+        Cube("Left wall", new Vector3(x0 + .1f, h / 2, cz), new Vector3(.2f, h, depth), plum, root);
+        Cube("Right wall", new Vector3(x1 - .1f, h / 2, cz), new Vector3(.2f, h, depth), plum, root);
+        Cube("Upper floors", new Vector3(cx0, h + 3.8f, cz), new Vector3(width + .2f, 7.6f, depth + .2f), obsidian, root);
+        Cube("Roof cornice", new Vector3(cx0, h + 7.7f, cz), new Vector3(width + .6f, .4f, depth + .6f), gold, root);
         for (float wx = 15.2f; wx < 23.5f; wx += 2.1f) for (float y = 6.4f; y < 11.8f; y += 2.6f) {
             Cube("Gold window frame", new Vector3(wx, y, zf - .02f), new Vector3(1.4f, 1.9f, .16f), gold, root, false);
             Cube("Lit window", new Vector3(wx, y, zf - .08f), new Vector3(1.15f, 1.62f, .08f), Mat("Warm window", "F2C27A"), root, false);
@@ -228,7 +228,7 @@ public static class PrototypeBuilder {
             Cube("Front glass", new Vector3(cx, 2.25f, zf), new Vector3(w, 3.3f, .08f), glassDark, root);
             for (float px = seg.x; px <= seg.y + .01f; px += w / 2) Cube("Gold mullion", new Vector3(px, 2.25f, zf - .05f), new Vector3(.1f, 3.3f, .14f), gold, root, false);
         }
-        Cube("Front header", new Vector3(19, 4.2f, zf), new Vector3(10, .8f, .3f), obsidian, root);
+        Cube("Front header", new Vector3(cx0, 4.2f, zf), new Vector3(width, .8f, .3f), obsidian, root);
         Cube("Door frame left", new Vector3(18.05f, 2, zf - .05f), new Vector3(.12f, 4, .2f), gold, root);
         Cube("Door frame right", new Vector3(19.95f, 2, zf - .05f), new Vector3(.12f, 4, .2f), gold, root);
         Cube("Red carpet", new Vector3(19, .03f, zf - 1.2f), new Vector3(1.6f, .04f, 2.4f), Mat("Carpet", "A3243B"), root, false);

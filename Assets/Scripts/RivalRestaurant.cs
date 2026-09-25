@@ -16,34 +16,40 @@ namespace RestaurantCity {
             if (!rivalRoot || rivalRoot.Find("Interior")) return;
             var inside = new GameObject("Interior").transform; inside.SetParent(rivalRoot, false);
 
-            // Kitchen line along the back wall, facing the dining room.
-            Place("oven", 15.4f, 22.6f, 180, inside); Place("grill", 17.5f, 22.6f, 180, inside); Place("grill", 19.6f, 22.6f, 180, inside);
-            Place("stove", 21.2f, 22.6f, 180, inside); Place("fridge", 22.2f, 22.6f, 180, inside); Place("sink", 23.2f, 22.6f, 180, inside);
-            Place("assembly", 18.2f, 21.0f, 180, inside); Place("assembly", 20.3f, 21.0f, 180, inside);
-            for (int i = 0; i < 4; i++) {
+            // Open kitchen along the back wall (z 28), facing a long pass.
+            Place("oven", 15.6f, 28.3f, 180, inside); Place("grill", 17.8f, 28.3f, 180, inside); Place("grill", 19.9f, 28.3f, 180, inside);
+            Place("stove", 21.5f, 28.3f, 180, inside); Place("fridge", 22.5f, 28.3f, 180, inside); Place("sink", 23.5f, 28.3f, 180, inside);
+            Place("assembly", 17.6f, 26.6f, 180, inside); Place("assembly", 19.7f, 26.6f, 180, inside); Place("assembly", 21.8f, 26.6f, 180, inside);
+            for (int i = 0; i < 6; i++) {
                 var plate = KitchenArt.CreateItem("Plate", new List<string> { "bun", "cooked_patty", i % 2 == 0 ? "midnight_sauce" : "chopped_greens" }, inside);
-                plate.transform.position = new Vector3(17.6f + i * .95f, 1.1f, 21.0f);
+                plate.transform.position = new Vector3(17.0f + i * .95f, 1.1f, 26.6f);
             }
-            Place("neon_moon", 19.6f, 23.15f, 180, inside); Place("art_orbit", 15.4f, 23.2f, 180, inside); Place("art_orbit", 22.6f, 23.2f, 180, inside);
-            // Side walls: a backlit wine wall and a glowing aquarium.
-            Luxury("wine_wall", new Vector3(14.45f, 0, 21.2f), 90, inside, true);
-            Luxury("aquarium", new Vector3(23.55f, 0, 21.2f), 270, inside, true);
-            Place("jukebox", 16.3f, 21.0f, 180, inside);
-            // Dining room.
-            Place("rug_sunset", 19f, 18.6f, 0, inside); var table = Place("communal_table", 19f, 18.6f, 0, inside);
-            var boothL = Place("booth_coral", 15.3f, 18.6f, 90, inside); var boothR = Place("booth_teal", 22.7f, 18.6f, 270, inside);
-            Luxury("chandelier", new Vector3(19, .08f, 18.6f), 0, inside, false);
-            Place("pendant_amber", 15.3f, 18.6f, 0, inside); Place("pendant_amber", 22.7f, 18.6f, 0, inside);
-            Luxury("gold_column", new Vector3(16.6f, .08f, 17.0f), 0, inside, true); Luxury("gold_column", new Vector3(21.4f, .08f, 17.0f), 0, inside, true);
-            Place("fern", 17.6f, 17.0f, 0, inside); Place("fern", 20.4f, 17.0f, 0, inside);
-            Place("globe_lamp", 14.6f, 16.95f, 0, inside); Place("globe_lamp", 23.4f, 16.95f, 0, inside);
-            Luxury("velvet_curtain", new Vector3(14.35f, .08f, 20.2f), 90, inside, false); Luxury("velvet_curtain", new Vector3(23.65f, .08f, 20.2f), 270, inside, false);
+            Place("neon_moon", 19.9f, 29.05f, 180, inside); Place("art_orbit", 16.2f, 29.1f, 180, inside); Place("art_orbit", 22.9f, 29.1f, 180, inside);
+            // Lounge between dining room and kitchen: wine wall, aquarium, jukebox.
+            Luxury("wine_wall", new Vector3(14.45f, 0, 25.4f), 90, inside, true);
+            Luxury("aquarium", new Vector3(23.85f, 0, 25.4f), 270, inside, true);
+            Place("jukebox", 15.1f, 27.4f, 90, inside);
+            // Dining room: a grand community table under the chandelier, booths along both walls.
+            Place("rug_sunset", 19.2f, 21.6f, 0, inside); var table = Place("communal_table", 19.2f, 21.6f, 0, inside);
+            var booths = new List<GameObject> {
+                Place("booth_coral", 15.3f, 19.4f, 90, inside), Place("booth_teal", 15.3f, 23.0f, 90, inside),
+                Place("booth_teal", 23.0f, 19.4f, 270, inside), Place("booth_coral", 23.0f, 23.0f, 270, inside) };
+            Luxury("chandelier", new Vector3(19.2f, .08f, 21.6f), 0, inside, false);
+            Luxury("chandelier", new Vector3(19.2f, .08f, 18.4f), 0, inside, false);
+            foreach (var z in new[] { 19.4f, 23.0f }) { Place("pendant_amber", 15.3f, z, 0, inside); Place("pendant_amber", 23.0f, z, 0, inside); }
+            foreach (var z in new[] { 17.6f, 24.6f }) { Luxury("gold_column", new Vector3(17.0f, .08f, z), 0, inside, true); Luxury("gold_column", new Vector3(21.4f, .08f, z), 0, inside, true); }
+            Place("fern", 17.6f, 17.0f, 0, inside); Place("fern", 20.8f, 17.0f, 0, inside);
+            Place("fern", 14.7f, 21.2f, 0, inside); Place("fern", 23.7f, 21.2f, 0, inside);
+            Place("globe_lamp", 14.6f, 16.95f, 0, inside); Place("globe_lamp", 23.8f, 16.95f, 0, inside);
+            Place("art_orbit", 14.35f, 21.2f, 90, inside); Place("art_orbit", 24.05f, 21.2f, 270, inside);
+            Luxury("velvet_curtain", new Vector3(14.35f, .08f, 17.6f), 90, inside, false); Luxury("velvet_curtain", new Vector3(24.05f, .08f, 17.6f), 270, inside, false);
             // Outside: gold orbit statues flanking the red carpet.
-            Luxury("statue", new Vector3(16.3f, 0, 15.5f), 0, inside, true); Luxury("statue", new Vector3(21.7f, 0, 15.5f), 0, inside, true);
+            Luxury("statue", new Vector3(16.3f, 0, 15.5f), 0, inside, true); Luxury("statue", new Vector3(22.1f, 0, 15.5f), 0, inside, true);
 
             // Happy regulars at every seat.
             int[] diners = { 1, 3, 5, 7, 4, 6, 0, 2, 9, 8 }; int d = 0;
-            foreach (var furniture in new[] { table, boothL, boothR }) {
+            var seating = new List<GameObject> { table }; seating.AddRange(booths);
+            foreach (var furniture in seating) {
                 if (!furniture) continue;
                 for (int s = 0; s < 6; s++) {
                     var seat = furniture.transform.Find("Seat_" + s); if (!seat) continue;
@@ -53,21 +59,23 @@ namespace RestaurantCity {
                 }
             }
             // Elite staff. They never leave this building.
-            Elite(0, new Vector3(18.5f, 0, 21.8f), 0, true, inside, "MAESTRO VEY\nHead chef");
-            Elite(2, new Vector3(17.5f, 0, 21.9f), 0, true, inside, "K-9\nLine cook");
-            Elite(2, new Vector3(19.9f, 0, 21.8f), 0, true, inside, null);
-            Elite(4, new Vector3(21.7f, 0, 21.8f), 0, true, inside, "SERAPHINE\nPastry chef");
-            Elite(6, new Vector3(15.2f, 0, 21.2f), 270, true, inside, "LUMEN\nMixologist");
-            sommelier = Elite(1, new Vector3(17, 0, 20.1f), 90, false, inside, "NYX\nSommelier");
+            Elite(0, new Vector3(19.7f, 0, 27.5f), 0, true, inside, "MAESTRO VEY\nHead chef");
+            Elite(2, new Vector3(17.8f, 0, 27.6f), 0, true, inside, "K-9\nLine cook");
+            Elite(2, new Vector3(20.9f, 0, 27.6f), 0, true, inside, null);
+            Elite(4, new Vector3(22.7f, 0, 27.5f), 0, true, inside, "SERAPHINE\nPastry chef");
+            Elite(6, new Vector3(15.3f, 0, 25.4f), 270, true, inside, "LUMEN\nMixologist");
+            sommelier = Elite(1, new Vector3(17, 0, 25.2f), 90, false, inside, "NYX\nSommelier");
             Elite(3, new Vector3(17.7f, 0, 15.3f), 180, false, inside, "AURORA\nMaitre d'");
-            Elite(5, new Vector3(20.4f, 0, 15.3f), 180, false, inside, "OBSIDIAN TITAN\nDoorman");
+            Elite(5, new Vector3(20.6f, 0, 15.3f), 180, false, inside, "OBSIDIAN TITAN\nDoorman");
 
             // Warm, expensive light that glows through the glass at night.
-            foreach (var x in new[] { 16f, 22f }) AddRivalLight(new Vector3(x, 3.9f, 19.8f), new Color(1f, .78f, .5f), 3.2f, 7.5f, inside);
-            AddRivalLight(new Vector3(19, 3.2f, 18.6f), new Color(1f, .86f, .6f), 4f, 6f, inside);
-            AddRivalLight(new Vector3(23.2f, 1.6f, 21.2f), new Color(.3f, .85f, 1f), 2.5f, 4f, inside);
-            AddRivalLight(new Vector3(14.8f, 1.6f, 21.2f), new Color(1f, .65f, .3f), 2.5f, 4f, inside);
-            AddRivalLight(new Vector3(19, 5.2f, 15.4f), new Color(1f, .75f, .35f), 4f, 6f, inside);
+            foreach (var z in new[] { 19.4f, 23.0f }) foreach (var x in new[] { 15.6f, 22.8f }) AddRivalLight(new Vector3(x, 3.6f, z), new Color(1f, .78f, .5f), 2.6f, 6f, inside);
+            AddRivalLight(new Vector3(19.2f, 3.2f, 21.6f), new Color(1f, .86f, .6f), 4f, 7f, inside);
+            AddRivalLight(new Vector3(19.2f, 3.2f, 18.4f), new Color(1f, .86f, .6f), 3f, 6f, inside);
+            AddRivalLight(new Vector3(19.7f, 3.6f, 27.4f), new Color(1f, .9f, .75f), 3f, 7f, inside);
+            AddRivalLight(new Vector3(23.4f, 1.6f, 25.4f), new Color(.3f, .85f, 1f), 2.5f, 4f, inside);
+            AddRivalLight(new Vector3(14.9f, 1.6f, 25.4f), new Color(1f, .65f, .3f), 2.5f, 4f, inside);
+            AddRivalLight(new Vector3(19.2f, 5.2f, 15.4f), new Color(1f, .75f, .35f), 4f, 6f, inside);
         }
 
         void Luxury(string id, Vector3 position, float rotation, Transform parent, bool solid) {
@@ -105,8 +113,8 @@ namespace RestaurantCity {
         void AnimateRival(float seconds) {
             if (!sommelier) return;
             sommelierT += seconds * .35f;
-            float x = 19 + Mathf.Sin(sommelierT) * 2.4f, vx = Mathf.Cos(sommelierT);
-            sommelier.transform.position = new Vector3(x, .08f, 20.1f);
+            float x = 19.2f + Mathf.Sin(sommelierT) * 2.6f, vx = Mathf.Cos(sommelierT);
+            sommelier.transform.position = new Vector3(x, .08f, 25.35f);
             sommelier.transform.rotation = Quaternion.Euler(0, vx >= 0 ? 90 : 270, 0);
             sommelier.Walking = Mathf.Abs(vx) > .15f;
         }
