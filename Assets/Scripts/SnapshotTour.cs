@@ -29,6 +29,10 @@ namespace RestaurantCity {
             ("11_street_night", new Vector3(-2, 0, -3), 20, 0, 190),
             ("12_north_ave_night", new Vector3(-20, 0, 50), 90, 0, 190),
             ("07_overview_night", new Vector3(0, 46, -24), 0, 36, 190),
+            ("13_park_day", new Vector3(47, 0, -6), 140, 4, 60),
+            ("14_gilded_day", new Vector3(19, 0, 3), 0, -24, 60),
+            ("15_west_st_day", new Vector3(-40, 0, -75), 0, 0, 60),
+            ("16_main_east_day", new Vector3(30, 0, -3), 90, 0, 60),
         };
 
         IEnumerator Start() {

@@ -222,11 +222,17 @@ public static class PrototypeBuilder {
         Cube("Back wall", new Vector3(cx0, h / 2, zb - .1f), new Vector3(width, h, .2f), plum, root);
         Cube("Left wall", new Vector3(x0 + .1f, h / 2, cz), new Vector3(.2f, h, depth), plum, root);
         Cube("Right wall", new Vector3(x1 - .1f, h / 2, cz), new Vector3(.2f, h, depth), plum, root);
-        Cube("Upper floors", new Vector3(cx0, h + 3.8f, cz), new Vector3(width + .2f, 7.6f, depth + .2f), obsidian, root);
-        Cube("Roof cornice", new Vector3(cx0, h + 7.7f, cz), new Vector3(width + .6f, .4f, depth + .6f), gold, root);
-        for (float wx = 15.2f; wx < 23.5f; wx += 2.1f) for (float y = 6.4f; y < 11.8f; y += 2.6f) {
-            Cube("Gold window frame", new Vector3(wx, y, zf - .02f), new Vector3(1.4f, 1.9f, .16f), gold, root, false);
-            Cube("Lit window", new Vector3(wx, y, zf - .08f), new Vector3(1.15f, 1.62f, .08f), Mat("Warm window", "F2C27A"), root, false);
+        if (CityMap.Available) {
+            // Upper floors come from the city pack (CityMap.GildedTower); here only the ceiling slab and a gold band.
+            Cube("Ceiling", new Vector3(cx0, h + .15f, cz), new Vector3(width, .3f, depth), obsidian, root);
+            Cube("Gold band", new Vector3(cx0, h + .02f, zf - .02f), new Vector3(width + .2f, .16f, .2f), gold, root, false);
+        } else {
+            Cube("Upper floors", new Vector3(cx0, h + 3.8f, cz), new Vector3(width + .2f, 7.6f, depth + .2f), obsidian, root);
+            Cube("Roof cornice", new Vector3(cx0, h + 7.7f, cz), new Vector3(width + .6f, .4f, depth + .6f), gold, root);
+            for (float wx = 15.2f; wx < 23.5f; wx += 2.1f) for (float y = 6.4f; y < 11.8f; y += 2.6f) {
+                Cube("Gold window frame", new Vector3(wx, y, zf - .02f), new Vector3(1.4f, 1.9f, .16f), gold, root, false);
+                Cube("Lit window", new Vector3(wx, y, zf - .08f), new Vector3(1.15f, 1.62f, .08f), Mat("Warm window", "F2C27A"), root, false);
+            }
         }
         // Glass frontage with a centered doorway.
         foreach (var seg in new[] { new Vector2(x0, 18.1f), new Vector2(19.9f, x1) }) {
@@ -284,12 +290,21 @@ public static class PrototypeBuilder {
         return root;
     }
     static void Tree(Vector3 p, Transform parent) {
+        if (CityMap.Available) { CityMap.Prefab("Environments/SM_Env_Tree_0" + (Mathf.Abs((int)(p.x + p.z)) % 3 + 1), p, p.x * 17, parent); return; }
         Cube("Planter", p + Vector3.up * .3f, new Vector3(1.5f, .6f, 1.5f), cream, parent);
         Cylinder("Tree trunk", p + Vector3.up * 1.7f, new Vector3(.25f, 1.7f, .25f), wood, parent);
         Sphere("Tree crown", p + Vector3.up * 3.5f, new Vector3(2.7f, 2.5f, 2.4f), leaf, parent);
         Sphere("Tree crown", p + new Vector3(.7f, 4, .2f), new Vector3(1.7f, 1.7f, 1.7f), leaf, parent);
     }
     static void StreetLamp(Vector3 p, Transform parent) {
+        if (CityMap.Available) {
+            bool alley = p.z > 10;
+            CityMap.Prefab(alley ? "Props/SM_Prop_LightPole_Base_02" : "Props/SM_Prop_LightPole_Base_01", p, p.z < 0 ? 0 : 180, parent);
+            var l = new GameObject("Warm street light").AddComponent<Light>(); l.transform.parent = parent;
+            l.transform.position = p + Vector3.up * (alley ? 4.5f : 5.8f) + (alley ? Vector3.zero : new Vector3(0, 0, p.z < 0 ? 2.1f : -2.1f));
+            l.type = LightType.Point; l.range = 12; l.color = new Color(1, .69f, .38f); l.intensity = .2f; lamps.Add(l);
+            return;
+        }
         Cylinder("Street lamp post", p + Vector3.up * 2, new Vector3(.09f, 2, .09f), dark, parent);
         Cube("Lantern", p + Vector3.up * 4, new Vector3(.36f, .5f, .36f), gold, parent, false);
         var light = new GameObject("Warm street light").AddComponent<Light>(); light.transform.parent = parent; light.transform.position = p + Vector3.up * 3.8f;
