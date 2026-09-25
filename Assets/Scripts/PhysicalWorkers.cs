@@ -9,7 +9,7 @@ namespace RestaurantCity {
    var k=Game.State.Kitchen;
    foreach(var worker in Data.Workers){
     string actor="staff:"+worker.Id;
-    if(!employees.TryGetValue(worker.Id,out var view)){var root=RestaurantArt.CreateCharacter(worker.Id=="ember"?8:9,transform);root.transform.position=new Vector3(-9,.055f,-12);view=new EmployeeView{Root=root,Motion=root.GetComponent<CharacterMotion>(),Bubble=WorldCaption(root.transform,"",new Vector3(0,2.4f,0),.023f)};employees[worker.Id]=view;}
+    if(!employees.TryGetValue(worker.Id,out var view)){var root=RestaurantArt.CreateCharacter(RestaurantCatalog.Worker(worker.Id)?.ModelType??8,transform);root.transform.position=new Vector3(-9,.055f,-12);view=new EmployeeView{Root=root,Motion=root.GetComponent<CharacterMotion>(),Bubble=WorldCaption(root.transform,"",new Vector3(0,2.4f,0),.023f)};employees[worker.Id]=view;}
     if(!workerPlans.TryGetValue(worker.Id,out var plan)){plan=new Queue<KitchenTask>();workerPlans[worker.Id]=plan;}
     if(view.Job!=worker.Job){view.Job=worker.Job;plan.Clear();view.Path.Clear();k.ReleaseWork(actor);}
     view.Motion.Working=false;view.Motion.Walking=false;

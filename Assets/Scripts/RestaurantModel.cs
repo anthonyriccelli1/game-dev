@@ -68,7 +68,11 @@ namespace RestaurantCity {
     }
     public class StaffDefinition {
         public string Id,Name,Description; public StaffJob Role; public int Cost;
-        public StaffDefinition(string id,string name,StaffJob role,int cost,string description) {Id=id;Name=name;Role=role;Cost=cost;Description=description;}
+        // Special recruits are customers you win over: serve them RequiredServes times, then spend Flux.
+        public int FluxCost,CustomerType=-1,RequiredServes,ModelType;
+        public bool Special=>FluxCost>0;
+        public StaffDefinition(string id,string name,StaffJob role,int cost,string description,int model) {Id=id;Name=name;Role=role;Cost=cost;Description=description;ModelType=model;}
+        public StaffDefinition(string id,string name,StaffJob role,int fluxCost,int customerType,int serves,string description) {Id=id;Name=name;Role=role;FluxCost=fluxCost;CustomerType=customerType;RequiredServes=serves;ModelType=customerType;Description=description;}
     }
     public static class RestaurantCatalog {
         public static readonly CatalogItem[] Items = {
@@ -76,6 +80,7 @@ namespace RestaurantCity {
             new CatalogItem("plate_rack","Plate rack",CatalogCategory.Kitchen,18,1,1,0,0,"Six shared reusable plates. Return dirty plates to the sink."),
             new CatalogItem("assembly","Assembly station",CatalogCategory.Kitchen,25,2,1,0,0,"Place a clean plate, then add prepared ingredients."),
             new CatalogItem("counter","Pass counter",CatalogCategory.Kitchen,15,1,1,0,0,"Set anything down here: plates, patties, buns, sauce. Build dishes on it."),
+            new CatalogItem("trash","Trash can",CatalogCategory.Kitchen,10,1,1,0,0,"Throw away burnt or unwanted food. Plates keep; food scraps go."),
             new CatalogItem("sink","Deep washing sink",CatalogCategory.Kitchen,30,1,1,0,0,"Wash dirty plates for six seconds to replenish the rack."),
             new CatalogItem("prep_bench","Steel prep bench",CatalogCategory.Kitchen,28,2,1,0,0,"Prepare one ingredient at a time. Extra benches let partners prep together."),
             new CatalogItem("grill","Comet grill",CatalogCategory.Kitchen,45,2,1,0,1,"Burgers and midnight buns. Extra grills add a cooking slot."),
@@ -120,8 +125,12 @@ namespace RestaurantCity {
             new CustomerDefinition(7,"Professor Ink","midnight",115,1.5f,1.2f,"Tentacled scholar. Savors rare recipes and good ambience.")
         };
         public static readonly StaffDefinition[] Staff = {
-            new StaffDefinition("ember","Ember / brass robot",StaffJob.Cook,70,"Fast cook: starts a dish every 3 seconds. $1 wage per served order while assigned."),
-            new StaffDefinition("moss","Moss / mushroom sprite",StaffJob.Serve,55,"Quick server and cleaner: a task every 3 seconds. $1 wage per served order while assigned.")
+            new StaffDefinition("ember","Ember / brass robot",StaffJob.Cook,70,"Reliable cook for hire. $1 wage per served order while assigned.",8),
+            new StaffDefinition("moss","Moss / mushroom sprite",StaffJob.Serve,55,"Reliable server and dishwasher for hire. $1 wage per served order while assigned.",9),
+            new StaffDefinition("bront","Bront / horned dockworker",StaffJob.Cook,3,6,2,"Win him over with burgers. A powerhouse cook: works twice as fast as hired help."),
+            new StaffDefinition("velvet","Velvet / moth artist",StaffJob.Serve,3,2,2,"Win her over with salads. Glides between tables: the fastest server in the city."),
+            new StaffDefinition("p04","Unit P-04 / robot inspector",StaffJob.Clean,3,3,2,"Impress the inspector. Scrubs dishes and tables at machine speed."),
+            new StaffDefinition("ink","Professor Ink / tentacled scholar",StaffJob.Cook,5,7,2,"Serve the professor midnight burgers. Eight arms, one very fast kitchen.")
         };
         public static CatalogItem Find(string id) => Array.Find(Items,i=>i.Id==id);
         public static DishDefinition Dish(string id) => Array.Find(Dishes,i=>i.Id==id);
@@ -136,7 +145,7 @@ namespace RestaurantCity {
     [Serializable] public class RestaurantReview { public string Customer,Comment; public float Score; public string DishId; }
     [Serializable] public class WorkerState { public string Id; public StaffJob Job; public int TasksCompleted; public float Energy=100; }
     [Serializable] public class RestaurantState {
-        public bool Owned,Open,PhysicalKitInstalled,CounterInstalled;
+        public bool Owned,Open,PhysicalKitInstalled,CounterInstalled,TrashInstalled;
         public int Produce,Protein,Served,Lost,Earnings,Rank=1,NextInstanceId=1,NextOrderId=1;
         public float Cleanliness=42,Satisfaction=50,ServiceSeconds;
         public List<PlacedItem> Layout=new List<PlacedItem>();
@@ -144,6 +153,7 @@ namespace RestaurantCity {
         public List<RestaurantOrder> Orders=new List<RestaurantOrder>();
         public List<RestaurantReview> Reviews=new List<RestaurantReview>();
         public List<WorkerState> Workers=new List<WorkerState>();
+        public int[] ServedByType=new int[8];
         public int Stars => Rank;
         public bool CanCustomize => Owned && !Open && Orders.Count==0;
         public int Seats => Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.Seats??0);
@@ -170,6 +180,10 @@ namespace RestaurantCity {
                 // Every kitchen gets one free counter so players can set dishes down instead of discarding them.
                 if(!HasEquipment("counter")){for(int z=0;z<10&&!CounterInstalled;z++)for(int x=0;x<12&&!CounterInstalled;x++)if(CanPlace("counter",x,z,0,-1,out _)){AddPlaced("counter",x,z,0,0);CounterInstalled=true;}}
                 else CounterInstalled=true;
+            }
+            if(Owned&&!TrashInstalled){
+                if(!HasEquipment("trash")){for(int z=0;z<10&&!TrashInstalled;z++)for(int x=0;x<12&&!TrashInstalled;x++)if(CanPlace("trash",x,z,0,-1,out _)){AddPlaced("trash",x,z,0,0);TrashInstalled=true;}}
+                else TrashInstalled=true;
             }
             if(!Owned||PhysicalKitInstalled)return;
             foreach(string id in new[]{"pantry","plate_rack","assembly","sink"}) {
@@ -287,7 +301,7 @@ namespace RestaurantCity {
             var c=RestaurantCatalog.Customers[o.CustomerType];var d=RestaurantCatalog.Dish(o.DishId);
             float waitRatio=o.Wait/c.Patience,score=45+o.Quality*30+(waitRatio<.35f?10:waitRatio>.7f?-15:0)+Math.Min(10,Ambience*.55f)*c.AmbienceWeight+(Cleanliness-60)*.15f*c.CleanlinessWeight+(c.FavoriteDish==o.DishId?5:0);
             score=Clamp(score,0,100);int tip=score>=85?3:score>=70?1:0,wage=WagesPerOrder,revenue=Math.Max(0,d.Price+tip-wage);
-            wallet.Cash+=revenue;Earnings+=revenue;Served++;Cleanliness=Math.Max(0,Cleanliness-4);
+            wallet.Cash+=revenue;Earnings+=revenue;Served++;if(score>=60&&o.CustomerType>=0&&o.CustomerType<ServedByType.Length)ServedByType[o.CustomerType]++;Cleanliness=Math.Max(0,Cleanliness-4);
             string food=o.Quality>.85f?"Food fresh":o.Quality>.6f?"Food cooled":"Food sat too long";
             string wait=waitRatio<.35f?"short wait":waitRatio>.7f?"long wait":"reasonable wait";
             string room=Cleanliness<45?"dirty tables":Cleanliness>75?"spotless room":"room could be cleaner";
@@ -304,6 +318,12 @@ namespace RestaurantCity {
         public bool Hire(GameState wallet,string id,out string message) {
             var d=RestaurantCatalog.Worker(id);if(!Owned||d==null)return Fail("Worker unavailable.",out message);
             if(Workers.Exists(w=>w.Id==id))return Fail("This worker already works here.",out message);
+            if(d.Special){
+                int have=ServedByType[d.CustomerType];
+                if(have<d.RequiredServes)return Fail($"{d.Name} doesn't trust you yet. Serve them happily {d.RequiredServes-have} more time(s).",out message);
+                if(wallet.Flux<d.FluxCost)return Fail($"Recruiting {d.Name} costs {d.FluxCost} Flux. Earn Flux from the rival's stash at night.",out message);
+                wallet.Flux-=d.FluxCost;Workers.Add(new WorkerState{Id=id,Job=d.Role});message=$"{d.Name} joined your crew for {d.FluxCost} Flux! Assigned {d.Role}.";return true;
+            }
             if(wallet.Cash<d.Cost)return Fail($"Hiring {d.Name} costs ${d.Cost}.",out message);
             wallet.Cash-=d.Cost;Workers.Add(new WorkerState{Id=id,Job=d.Role});message=$"Hired {d.Name}. Assigned {d.Role}. $1 per served order while assigned.";return true;
         }
@@ -314,7 +334,10 @@ namespace RestaurantCity {
         }
         public float WorkerActionSeconds(StaffJob job) {
             var assigned=Workers.Where(w=>w.Job==job).ToList();if(assigned.Count==0)return 8;
-            return assigned.Any(w=>(w.Id=="ember"&&job==StaffJob.Cook)||(w.Id=="moss"&&(job==StaffJob.Serve||job==StaffJob.Clean)))?3:7;
+            Func<StaffDefinition,bool> Specialty=d=>d.Role==job||(d.Role==StaffJob.Serve&&job==StaffJob.Clean);
+            var defs=assigned.Select(w=>RestaurantCatalog.Worker(w.Id)).Where(d=>d!=null).ToList();
+            if(defs.Any(d=>d.Special&&Specialty(d)))return 1.5f;
+            return defs.Any(Specialty)?3:7;
         }
         public void Tick(GameState wallet,float seconds) {
             if(!Owned||seconds<=0||float.IsNaN(seconds)||float.IsInfinity(seconds))return;
@@ -332,7 +355,7 @@ namespace RestaurantCity {
         }
         static float Clamp(float value,float min,float max)=>float.IsNaN(value)||float.IsInfinity(value)?min:Math.Max(min,Math.Min(max,value));
         public void SanitizeAfterLoad() {
-            Layout=Layout??new List<PlacedItem>();ActiveMenu=ActiveMenu??new List<string>{"burger","salad"};Orders=Orders??new List<RestaurantOrder>();Reviews=Reviews??new List<RestaurantReview>();Workers=Workers??new List<WorkerState>();
+            Layout=Layout??new List<PlacedItem>();ActiveMenu=ActiveMenu??new List<string>{"burger","salad"};Orders=Orders??new List<RestaurantOrder>();Reviews=Reviews??new List<RestaurantReview>();Workers=Workers??new List<WorkerState>();if(ServedByType==null||ServedByType.Length<8){var grown=new int[8];if(ServedByType!=null)Array.Copy(ServedByType,grown,ServedByType.Length);ServedByType=grown;}
             Rank=Math.Max(1,Math.Min(2,Rank));
             Layout.RemoveAll(p=>p==null||RestaurantCatalog.Find(p.CatalogId)==null);Workers.RemoveAll(w=>w==null||RestaurantCatalog.Worker(w.Id)==null);
             var incoming=Layout;Layout=new List<PlacedItem>();var seenIds=new HashSet<int>();

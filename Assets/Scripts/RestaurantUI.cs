@@ -262,24 +262,35 @@ namespace RestaurantCity {
         }
 
         void BuildStaff(RectTransform sheet) {
-            Label(sheet, "Hire a familiar face, choose their job, and watch them work alongside you during service.", 30, 140, 1144, 35, 16, ink);
-            var content = Scroller(sheet, 30, 189, 1160, 462, 460);
+            Label(sheet, "Hire help for cash, or win over the city's odd regulars and recruit them with Flux. Flux: " + Owner.Game.State.Flux, 30, 140, 1144, 35, 16, ink);
+            int rows = Mathf.CeilToInt(RestaurantCatalog.Staff.Length / 2f);
+            var content = Scroller(sheet, 30, 189, 1160, 462, rows * 320 + 20);
             int index = 0;
             foreach (var worker in RestaurantCatalog.Staff) {
                 var entry = worker;
-                var card = Block(content, entry.Name, (index % 2) * 580, (index / 2) * 320, 562, 303, white); index++;
-                Label(card, entry.Name, 25, 24, 495, 45, 29, ink, true);
-                Label(card, entry.Description, 25, 83, 507, 92, 18, muted);
-                Label(card, "Specialty: " + entry.Role + "    /    Hire for $" + entry.Cost, 25, 178, 507, 28, 17, ink, true);
-                BuildWorkerActions(card, entry.Id, entry.Cost);
+                var card = Block(content, entry.Name, (index % 2) * 580, (index / 2) * 320, 562, 303, entry.Special ? new Color(1f, .96f, .86f) : white); index++;
+                Label(card, entry.Name, 25, 24, 495, 45, 26, ink, true);
+                Label(card, entry.Description, 25, 78, 507, 70, 17, muted);
+                string price = entry.Special ? "Recruit for " + entry.FluxCost + " Flux" : "Hire for $" + entry.Cost;
+                string trust = entry.Special ? "    /    Won over " + Mathf.Min(Owner.Data.ServedByType[entry.CustomerType], entry.RequiredServes) + "/" + entry.RequiredServes : "";
+                Label(card, "Specialty: " + entry.Role + "    /    " + price + trust, 25, 172, 520, 28, 16, ink, true);
+                BuildWorkerActions(card, entry);
             }
-            Label(content, "Crew work while you are out on the restaurant floor. Assign a cook for parallel orders,\na server for the pass, or a cleaner to keep demanding guests happy.", 22, 347, 1110, 78, 18, muted);
         }
 
-        void BuildWorkerActions(RectTransform card, string workerId, int cost) {
+        void BuildWorkerActions(RectTransform card, StaffDefinition entry) {
+            string workerId = entry.Id;
             WorkerState hired = null;
             foreach (var worker in Owner.Data.Workers) if (WorkerId(worker) == workerId) { hired = worker; break; }
-            if (hired == null) { Button(card, "Hire for $" + cost, 25, 233, 508, 43, () => Owner.Hire(workerId), teal, white, Owner.Game.State.Cash >= cost); return; }
+            if (hired == null) {
+                if (entry.Special) {
+                    int have = Owner.Data.ServedByType[entry.CustomerType];
+                    bool trusted = have >= entry.RequiredServes;
+                    string label = !trusted ? "Serve them happily " + (entry.RequiredServes - have) + " more time(s)" : "Recruit for " + entry.FluxCost + " Flux";
+                    Button(card, label, 25, 233, 508, 43, () => Owner.Hire(workerId), teal, white, trusted && Owner.Game.State.Flux >= entry.FluxCost);
+                } else Button(card, "Hire for $" + entry.Cost, 25, 233, 508, 43, () => Owner.Hire(workerId), teal, white, Owner.Game.State.Cash >= entry.Cost);
+                return;
+            }
             var current = WorkerJob(hired);
             Text workStatus = Label(card, "", 25, 207, 508, 24, 14, muted);
             tickLabels.Add(() => { if (workStatus) workStatus.text = "Energy " + hired.Energy.ToString("0") + "/100 / " + hired.TasksCompleted + " tasks completed"; });

@@ -59,7 +59,7 @@ namespace RestaurantCity {
             for(int x=-1;x<=1;x+=2)for(int z=-1;z<=1;z+=2)Box("Rubber cabinet foot",p,new Vector3(x*(width*.5f-.16f),.06f,z*.3f),new Vector3(.12f,.12f,.12f),"233B46");
         }
         public static GameObject CreateStation(string id,Transform parent) {
-            var root=G("Kitchen_"+id,parent); var p=root.transform;float width=id=="plate_rack"? .9f:id=="counter"? .95f:1.9f;
+            var root=G("Kitchen_"+id,parent); var p=root.transform;float width=id=="plate_rack"? .9f:id=="counter"||id=="trash"? .95f:1.9f;
             if(id=="pantry") {
                 for(int x=-1;x<=1;x+=2)for(int z=-1;z<=1;z+=2)Box("Shelf upright",p,new Vector3(x*.87f,.87f,z*.35f),new Vector3(.085f,1.74f,.085f),"317E79");
                 for(int n=0;n<3;n++)Box("Oak supply shelf",p,new Vector3(0,.22f+n*.54f,0),new Vector3(1.9f,.085f,.85f),"895343");
@@ -85,6 +85,12 @@ namespace RestaurantCity {
                 Box("Counter apron",p,new Vector3(0,.91f,0),new Vector3(.86f,.1f,.86f),"317E79");
                 for(int x=-1;x<=1;x+=2)for(int z=-1;z<=1;z+=2)Box("Counter leg",p,new Vector3(x*.38f,.45f,z*.38f),new Vector3(.08f,.9f,.08f),"317E79");
                 Box("Counter shelf",p,new Vector3(0,.25f,0),new Vector3(.8f,.04f,.8f),"895343");
+            } else if(id=="trash") {
+                // Round kitchen bin with a pedal and a swing lid.
+                S("Bin body",p,Profile("bin",new[]{0f,.05f,.75f,.8f},new[]{.26f,.3f,.33f,.33f},14),Vector3.zero,Vector3.one,M("5E7F86"));
+                S("Bin lid",p,Profile("binlid",new[]{0f,.04f,.08f},new[]{.35f,.35f,.2f},14),new Vector3(0,.8f,0),Vector3.one,M("C8D6D2"));
+                Box("Bin pedal",p,new Vector3(0,.05f,.34f),new Vector3(.18f,.04f,.12f),"1B2A30");
+                Box("Bin band",p,new Vector3(0,.55f,0),new Vector3(.62f,.05f,.62f),"E1543B");
             } else if(id=="sink") {
                 // Open basin is built from its rim, sloped sides, and lowered bottom.
                 Bench(p,width,"317E79");

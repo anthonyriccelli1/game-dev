@@ -14,9 +14,9 @@ namespace RestaurantCity {
         void Awake() { home = transform.position; }
         void Update() {
             bool night = Game.State.IsNight;
-            if (night && !lastNight && !Game.State.RecipeUnlocked) { Defeated = false; HitsRemaining = 3; transform.position = home; }
+            if (night && !lastNight && Game.State.LastStashDay != Game.State.Day) { Defeated = false; HitsRemaining = 3; transform.position = home; }
             lastNight = night;
-            bool active = night && !Defeated && !Game.State.RecipeUnlocked;
+            bool active = night && !Defeated && Game.State.LastStashDay != Game.State.Day;
             Body.gameObject.SetActive(active);
             if (!active || Game.Paused) return;
             cooldown -= Time.deltaTime; stagger -= Time.deltaTime;
@@ -44,7 +44,7 @@ namespace RestaurantCity {
             if (Coat) Coat.material.color = WindingUp ? new Color(1, .28f, .15f) : new Color(.28f, .18f, .36f);
         }
         public void Hit() {
-            if (!Game.State.IsNight || Defeated || Game.State.RecipeUnlocked) return;
+            if (!Game.State.IsNight || Defeated || Game.State.LastStashDay == Game.State.Day) return;
             HitsRemaining--; windup = 0; cooldown = .8f; stagger = .35f;
             Game.Notify(HitsRemaining > 0 ? "Rival staggered  /  " + HitsRemaining + " hits left" : "Rival defeated. The recipe stash is yours.");
             if (HitsRemaining <= 0) { Defeated = true; Body.gameObject.SetActive(false); }

@@ -27,7 +27,7 @@ namespace RestaurantCity {
    return "Building "+RestaurantCatalog.Dish(target.DishId).Name+": "+string.Join("  ",parts);
   }
   static string ComponentDisplay(string id)=>id=="bun"?"bun":id=="cooked_patty"?"cooked patty":id=="chopped_greens"?"chopped greens":id=="midnight_sauce"?"midnight sauce":id;
-  GameObject CreateFurnishing(string id,Transform parent)=>id=="counter"?KitchenArt.CreateStation("counter",parent):new[]{"pantry","plate_rack","sink","assembly"}.Contains(id)?KitchenArt.CreateStation(id,parent):RestaurantArt.CreateFurniture(id,parent);
+  GameObject CreateFurnishing(string id,Transform parent)=>id=="counter"||id=="trash"?KitchenArt.CreateStation(id,parent):new[]{"pantry","plate_rack","sink","assembly"}.Contains(id)?KitchenArt.CreateStation(id,parent):RestaurantArt.CreateFurniture(id,parent);
   GameObject menuBoard;
   void PhysicalSetup(){Game.State.Kitchen.EnsureStations(Data);RebuildLayout();KitchenArt.DecorateStreet(transform);RefreshMenuBoard();}
   // A4: a wall board prop showing the active-menu recipes, alongside the Cookbook management tab.
@@ -49,7 +49,7 @@ namespace RestaurantCity {
    if(secondary){
     // Q / B is drop-or-discard only in the kitchen (A1). At Milo's city market, with empty hands, it still
     // toggles which supply you are about to buy there.
-    if(Game.State.Kitchen.Hold(p.ActorId)!=null){Game.State.Kitchen.Discard(Game.State,p.ActorId,out var m);Feedback(m);}
+    if(Game.State.Kitchen.Hold(p.ActorId)!=null)Feedback("Use the trash can to throw food away, or set it on a counter.");
     else{supplierChoice.TryGetValue(p.ActorId,out int c);supplierChoice[p.ActorId]=(c+1)%2;Feedback("Milo's market choice: "+(supplierChoice[p.ActorId]==0?"protein":"produce")+".");}
    }
    return false;

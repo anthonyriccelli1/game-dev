@@ -6,7 +6,7 @@ namespace RestaurantCity {
     }
     public enum FoodStage { Empty, Prepared, Cooking, Plated }
     [Serializable] public class GameState {
-        public int Version = 4, Cash = 30, Stock, Served, Missed, Health = 100, Day = 1, Flux;
+        public int Version = 4, Cash = 30, Stock, Served, Missed, Health = 100, Day = 1, Flux, LastStashDay;
         public bool FluxResearch, FluxIntroduced;
         public KitchenState Kitchen = new KitchenState();
         public RestaurantState Restaurant = new RestaurantState();
@@ -43,8 +43,9 @@ namespace RestaurantCity {
             Cash += SalePrice; Served++; Food = FoodStage.Empty; HasOrder = false; NextCustomer = 6; return true;
         }
         public bool ClaimRecipe(bool guardDefeated) {
-            if (!IsNight || !guardDefeated || RecipeUnlocked) return false;
-            RecipeUnlocked = true; Flux += 3; FluxIntroduced=true; return true;
+            // The rival guards his stash every night. First win: the midnight recipe + 3 Flux. After that: +2 Flux per night.
+            if (!IsNight || !guardDefeated || LastStashDay == Day) return false;
+            LastStashDay = Day; Flux += RecipeUnlocked ? 2 : 3; RecipeUnlocked = true; FluxIntroduced = true; return true;
         }
         public bool RequestHelp() {
             if (!StandBuilt || Cash >= 6 || Stock != 0 || Food != FoodStage.Empty) return false;

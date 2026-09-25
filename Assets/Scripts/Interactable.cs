@@ -15,7 +15,7 @@ namespace RestaurantCity {
                     return "Put prepared burger on the grill";
                 case InteractionKind.Serve: return s.HasOrder ? "Serve customer  /  $" + s.SalePrice : "Next customer arriving soon";
                 case InteractionKind.Bin: return "Discard current dish";
-                case InteractionKind.Recipe: return s.RecipeUnlocked ? "Midnight recipe already learned" : !s.IsNight ? "Recipe stash opens at night" : game.Guard.Defeated ? "Learn the midnight burger recipe" : "Defeat the rival before opening the stash";
+                case InteractionKind.Recipe: return s.LastStashDay == s.Day ? "Stash emptied tonight. The rival restocks tomorrow night" : !s.IsNight ? "Rival stash opens at night" : !game.Guard.Defeated ? "Defeat the rival before opening the stash" : s.RecipeUnlocked ? "Raid the stash  /  +2 Flux" : "Take the midnight recipe  /  +3 Flux";
                 default: return s.Restaurant.Owned ? "Manage your restaurant" : "Buy your own restaurant  /  $150";
             }
         }

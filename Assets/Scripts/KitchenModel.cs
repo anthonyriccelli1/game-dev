@@ -79,6 +79,13 @@ namespace RestaurantCity {
    if(!string.IsNullOrEmpty(s.WorkOwner)&&s.WorkOwner!=actor)return Blocked("Someone is working here.");
    var hand=Hold(actor);var item=At(stationId);
    if(s.CatalogId=="pantry")return PreviewPantry(game,actor,hand,subId);
+   if(s.CatalogId=="trash"){
+    if(hand==null)return Blocked("Trash can. Bring food you want to throw away.");
+    if(hand.Kind==KitchenItemKind.DirtyPlate)return Blocked("Wash dirty plates at the sink.");
+    if(hand.Kind==KitchenItemKind.Plate&&hand.Components.Count==0)return Blocked("That plate is clean. Keep it or set it down.");
+    string what=hand.Kind==KitchenItemKind.Plate?"the food (keep the plate)":Label(hand).ToLower();
+    return Tap("Throw away "+what,()=>{Discard(game,actor,out string msg);return msg;});
+   }
    if(s.CatalogId=="plate_rack"){
     if(hand!=null)return Blocked("Your hands are full.");
     if(CleanPlates<=0)return Blocked("No clean plates. Clear a table and wash a dirty plate.");
