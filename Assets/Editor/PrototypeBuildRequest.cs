@@ -16,6 +16,10 @@ public static class PrototypeBuildRequest {
         if (EditorApplication.isCompiling || EditorApplication.isUpdating || EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.timeSinceStartup < nextCheck) return;
         nextCheck = EditorApplication.timeSinceStartup + 2;
         if (!File.Exists(Request)) return;
+        // Pick up script edits made outside the Editor (it may be unfocused with auto-refresh off).
+        // If that starts a compile, keep the request; after the domain reload this check runs again.
+        AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
+        if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
         File.Delete(Request);
         try {
             for (int i = 0; i < EditorSceneManager.sceneCount; i++) {
