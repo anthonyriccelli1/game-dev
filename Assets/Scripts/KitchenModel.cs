@@ -73,6 +73,13 @@ namespace RestaurantCity {
     var plate=hand;
     return Tap("Add bun to plate",()=>{game.Restaurant.Produce--;ShiftCosts+=1;plate.Components.Add("bun");return "Added a bun to the plate.";});
    }
+   if(hand!=null&&hand.Kind==KitchenItemKind.Plate&&choice=="sauce"){
+    // Midnight sauce is squeezed straight onto a held burger plate (works at the stand, which has no prep bench).
+    if(!CanAddComponent(hand,"midnight_sauce",out string reason))return Blocked(reason);
+    if(game.Restaurant.Protein<1)return Blocked("Out of sauce ingredients. Buy patties at Milo's.");
+    var plate=hand;
+    return Tap("Add midnight sauce to plate",()=>{game.Restaurant.Protein--;ShiftCosts+=10f/6;plate.Components.Add("midnight_sauce");return "Midnight sauce added. That's a midnight burger if it has a bun and patty!";});
+   }
    if(hand!=null)return Blocked("Your hands are full.");
    int protein=choice=="protein"||choice=="sauce"?1:0,produce=choice=="greens"?2:choice=="bun"?1:0;
    if(game.Restaurant.Protein<protein||game.Restaurant.Produce<produce)return Blocked("Out of ingredients. Visit the city supplier.");
@@ -124,7 +131,7 @@ namespace RestaurantCity {
    if(item!=null){
     if(!IsCounter(s.CatalogId)||item.Kind!=KitchenItemKind.Plate)return Blocked(IsCounter(s.CatalogId)?"Counter is full. Put a plate here to build on it.":"Station occupied.");
     string part=hand.Kind==KitchenItemKind.CookedPatty?"cooked_patty":hand.Kind==KitchenItemKind.Bun?"bun":hand.Kind==KitchenItemKind.ChoppedGreens?"chopped_greens":hand.Kind==KitchenItemKind.MidnightSauce?"midnight_sauce":null;
-    if(part==null)return Blocked("Prepare the ingredient first. Discard burnt food.");
+    if(part==null)return Blocked(hand.Kind==KitchenItemKind.RawSauce?"Raw sauce ingredients: trash these, then hold the PLATE and press E on the sauce shelf.":"Prepare the ingredient first. Discard burnt food.");
     if(!CanAddComponent(item,part,out string why))return Blocked(why);
     var plate=item;var carried=hand;
     return Tap("Add "+ComponentLabel(part)+" to plate",()=>{plate.Components.Add(part);plate.Quality=Math.Min(plate.Quality,carried.Quality);Items.Remove(carried);return "Added "+ComponentLabel(part)+" to the plate.";});
