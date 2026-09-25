@@ -269,10 +269,15 @@ namespace RestaurantCity {
             if(wallet.Cash<price)return Fail($"Six portions cost ${price}.",out message);
             wallet.Cash-=price;if(protein)Protein+=6;else Produce+=6;message=$"Stocked 6 {(protein?"protein":"produce")} portions for ${price}.";return true;
         }
-        public bool RequestSupplyHelp(GameState wallet,out string message) {
-            // Anti-softlock: if you are broke AND can't cook anything, Milo fronts a small crate.
-            if((!Owned&&!wallet.StandBuilt)||wallet.Cash>=6||(Protein>0&&Produce>0))return Fail("Six portions cost $6 (produce) or $10 (protein).",out message);
-            if(Protein==0)Protein=3;if(Produce==0)Produce=3;message="Milo fronts you a starter crate: 3 protein, 3 produce. Pay it forward.";return true;
+        public bool RequestSupplyHelp(GameState wallet,out string message)=>RequestSupplyHelp(wallet,Produce<=Protein?false:true,out message);
+        // Anti-softlock: if you can't afford a crate and are nearly out of it, Milo fronts you 3 for free.
+        public bool RequestSupplyHelp(GameState wallet,bool protein,out string message) {
+            int price=protein?10:6,have=protein?Protein:Produce;
+            if(!Owned&&!wallet.StandBuilt)return Fail("Set up your food stand first ($10).",out message);
+            if(wallet.Cash>=price)return Fail($"Six portions cost ${price}.",out message);
+            if(have>=3)return Fail($"You still have {have} {(protein?"patties":"buns & greens")}. Cook and sell to afford more.",out message);
+            if(protein)Protein+=3;else Produce+=3;
+            message=$"Milo fronts you 3 free {(protein?"patties":"buns & greens")}. Pay it forward!";return true;
         }
         public bool StartService(GameState wallet,out string message) {
             if(!Owned||Open)return Fail("Service is unavailable or already open.",out message);

@@ -119,7 +119,7 @@ namespace RestaurantCity {
                     (!Game.State.StandBuilt && !Data.Owned ? "Set up your food stand first" : "E / A  Buy 6 " + (protein ? "patties  /  $10" : "buns & greens  /  $6"));
                 if (pressed) {
                     string m;
-                    if (!Data.Restock(Game.State, protein, out m) && Game.State.Cash < (protein ? 10 : 6)) Data.RequestSupplyHelp(Game.State, out m);
+                    if (!Data.Restock(Game.State, protein, out m) && Game.State.Cash < (protein ? 10 : 6)) Data.RequestSupplyHelp(Game.State, protein, out m);
                     Feedback(m); Game.Save();
                 }
                 return true;

@@ -11,7 +11,8 @@ namespace RestaurantCity {
 
         void BuildRivalInterior() {
             var world = Game.Stand ? Game.Stand.transform.parent : null;
-            rivalRoot = world ? world.Find("Rival restaurant / The Gilded Orbit") : null;
+            // Transform.Find treats "/" as a path separator, so match the child by name instead.
+            rivalRoot = null; if (world) foreach (Transform child in world) if (child.name == "Rival restaurant / The Gilded Orbit") { rivalRoot = child; break; }
             if (!rivalRoot || rivalRoot.Find("Interior")) return;
             var inside = new GameObject("Interior").transform; inside.SetParent(rivalRoot, false);
 
