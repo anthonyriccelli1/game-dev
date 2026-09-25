@@ -116,7 +116,7 @@ namespace RestaurantCity {
     }else if(item!=null&&s.CatalogId=="prep_bench"&&(item.Kind==KitchenItemKind.RawGreens||item.Kind==KitchenItemKind.RawSauce)){
      float d=(item.Kind==KitchenItemKind.RawSauce?4:3)*(Game.State.FluxResearch?.65f:1);ratio=s.Progress/d;
     }else if(item!=null&&s.CatalogId=="prep_bench"&&(item.Kind==KitchenItemKind.ChoppedGreens||item.Kind==KitchenItemKind.MidnightSauce)){ratio=1;color="4FCB7A";}
-    else if(item!=null&&s.CatalogId=="sink"&&item.Kind==KitchenItemKind.DirtyPlate){ratio=s.Progress/6;color="4FA3E1";}
+    else if(item!=null&&s.CatalogId=="sink"&&item.Kind==KitchenItemKind.DirtyPlate){ratio=s.Progress/KitchenState.WashSeconds;color="4FA3E1";}
     progressBars.TryGetValue(s.InstanceId,out var bar);
     if(ratio<0){if(bar)bar.SetActive(false);continue;}
     if(!bar){bar=KitchenArt.ProgressBar(transform);progressBars[s.InstanceId]=bar;}

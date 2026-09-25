@@ -19,6 +19,7 @@ namespace RestaurantCity {
   static KitchenAction Blocked(string reason)=>new KitchenAction{Allowed=false,Kind=KitchenActionKind.None,FailReason=reason,Label=reason};
   static KitchenAction NeedsHold(string label)=>new KitchenAction{Allowed=false,Kind=KitchenActionKind.Hold,FailReason=label,Label=label};
   static KitchenAction Tap(string label,Func<string> apply)=>new KitchenAction{Allowed=true,Kind=KitchenActionKind.Tap,Label=label,FailReason="",Apply=apply};
+  public const float WashSeconds=3.5f;
   public KitchenItem Hold(string actor)=>Items.Find(i=>i.Holder==actor);
   public KitchenItem At(int station)=>Hold("station:"+station);
   KitchenItem Create(KitchenItemKind kind,string holder){var item=new KitchenItem{Id=NextItemId++,Kind=kind,Holder=holder};Items.Add(item);return item;}
@@ -125,7 +126,7 @@ namespace RestaurantCity {
    bool prep=s.CatalogId=="prep_bench"&&Raw(item.Kind),wash=s.CatalogId=="sink"&&item.Kind==KitchenItemKind.DirtyPlate;
    if(!prep&&!wash)return Fail("Nothing to prepare.",out message);
    if(!string.IsNullOrEmpty(s.WorkOwner)&&s.WorkOwner!=actor)return Fail("Someone else is working here.",out message);
-   s.WorkOwner=actor;s.Progress+=seconds;float duration=wash?6:item.Kind==KitchenItemKind.RawSauce?4:3;if(prep&&game.FluxResearch)duration*=.65f;
+   s.WorkOwner=actor;s.Progress+=seconds;float duration=wash?WashSeconds:item.Kind==KitchenItemKind.RawSauce?4:3;if(prep&&game.FluxResearch)duration*=.65f;
    if(s.Progress<duration){message=(wash?"Washing ":"Preparing ")+(int)(s.Progress/duration*100)+"%";return true;}
    if(wash){Items.Remove(item);CleanPlates++;game.Restaurant.Cleanliness=Math.Min(100,game.Restaurant.Cleanliness+5);message="Clean plate returned to rack.";}
    else{item.Kind=item.Kind==KitchenItemKind.RawGreens?KitchenItemKind.ChoppedGreens:KitchenItemKind.MidnightSauce;message=Label(item)+" ready.";}

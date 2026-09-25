@@ -7,6 +7,7 @@ namespace RestaurantCity {
         Transform body, head, leftArm, rightArm, leftLeg, rightLeg, leftKnee, rightKnee, mouth;
         Vector3 bodyOrigin, headOrigin;
         float mood = .7f, phase;
+        Vector3 mouthScale = Vector3.one;
         static int nextPhase;
         void Awake() {
             body = transform.Find("BodyRig");
@@ -16,7 +17,7 @@ namespace RestaurantCity {
             if (leftLeg) leftKnee = leftLeg.Find("Knee");
             if (rightLeg) rightKnee = rightLeg.Find("Knee");
             bodyOrigin = body.localPosition;
-            if (head) { headOrigin = head.localPosition; mouth = head.Find("Mouth"); }
+            if (head) { headOrigin = head.localPosition; mouth = head.Find("Mouth"); if (mouth) mouthScale = mouth.localScale; }
             phase = (nextPhase++ % 31) * .7f;
         }
         public void SetMood(float score) { mood = Mathf.Clamp01(score > 1 ? score / 100f : score); }
@@ -36,7 +37,8 @@ namespace RestaurantCity {
                 head.localPosition = headOrigin;
                 head.localRotation = Quaternion.Euler(mood < .35f ? 9 : Mathf.Sin(t * .4f) * 2, Mathf.Sin(t * .23f) * 7, mood > .8f ? -4 : 0);
             }
-            if (mouth) mouth.localScale = new Vector3(mood < .35f ? .65f : 1, mood > .7f ? 1.35f : .35f, 1);
+            // Scale relative to the modeled mouth size; assigning absolute values turned the mouth into a 1 m block.
+            if (mouth) mouth.localScale = Vector3.Scale(mouthScale, new Vector3(mood < .35f ? .65f : 1, mood > .7f ? 1.35f : .35f, 1));
         }
     }
 }
