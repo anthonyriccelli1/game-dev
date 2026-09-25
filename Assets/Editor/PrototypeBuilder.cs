@@ -23,6 +23,7 @@ public static class PrototypeBuilder {
     public static void Generate() {
         EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         materials.Clear(); lamps.Clear(); Directory.CreateDirectory("Assets/Generated");
+        ArtPackDressing.GenerateOverrides();
         asphalt = Mat("Asphalt", "344650"); stone = Mat("Sidewalk", "C5C6B9"); cream = Mat("Cream", "F4E8CD");
         coral = Mat("Coral", "E87760"); teal = Mat("Teal", "39877F"); dark = Mat("Ink", "203743");
         glass = Mat("Windows", "547C89"); wood = Mat("Warm wood", "A66C4C"); leaf = Mat("Foliage", "699777"); gold = Mat("Gold", "EEBD68");
@@ -116,6 +117,7 @@ public static class PrototypeBuilder {
 
         for (int i = -2; i <= 2; i++) { StreetLamp(new Vector3(i * 10, 0, -6), world); if (i != 0) StreetLamp(new Vector3(i * 10, 0, 6), world); }
         StreetLamp(new Vector3(13.5f, 0, 25), world);
+        ArtPackDressing.Dress(world);
         Tree(new Vector3(-20, 0, 7), world); Tree(new Vector3(20, 0, 7), world);
         Tree(new Vector3(6, 0, -8), world); Tree(new Vector3(-3, 0, -8), world);
         for (int i = 0; i < 2; i++) {

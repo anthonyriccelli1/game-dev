@@ -18,3 +18,9 @@
 SaveBackups/
 /PhysicalTests/bin/
 /PhysicalTests/obj/
+
+# Third-party art packs: each developer imports their own licensed copy
+/Assets/Synty/
+/Assets/Synty.meta
+/Assets/ThirdParty/
+/Assets/ThirdParty.meta
