@@ -6,7 +6,8 @@ namespace RestaurantCity {
     }
     public enum FoodStage { Empty, Prepared, Cooking, Plated }
     [Serializable] public class GameState {
-        public int Version = 1, Cash = 30, Stock, Served, Missed, Health = 100, Day = 1;
+        public int Version = 2, Cash = 30, Stock, Served, Missed, Health = 100, Day = 1;
+        public RestaurantState Restaurant = new RestaurantState();
         public bool StandBuilt, RecipeUnlocked, HasOrder;
         public float Clock, CookSeconds, Patience;
         public float NextCustomer = 1;
@@ -49,6 +50,7 @@ namespace RestaurantCity {
             Cash = Math.Max(StandBuilt ? 0 : 10, Cash - 10); Health = 100; Discard(); HasOrder = false; NextCustomer = 8;
         }
         public void SanitizeAfterLoad() {
+            Version = 2; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
             Cash = Math.Max(StandBuilt ? 0 : 10, Math.Min(999999, Cash)); Stock = Math.Max(0, Math.Min(99, Stock));
             Served = Math.Max(0, Served); Missed = Math.Max(0, Missed); Day = Math.Max(1, Day);
             Clock = float.IsNaN(Clock) || float.IsInfinity(Clock) ? 0 : Math.Max(0, Clock) % 240;
@@ -59,6 +61,7 @@ namespace RestaurantCity {
             Clock += seconds;
             while (Clock >= 240) { Clock -= 240; Day++; }
             if (Food == FoodStage.Cooking) CookSeconds += seconds;
+            if (Restaurant != null && Restaurant.Open) { HasOrder = false; return; }
             if (HasOrder) {
                 Patience -= seconds;
                 if (Patience <= 0) { HasOrder = false; Missed++; NextCustomer = 6; }

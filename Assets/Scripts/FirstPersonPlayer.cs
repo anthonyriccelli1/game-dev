@@ -16,6 +16,7 @@ namespace RestaurantCity {
         void Awake() { controller = GetComponent<CharacterController>(); if (Spatula) toolRotation = Spatula.localRotation; }
         void Update() {
             var keys = Keyboard.current; var mouse = Mouse.current;
+            if (Game.Restaurant && Game.Restaurant.HandleInput(keys, mouse)) return;
             if (keys != null && keys.escapeKey.wasPressedThisFrame) Game.SetPaused(!Game.Paused);
             Target = null;
             if (!Game.Paused) swingTimer = Mathf.Max(0, swingTimer - Time.deltaTime);
@@ -33,9 +34,11 @@ namespace RestaurantCity {
                 gravity = controller.isGrounded ? -2 : gravity - 22 * Time.deltaTime;
                 controller.Move((move * (keys.leftShiftKey.isPressed ? 6.5f : 4) + Vector3.up * gravity) * Time.deltaTime);
             }
+            if (Game.Restaurant) Game.Restaurant.ClearFocus();
             if (Physics.Raycast(View.transform.position, View.transform.forward, out var hit, 3.6f, ~0, QueryTriggerInteraction.Ignore)) {
+                bool usedRestaurant = Game.Restaurant && Game.Restaurant.InspectRay(hit, keys != null && keys.eKey.wasPressedThisFrame);
                 Target = hit.collider.GetComponentInParent<Interactable>();
-                if (Target && keys != null && keys.eKey.wasPressedThisFrame) Game.Interact(Target.Kind);
+                if (!usedRestaurant && Target && keys != null && keys.eKey.wasPressedThisFrame) Game.Interact(Target.Kind);
             }
             if (mouse != null && mouse.leftButton.wasPressedThisFrame) Swing();
             if (Spatula) Spatula.localRotation = toolRotation * Quaternion.Euler(Mathf.Sin(swingTimer / .55f * Mathf.PI) * -65, 0, 0);

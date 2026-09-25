@@ -6,6 +6,8 @@
 /UserSettings/
 /Tests/bin/
 /Tests/obj/
+/RestaurantTests/bin/
+/RestaurantTests/obj/
 *.csproj.user
 /*.csproj
 *.sln

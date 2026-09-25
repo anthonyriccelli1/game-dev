@@ -7,6 +7,7 @@ namespace RestaurantCity {
         public GameState State = new GameState();
         public FirstPersonPlayer Player;
         public StreetGuard Guard;
+        public RestaurantController Restaurant;
         public Light Sun;
         public Light[] Lamps;
         public GameObject Stand, SetupMarker, Customer, GrillFood, HandFood, RecipeGlow;
@@ -19,21 +20,23 @@ namespace RestaurantCity {
         float noticeUntil, saveTimer;
         bool wasNight, lastOrder;
         Vector3 customerPosition;
-        string SavePath => Path.Combine(Application.persistentDataPath, "restaurant-city-v1.json");
+        public string SavePath => Path.Combine(Application.persistentDataPath, "restaurant-city-v1.json");
 
         void Awake() {
-            SmokeMode = Array.IndexOf(Environment.GetCommandLineArgs(), "--smoke-test") >= 0;
+            SmokeMode = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--smoke-test" || arg.StartsWith("--restaurant-"));
             if (!SmokeMode) Load();
             SetPaused(true);
             if (Customer) customerPosition = Customer.transform.position;
         }
         void Start() {
+            Restaurant = gameObject.AddComponent<RestaurantController>(); Restaurant.Initialize(this);
             SyncWorld();
-            if (SmokeMode) gameObject.AddComponent<PrototypeSmokeTest>().Game = this;
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "--smoke-test") >= 0) gameObject.AddComponent<PrototypeSmokeTest>().Game = this;
+            if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg.StartsWith("--restaurant-"))) gameObject.AddComponent<RestaurantAcceptance>().Game = this;
         }
         void Update() {
             if (Time.unscaledTime > noticeUntil) Notice = "";
-            if (!Paused && !SmokeMode) {
+            if (!Paused && !SmokeMode && (!Restaurant || !Restaurant.PanelOpen && !Restaurant.PlacementActive)) {
                 int missed = State.Missed;
                 State.Tick(Time.deltaTime);
                 if (State.Missed > missed) Notify("Customer left. The next one arrives in a moment.");
@@ -56,6 +59,7 @@ namespace RestaurantCity {
             bool success = false;
             switch (kind) {
                 case InteractionKind.Supplier:
+                    if (State.Restaurant.Owned) { Restaurant.ShowPanel("Supplies"); return true; }
                     success = State.BuyIngredients();
                     if (success) Notify("3 fresh ingredients packed. Back to your stand!");
                     else if (State.RequestHelp()) { success = true; Notify("The supplier spots you one ingredient. Get back on your feet."); }
@@ -76,7 +80,7 @@ namespace RestaurantCity {
                     success = State.ClaimRecipe(Guard.Defeated);
                     Notify(success ? "MIDNIGHT BURGER unlocked. Every new burger now earns more!" : !State.IsNight ? "Come back after dusk. Watch for the rival." : State.RecipeUnlocked ? "You already know this recipe." : "The rival is guarding the stash. Three spatula hits will stagger them.", 6); break;
                 case InteractionKind.FutureRestaurant:
-                    Notify(State.Cash >= 150 ? "You've earned your restaurant fund! Interior building is the next milestone." : "A place of your own. Save $150 to reach the prototype goal.", 6); break;
+                    return Restaurant.BuyRestaurant();
             }
             if (success) Save();
             SyncWorld(); return success;
@@ -94,7 +98,7 @@ namespace RestaurantCity {
             if (State.HasOrder) Customer.transform.position = Vector3.MoveTowards(Customer.transform.position, customerPosition, Time.deltaTime * 2.5f);
             lastOrder = State.HasOrder;
             GrillFood.SetActive(State.Food == FoodStage.Cooking);
-            HandFood.SetActive(State.Food == FoodStage.Prepared || State.Food == FoodStage.Plated);
+            HandFood.SetActive((!Restaurant || !Restaurant.PlacementActive) && (State.Food == FoodStage.Prepared || State.Food == FoodStage.Plated));
             RecipeGlow.SetActive(State.IsNight && !State.RecipeUnlocked);
             float dusk = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(125, 160, State.Clock));
             if (State.Clock > 220) dusk = 1 - Mathf.SmoothStep(0, 1, Mathf.InverseLerp(220, 240, State.Clock));
@@ -107,36 +111,46 @@ namespace RestaurantCity {
         }
         public string Objective {
             get {
+                if (State.Restaurant.Owned) return "Your restaurant, your rules\nB to decorate inside. Tab to manage service, menu and staff.";
                 if (!State.StandBuilt) return "Make it yours\nSet up the coral food stand for $10.";
                 if (State.Stock == 0 && State.Food == FoodStage.Empty) return "Stock the kitchen\nBuy ingredients at the green supplier.";
                 if (State.Served == 0) return "Your first customer\nPrep > grill > plate > serve.";
                 if (!State.RecipeUnlocked) return State.IsNight ? "A recipe after dark\nExplore the marked rival alley. You can retreat." : "Build your reputation\nKeep serving. The alley stash opens at night.";
                 if (State.Cash < 150) return "A place of your own\nSell midnight burgers. Save $150 for your future restaurant.";
-                return "From a stand to a dream\nYou reached $150! Visit the future restaurant sign.";
+                return "A place of your own\nBuy the $150 restaurant across the street.";
             }
         }
         public void NewGame() {
             State = new GameState(); Player.Teleport(SpawnPoint); Guard.ResetGuard();
+            if (Restaurant) Restaurant.RebuildLayout();
             Save(); SetPaused(false); Notify("A new beginning. Your food stand is just ahead.");
         }
         public void Save() {
             if (SmokeMode) return;
+            SaveTo(SavePath);
+        }
+        public bool SaveTo(string path) {
             try {
-                Directory.CreateDirectory(Application.persistentDataPath);
-                string temporary = SavePath + ".tmp";
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                string temporary = path + ".tmp";
                 File.WriteAllText(temporary, JsonUtility.ToJson(State, true));
-                if (File.Exists(SavePath)) File.Replace(temporary, SavePath, SavePath + ".bak");
-                else File.Move(temporary, SavePath);
+                if (File.Exists(path)) File.Replace(temporary, path, path + ".bak");
+                else File.Move(temporary, path);
                 SaveStatus = "Progress saved";
-            } catch (Exception e) { SaveStatus = "Could not save progress"; Debug.LogWarning("Save failed: " + e.Message); }
+                return true;
+            } catch (Exception e) { SaveStatus = "Could not save progress"; Debug.LogWarning("Save failed: " + e.Message); return false; }
         }
         void Load() {
             if (!File.Exists(SavePath)) return;
+            LoadFrom(SavePath);
+        }
+        public bool LoadFrom(string path) {
             try {
-                var loaded = JsonUtility.FromJson<GameState>(File.ReadAllText(SavePath));
-                if (loaded == null || loaded.Version != 1) throw new InvalidDataException("Unsupported save version");
+                var loaded = JsonUtility.FromJson<GameState>(File.ReadAllText(path));
+                if (loaded == null || loaded.Version < 1 || loaded.Version > 2) throw new InvalidDataException("Unsupported save version");
                 loaded.SanitizeAfterLoad(); State = loaded; SaveStatus = "Saved progress loaded";
-            } catch (Exception e) { SaveStatus = "Save unreadable; starting fresh"; Debug.LogWarning("Load failed: " + e.Message); }
+                return true;
+            } catch (Exception e) { SaveStatus = "Save unreadable; starting fresh"; Debug.LogWarning("Load failed: " + e.Message); return false; }
         }
         void OnApplicationQuit() { Save(); }
     }
