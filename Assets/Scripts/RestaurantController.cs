@@ -24,6 +24,7 @@ namespace RestaurantCity {
         public bool PlacementActive { get; private set; }
         public string SelectedCatalogId { get; private set; }
         public int PreviewRotation { get; private set; }
+        public Vector2Int PreviewCell => new Vector2Int(previewX, previewZ);
         public string Hint { get; private set; } = "";
         public string FocusPrompt { get; private set; } = "";
         public int CarriedOrderId { get; private set; } = -1;
@@ -91,16 +92,7 @@ namespace RestaurantCity {
                 if (keys != null && (keys.escapeKey.wasPressedThisFrame || keys.bKey.wasPressedThisFrame) || mouse != null && mouse.rightButton.wasPressedThisFrame) { CancelPlacement(); return true; }
                 if (keys != null && keys.rKey.wasPressedThisFrame) PreviewRotation = (PreviewRotation + 1) % 4;
                 if (mouse != null) {
-                    var ray = Game.Player.View.ScreenPointToRay(mouse.position.ReadValue());
-                    var plane = new Plane(Vector3.up, Vector3.zero);
-                    if (plane.Raycast(ray, out float distance)) {
-                        var p = ray.GetPoint(distance); var item = RestaurantCatalog.Find(SelectedCatalogId);
-                        int w = PreviewRotation % 2 == 0 ? item.Width : item.Depth;
-                        int d = PreviewRotation % 2 == 0 ? item.Depth : item.Width;
-                        previewX = Mathf.RoundToInt(p.x + 15.5f - (w - 1) * .5f);
-                        previewZ = Mathf.RoundToInt(p.z + 20.5f - (d - 1) * .5f);
-                        UpdatePreview();
-                    }
+                    UpdatePreviewFromPointer(mouse.position.ReadValue());
                     if (mouse.leftButton.wasPressedThisFrame) ConfirmPlacement(previewX, previewZ);
                 }
                 return true;
@@ -111,6 +103,19 @@ namespace RestaurantCity {
                 if (keys.tabKey.wasPressedThisFrame) { ShowPanel("Service"); return true; }
             }
             return false;
+        }
+        public bool UpdatePreviewFromPointer(Vector2 screenPosition) {
+            if (!PlacementActive) return false;
+            var ray = Game.Player.View.ScreenPointToRay(screenPosition);
+            var plane = new Plane(Vector3.up, Vector3.zero);
+            if (!plane.Raycast(ray, out float distance)) return false;
+            var p = ray.GetPoint(distance); var item = RestaurantCatalog.Find(SelectedCatalogId);
+            int w = PreviewRotation % 2 == 0 ? item.Width : item.Depth;
+            int d = PreviewRotation % 2 == 0 ? item.Depth : item.Width;
+            previewX = Mathf.RoundToInt(p.x + 15.5f - (w - 1) * .5f);
+            previewZ = Mathf.RoundToInt(p.z + 20.5f - (d - 1) * .5f);
+            UpdatePreview();
+            return true;
         }
         public bool InspectRay(RaycastHit hit, bool activate) {
             FocusPrompt = "";
@@ -200,6 +205,12 @@ namespace RestaurantCity {
             if (!Data.CanCustomize) { Feedback("Finish the service before moving furniture."); return; }
             var item = Data.Layout.Find(p => p.InstanceId == id); if (item == null) return;
             BeginPlacement(item.CatalogId, id, item.Rotation);
+        }
+        public void SelectFurnitureItem(int id) {
+            if (!Data.Layout.Any(p => p.InstanceId == id)) return;
+            SelectedInstanceId = id;
+            if (Panel != "Furniture" || !PanelOpen) ShowPanel("Furniture");
+            else UI.Refresh();
         }
         public void SellItem(int id) {
             if (Game.State.Kitchen.At(id) != null) { Feedback("Clear this station before selling it."); return; }

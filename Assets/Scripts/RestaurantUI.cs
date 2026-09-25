@@ -119,10 +119,10 @@ namespace RestaurantCity {
             Label(sheet, Owner.Panel == "Supplies" ? "Milo's market pantry." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
             Button(sheet, "Close  x", 1060, 24, 130, 36, () => Owner.ClosePanel(), ink, paper);
             Label(sheet, "Time pauses while management is open.", 823, 62, 365, 19, 12, muted, false, TextAnchor.MiddleRight);
-            string[] panels = { "Catalog", "Service", "Menu", "Staff", "Reviews" };
+            string[] panels = { "Catalog", "Service", "Menu", "Staff", "Reviews", "Furniture" };
             for (int i = 0; i < panels.Length; i++) {
                 string tab = panels[i]; bool active = Owner.Panel == tab;
-                Button(sheet, tab == "Catalog" ? "Shop" : tab, 30 + i * 145, 78, 136, 35, () => { Owner.ShowPanel(tab); signature = ""; Refresh(); }, active ? teal : pale, active ? white : ink);
+                Button(sheet, tab == "Catalog" ? "Shop" : tab == "Furniture" ? "Arrange" : tab, 30 + i * 133, 78, 125, 35, () => { Owner.ShowPanel(tab); signature = ""; Refresh(); }, active ? teal : pale, active ? white : ink);
             }
             Label(sheet, "Your budget  $" + Owner.Game.State.Cash, 831, 82, 355, 28, 17, ink, true, TextAnchor.MiddleRight);
             Block(sheet, "Rule", 30, 124, 1160, 2, pale);
@@ -223,16 +223,26 @@ namespace RestaurantCity {
             else Label(sheet,"A shift takes arrivals for two minutes, then lets you finish remaining guests.\nUse the door sign to end arrivals early. Tab opens management between shifts.\nController Start joins player two. Management is a shared screen while closed.",30,523,1157,110,18,muted);
         }
         void BuildFurniture(RectTransform sheet) {
+            Label(sheet, "Choose an owned furnishing to move. This list includes stations hidden behind other furniture.", 30, 137, 1150, 28, 16, ink);
+            var owned = Owner.Data.Layout.FindAll(p => { var item = RestaurantCatalog.Find(p.CatalogId); return item != null && !item.IsFinish && !item.IsExterior; });
+            var content = Scroller(sheet, 30, 175, 365, 465, Mathf.Max(465, owned.Count * 58));
+            for (int i = 0; i < owned.Count; i++) {
+                var placed = owned[i];
+                var definition = RestaurantCatalog.Find(placed.CatalogId);
+                Button(content, definition.Name + "  #" + placed.InstanceId + "  (" + placed.X + ", " + placed.Z + ")", 6, i * 58 + 3, 340, 50,
+                    () => Owner.SelectFurnitureItem(placed.InstanceId), placed.InstanceId == Owner.SelectedInstanceId ? teal : pale,
+                    placed.InstanceId == Owner.SelectedInstanceId ? white : ink);
+            }
             PlacedItem selected = null;
             foreach (var item in Owner.Data.Layout) if (item.InstanceId == Owner.SelectedInstanceId) selected = item;
-            if (selected == null) { Label(sheet, "Look at a furnishing and press E to move or sell it.", 70, 270, 1080, 75, 25, ink, true, TextAnchor.MiddleCenter); return; }
+            if (selected == null) { Label(sheet, "Select any owned furnishing from the list. B while aiming at one opens it here directly.", 430, 270, 740, 90, 24, ink, true, TextAnchor.MiddleCenter); return; }
             var entry = RestaurantCatalog.Find(selected.CatalogId); int id = selected.InstanceId;
-            var picture = Box(sheet, "Selected furnishing", 55, 168, 380, 390).gameObject.AddComponent<RawImage>(); picture.texture = Owner.GetCatalogIcon(selected.CatalogId); picture.raycastTarget = false;
-            Label(sheet, entry.Name, 491, 183, 650, 63, 35, ink, true);
-            Label(sheet, entry.Description, 493, 263, 640, 81, 20, muted);
-            Label(sheet, "Move it to a new position and rotate with R.\nSelling returns part of the purchase price.", 493, 358, 640, 84, 18, ink);
-            Button(sheet, "Move furnishing", 493, 476, 309, 52, () => Owner.MoveItem(id), teal, white, Owner.Data.CanCustomize);
-            Button(sheet, "Sell for $" + (selected.Paid / 2), 820, 476, 309, 52, () => Owner.SellItem(id), coral, white, Owner.Data.CanCustomize);
+            var picture = Box(sheet, "Selected furnishing", 430, 175, 275, 235).gameObject.AddComponent<RawImage>(); picture.texture = Owner.GetCatalogIcon(selected.CatalogId); picture.raycastTarget = false;
+            Label(sheet, entry.Name, 730, 180, 430, 58, 31, ink, true);
+            Label(sheet, entry.Description, 730, 253, 425, 90, 18, muted);
+            Label(sheet, "Move: choose a new floor cell, then click. R rotates. Esc cancels.", 430, 429, 735, 46, 18, ink);
+            Button(sheet, "Move furnishing", 430, 490, 350, 52, () => Owner.MoveItem(id), teal, white, Owner.Data.CanCustomize);
+            Button(sheet, "Sell for $" + (selected.Paid / 2), 805, 490, 350, 52, () => Owner.SellItem(id), coral, white, Owner.Data.CanCustomize);
         }
 
         void BuildStaff(RectTransform sheet) {

@@ -26,6 +26,9 @@ namespace RestaurantCity {
         bool cameraInitialized;
         void Awake() { controller = GetComponent<CharacterController>(); if (Spatula) toolRotation = Spatula.localRotation; }
         public void InitializeCamera() {
+            // The CharacterController lives on this root, not on the visual body child.
+            // Put it on the same excluded layer so eye rays and spatula casts cannot hit our own capsule.
+            gameObject.layer = PlayerId == 0 ? 28 : 29;
             if (!View || cameraInitialized) return;
             eyePosition = View.transform.localPosition;
             if (eyePosition.y < .5f) eyePosition = new Vector3(0, 1.55f, 0);
@@ -57,15 +60,34 @@ namespace RestaurantCity {
             if (mouse != null && Cursor.lockState == CursorLockMode.Locked && !Elevated) ApplyLook(mouse.delta.ReadValue() * Sensitivity);
             if (pad != null && !Elevated) ApplyLook(pad.rightStick.ReadValue() * (130 * Time.deltaTime));
             ApplyMovement(move, Time.deltaTime, keys != null && keys.leftShiftKey.isPressed || pad != null && pad.leftStickButton.isPressed);
-            if (Game.Restaurant) Game.Restaurant.ClearPlayerFocus(this);
-            if (Physics.Raycast(InteractionRay, out var hit, 3.6f, ~OwnBodyMask, QueryTriggerInteraction.Ignore)) {
-                bool usedRestaurant = Game.Restaurant && Game.Restaurant.InspectPlayerRay(this, hit, interact, InteractHeld);
-                Target = hit.collider.GetComponentInParent<Interactable>();
-                if (!usedRestaurant && Target && interact) Game.InteractForPlayer(Target.Kind, this);
-            }
+            ResolveAndInteract(interact, InteractHeld);
             if (mouse != null && mouse.leftButton.wasPressedThisFrame || pad != null && pad.rightShoulder.wasPressedThisFrame) Swing();
             if (Spatula) Spatula.localRotation = toolRotation * Quaternion.Euler(Mathf.Sin(swingTimer / .55f * Mathf.PI) * -65, 0, 0);
             if (transform.position.y < -5) Teleport(Game.SpawnPoint + Vector3.right * PlayerId);
+        }
+        public bool TryResolveInteractionHit(out RaycastHit hit) {
+            bool direct = Physics.Raycast(InteractionRay, out hit, 3.6f, ~OwnBodyMask, QueryTriggerInteraction.Ignore);
+            if (direct && (hit.collider.GetComponentInParent<RestaurantTarget>() || hit.collider.GetComponentInParent<Interactable>())) return true;
+            // A station can sit just below a level eye ray. Keep each first hit authoritative;
+            // the assist only applies when the lower target is nearer than the center obstruction.
+            var ray = InteractionRay;
+            var lower = new Ray(ray.origin, (ray.direction + Vector3.down * .4f).normalized);
+            if (Physics.Raycast(lower, out var lowHit, 3.6f, ~OwnBodyMask, QueryTriggerInteraction.Ignore)
+                && (lowHit.collider.GetComponentInParent<RestaurantTarget>() || lowHit.collider.GetComponentInParent<Interactable>())
+                && (!direct || lowHit.distance + .05f < hit.distance)) {
+                hit = lowHit;
+                return true;
+            }
+            return direct;
+        }
+        public void ResolveAndInteract(bool pressed, bool held) {
+            Target = null;
+            if (Game.Restaurant) Game.Restaurant.ClearPlayerFocus(this);
+            if (TryResolveInteractionHit(out var hit)) {
+                bool usedRestaurant = Game.Restaurant && Game.Restaurant.InspectPlayerRay(this, hit, pressed, held);
+                Target = hit.collider.GetComponentInParent<Interactable>();
+                if (!usedRestaurant && Target && pressed) Game.InteractForPlayer(Target.Kind, this);
+            }
         }
         public void ApplyLook(Vector2 degrees) {
             transform.Rotate(0, degrees.x, 0);
