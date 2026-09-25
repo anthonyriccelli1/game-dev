@@ -190,9 +190,10 @@ namespace RestaurantCity {
         }
         public static void DecorateStreet(Transform parent) {
             var root=G("Original market and restaurant details",parent);
+            bool walkIn=GameObject.Find("Milo's walk-in");   // Milo works inside his store in the city build: no street stall props.
             // Produce rests above the existing supplier crates; the pavement and counter interaction remain clear.
-            for(int i=0;i<3;i++){var food=CreateItem(i==1?"RawProtein":"RawGreens",root.transform);food.transform.localPosition=new Vector3(-13+i,1.59f,9);food.transform.localScale=Vector3.one*1.8f;}
-            Crate(root.transform,new Vector3(-14.75f,.05f,10.35f),"greens");Crate(root.transform,new Vector3(-14.75f,.36f,10.35f),"buns");
+            if(!walkIn)for(int i=0;i<3;i++){var food=CreateItem(i==1?"RawProtein":"RawGreens",root.transform);food.transform.localPosition=new Vector3(-13+i,1.59f,9);food.transform.localScale=Vector3.one*1.8f;}
+            if(!walkIn){Crate(root.transform,new Vector3(-14.75f,.05f,10.35f),"greens");Crate(root.transform,new Vector3(-14.75f,.36f,10.35f),"buns");}
             // Narrow herb planter sits against the restaurant facade, outside its doorway.
             var herbs=G("Window herb trough",root.transform,new Vector3(-13.2f,1.55f,-8.82f));
             Box("Terracotta trough",herbs.transform,Vector3.zero,new Vector3(1.5f,.24f,.32f),"D96555");Box("Trough soil",herbs.transform,new Vector3(0,.13f,0),new Vector3(1.35f,.015f,.23f),"514234");

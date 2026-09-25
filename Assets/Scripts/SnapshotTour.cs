@@ -55,6 +55,12 @@ namespace RestaurantCity {
             if (Application.isEditor) dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Snapshots"));
             Directory.CreateDirectory(dir);
             DistrictLocks.Suspended = true;
+            // Probe: can a player-sized capsule walk from the sidewalk through Milo's door?
+            if (GameObject.Find("Milo's walk-in")) {
+                Physics.SyncTransforms();
+                bool blocked = Physics.CapsuleCast(new Vector3(-15.5f, .45f, 10.5f), new Vector3(-15.5f, 1.45f, 10.5f), .3f, Vector3.forward, out var hit, 5.5f);
+                Debug.LogWarning("DOOR_PROBE " + (blocked ? "blocked by " + hit.collider.name + " at z=" + hit.point.z.ToString("0.00") : "clear"));
+            }
             yield return new WaitForSeconds(2);
             Game.State.StandBuilt = true; Game.SetPaused(false); Game.SyncWorld();
             foreach (var shot in Shots) {

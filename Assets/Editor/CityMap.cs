@@ -142,7 +142,7 @@ public static class CityMap {
         if (shop && groundOverride == null) Storefront(parent, x0, z0, facing, s);
         if (stacks == 0 && shop) { if (H(s, 19) % 3 == 0) RoofSign(parent, x0, z0, facing, roofY + .5f, s); }
         else RoofClutter(parent, x0, z0, roofY + .5f, s);
-        if (stacks > 0 && H(s, 23) % 3 == 0) FireEscapes(parent, x0, z0, facing, stacks);
+        if (stacks > 0 && groundOverride == null && H(s, 23) % 3 == 0) FireEscapes(parent, x0, z0, facing, stacks);
         if (!shop && H(s, 29) % 2 == 0) foreach (float lat in new[] { -1.7f, 1.7f }) {
             var b = PutGeneric("Environment/SM_Gen_Env_Bush_0" + (H(s, 31) % 4 + 1), OnFace(x0, z0, facing, lat, .7f, 0), s * 33, parent);
             if (b) b.transform.localScale = Vector3.one * .75f;
@@ -379,8 +379,12 @@ public static class CityMap {
             if (!cuts.TryGetValue(src, out var cut)) cuts[src] = cut = CutDoor(src, -3.35f, -1.65f, 2.45f, -1.3f, 1f, "Assets/Generated/Meshes/" + src.name + "_Door.asset");
             mf.sharedMesh = cut;
         }
-        foreach (var mc in building.GetComponentsInChildren<MeshCollider>()) if (mc.sharedMesh && cuts.TryGetValue(mc.sharedMesh, out var cut)) mc.sharedMesh = cut;
+        // The module's mesh colliders seal the doorway; replace them on the ground floor with simple walls around the door.
+        foreach (var mc in building.GetComponentsInChildren<MeshCollider>()) if (mc.sharedMesh && mc.sharedMesh.name.StartsWith("SM_Bld_Shop_01")) Object.DestroyImmediate(mc);
         var room = new GameObject("Milo's walk-in").transform; room.SetParent(root, false);
+        var clear = InteriorMat("MiloWall", "E8DCC0");
+        foreach (var (cx, w) in new[] { (-17.15f, 1.6f), (-13.85f, 1.6f) }) { var f = Slab("Front wall collider", new Vector3(cx, 1.5f, 13.6f), new Vector3(w, 3, .3f), clear, room, true); f.GetComponent<Renderer>().enabled = false; }
+        var top = Slab("Door top collider", new Vector3(-15.5f, 2.75f, 13.6f), new Vector3(1.8f, .5f, .3f), clear, room, true); top.GetComponent<Renderer>().enabled = false;
         var wall = InteriorMat("MiloWall", "E8DCC0"); var floor = InteriorMat("MiloFloor", "8C6B4F"); var trim = InteriorMat("MiloTrim", "2F6B5E");
         Slab("Floor", new Vector3(-15.5f, .03f, 16), new Vector3(4.8f, .06f, 4.6f), floor, room, true);
         Slab("Wall left", new Vector3(-17.86f, 1.5f, 16), new Vector3(.06f, 3, 4.6f), wall, room, true);

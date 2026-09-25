@@ -66,8 +66,10 @@ public static class ArtPackDressing {
             Put(Generic + "Building/SM_Gen_Bld_Background_" + (i + 1).ToString("00") + ".prefab", new Vector3(-28 + i * 11, 0, 42), 180, root);
             Put(Generic + "Building/SM_Gen_Bld_Background_" + (i + 6).ToString("00") + ".prefab", new Vector3(-28 + i * 11, 0, -34), 0, root);
         }
-        Put(Generic + "Props/SM_Gen_Prop_Crate_Preset_01.prefab", new Vector3(-16.3f, 0, 8.8f), 15, root);
-        Put(Generic + "Props/SM_Gen_Prop_Barrel_Wood_01.prefab", new Vector3(-15.4f, 0, 10.6f), 0, root);
+        if (!CityMap.Available) {   // in the city build these would block Milo's door
+            Put(Generic + "Props/SM_Gen_Prop_Crate_Preset_01.prefab", new Vector3(-16.3f, 0, 8.8f), 15, root);
+            Put(Generic + "Props/SM_Gen_Prop_Barrel_Wood_01.prefab", new Vector3(-15.4f, 0, 10.6f), 0, root);
+        }
         Put(Generic + "Props/SM_Gen_Prop_Sack_Stack_01.prefab", new Vector3(-8.3f, 0, 9.8f), -20, root);
         Put(Generic + "Props/SM_Gen_Prop_Cardboard_Box_Preset_01.prefab", new Vector3(-4.9f, 0, 9.6f), 10, root);
         Put(Generic + "Props/SM_Gen_Prop_Barrel_Metal_01.prefab", new Vector3(9.4f, 0, 15.2f), 0, root);
