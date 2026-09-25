@@ -33,16 +33,21 @@ namespace RestaurantCity {
   // Raw protein now goes straight from the pantry to the grill (no chopping step); the prep bench only
   // handles ingredients that genuinely need hand-prep: greens and midnight sauce.
   static bool Raw(KitchenItemKind k)=>k==KitchenItemKind.RawGreens||k==KitchenItemKind.RawSauce;
+  // A finished ingredient sitting on any station (grill, prep bench, counter) slides onto a held plate.
   static string DirectComponent(string stationId,KitchenItemKind kind){
-   if((stationId=="grill"||stationId=="oven")&&kind==KitchenItemKind.CookedPatty)return "cooked_patty";
-   if(stationId=="prep_bench"&&kind==KitchenItemKind.ChoppedGreens)return "chopped_greens";
-   if(stationId=="prep_bench"&&kind==KitchenItemKind.MidnightSauce)return "midnight_sauce";
-   return null;
+   switch(kind){
+    case KitchenItemKind.CookedPatty:return "cooked_patty";
+    case KitchenItemKind.ChoppedGreens:return "chopped_greens";
+    case KitchenItemKind.MidnightSauce:return "midnight_sauce";
+    case KitchenItemKind.Bun:return "bun";
+    default:return null;
+   }
   }
+  static bool IsCounter(string id)=>id=="assembly"||id=="counter";
   static string ComponentLabel(string id)=>id=="bun"?"a bun":id=="cooked_patty"?"the cooked patty":id=="chopped_greens"?"chopped greens":id=="midnight_sauce"?"midnight sauce":id;
   static string PantryLabel(string choice)=>choice=="protein"?"a raw patty":choice=="greens"?"greens":choice=="bun"?"a bun":"sauce ingredients";
   bool CanAddComponent(KitchenItem plate,string component,out string message){
-   if(plate.Components.Contains(component))return Fail(ComponentLabel(component)+" is already on the plate.",out message);
+   if(plate.Components.Contains(component))return Fail("This plate already has "+ComponentLabel(component)+".",out message);
    if(RecipeBook.Recipes.Any(r=>r.Components.Contains(component)&&plate.Components.All(c=>r.Components.Contains(c)))){message="";return true;}
    var building=RecipeBook.Recipes.FirstOrDefault(r=>plate.Components.Count>0&&plate.Components.All(c=>r.Components.Contains(c)));
    string name=building!=null?RestaurantCatalog.Dish(building.DishId).Name:"This plate";
@@ -96,14 +101,14 @@ namespace RestaurantCity {
    }
    if(hand==null)return Blocked("Bring an ingredient or plate here.");
    if(item!=null){
-    if(s.CatalogId!="assembly"||item.Kind!=KitchenItemKind.Plate)return Blocked("Station occupied.");
+    if(!IsCounter(s.CatalogId)||item.Kind!=KitchenItemKind.Plate)return Blocked(IsCounter(s.CatalogId)?"Counter is full. Put a plate here to build on it.":"Station occupied.");
     string part=hand.Kind==KitchenItemKind.CookedPatty?"cooked_patty":hand.Kind==KitchenItemKind.Bun?"bun":hand.Kind==KitchenItemKind.ChoppedGreens?"chopped_greens":hand.Kind==KitchenItemKind.MidnightSauce?"midnight_sauce":null;
     if(part==null)return Blocked("Prepare the ingredient first. Discard burnt food.");
     if(!CanAddComponent(item,part,out string why))return Blocked(why);
     var plate=item;var carried=hand;
     return Tap("Add "+ComponentLabel(part)+" to plate",()=>{plate.Components.Add(part);plate.Quality=Math.Min(plate.Quality,carried.Quality);Items.Remove(carried);return "Added "+ComponentLabel(part)+" to the plate.";});
    }
-   bool allowed=s.CatalogId=="prep_bench"&&Raw(hand.Kind)||(s.CatalogId=="grill"||s.CatalogId=="oven")&&hand.Kind==KitchenItemKind.RawProtein||s.CatalogId=="assembly"&&hand.Kind==KitchenItemKind.Plate||s.CatalogId=="sink"&&hand.Kind==KitchenItemKind.DirtyPlate;
+   bool allowed=s.CatalogId=="prep_bench"&&Raw(hand.Kind)||(s.CatalogId=="grill"||s.CatalogId=="oven")&&hand.Kind==KitchenItemKind.RawProtein||IsCounter(s.CatalogId)||s.CatalogId=="sink"&&hand.Kind==KitchenItemKind.DirtyPlate;
    if(!allowed)return Blocked("Use the correct station for this item.");
    var carriedItem=hand;
    return Tap("Place "+Label(hand).ToLower(),()=>{carriedItem.Holder="station:"+stationId;carriedItem.Age=0;s.Progress=0;s.WorkOwner=null;return "Placed "+Label(carriedItem);});

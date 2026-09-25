@@ -75,6 +75,7 @@ namespace RestaurantCity {
             new CatalogItem("pantry","Ingredient pantry",CatalogCategory.Kitchen,25,1,1,0,0,"Take protein, greens, buns or midnight sauce ingredients."),
             new CatalogItem("plate_rack","Plate rack",CatalogCategory.Kitchen,18,1,1,0,0,"Six shared reusable plates. Return dirty plates to the sink."),
             new CatalogItem("assembly","Assembly counter",CatalogCategory.Kitchen,25,2,1,0,0,"Place a clean plate, then add prepared ingredients."),
+            new CatalogItem("counter","Prep counter",CatalogCategory.Kitchen,15,2,1,0,0,"Set anything down here: plates, patties, buns, sauce. Build dishes on it."),
             new CatalogItem("sink","Deep washing sink",CatalogCategory.Kitchen,30,1,1,0,0,"Wash dirty plates for six seconds to replenish the rack."),
             new CatalogItem("prep_bench","Steel prep bench",CatalogCategory.Kitchen,28,2,1,0,0,"Prepare one ingredient at a time. Extra benches let partners prep together."),
             new CatalogItem("grill","Comet grill",CatalogCategory.Kitchen,45,2,1,0,1,"Burgers and midnight buns. Extra grills add a cooking slot."),
@@ -135,7 +136,7 @@ namespace RestaurantCity {
     [Serializable] public class RestaurantReview { public string Customer,Comment; public float Score; public string DishId; }
     [Serializable] public class WorkerState { public string Id; public StaffJob Job; public int TasksCompleted; public float Energy=100; }
     [Serializable] public class RestaurantState {
-        public bool Owned,Open,PhysicalKitInstalled;
+        public bool Owned,Open,PhysicalKitInstalled,CounterInstalled;
         public int Produce,Protein,Served,Lost,Earnings,Rank=1,NextInstanceId=1,NextOrderId=1;
         public float Cleanliness=42,Satisfaction=50,ServiceSeconds;
         public List<PlacedItem> Layout=new List<PlacedItem>();
@@ -165,6 +166,11 @@ namespace RestaurantCity {
         }
         void AddPlaced(string id,int x,int z,int rotation,int paid) {Layout.Add(new PlacedItem{InstanceId=NextInstanceId++,CatalogId=id,X=x,Z=z,Rotation=rotation%4,Paid=paid});}
         public void EnsurePhysicalKit() {
+            if(Owned&&!CounterInstalled){
+                // Every kitchen gets one free counter so players can set dishes down instead of discarding them.
+                if(!HasEquipment("counter")){for(int z=0;z<10&&!CounterInstalled;z++)for(int x=0;x<12&&!CounterInstalled;x++)if(CanPlace("counter",x,z,0,-1,out _)){AddPlaced("counter",x,z,0,0);CounterInstalled=true;}}
+                else CounterInstalled=true;
+            }
             if(!Owned||PhysicalKitInstalled)return;
             foreach(string id in new[]{"pantry","plate_rack","assembly","sink"}) {
                 if(HasEquipment(id))continue;
@@ -248,11 +254,9 @@ namespace RestaurantCity {
             wallet.Cash-=price;if(protein)Protein+=6;else Produce+=6;message=$"Stocked 6 {(protein?"protein":"produce")} portions for ${price}.";return true;
         }
         public bool RequestSupplyHelp(GameState wallet,out string message) {
-            if(!Owned||wallet.Cash>=6||Produce!=0||!HasEquipment("prep_bench")||Orders.Any(o=>o.Stage==RestaurantOrderStage.Cooking||o.Stage==RestaurantOrderStage.Ready))return Fail("Emergency produce is available when you are out of produce, have no dishes cooking, and cannot afford a supply pack.",out message);
-            Produce=2;if(!ActiveMenu.Contains("salad"))ActiveMenu.Add("salad");
-            // Waiting customers can accept the emergency dish so a depleted burger order cannot trap a new owner.
-            foreach(var order in Orders.Where(o=>o.Stage==RestaurantOrderStage.Waiting)){order.DishId="salad";break;}
-            message="The supplier gives you 2 emergency produce. Garden galaxy is on your menu; serve a salad to get back on your feet.";return true;
+            // Anti-softlock: if you are broke AND can't cook anything, Milo fronts a small crate.
+            if(!Owned||wallet.Cash>=6||(Protein>0&&Produce>0))return Fail("Six portions cost $6 (produce) or $10 (protein).",out message);
+            if(Protein==0)Protein=3;if(Produce==0)Produce=3;message="Milo fronts you a starter crate: 3 protein, 3 produce. Pay it forward.";return true;
         }
         public bool StartService(GameState wallet,out string message) {
             if(!Owned||Open)return Fail("Service is unavailable or already open.",out message);

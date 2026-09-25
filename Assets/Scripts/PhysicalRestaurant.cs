@@ -27,7 +27,7 @@ namespace RestaurantCity {
    return "Building "+RestaurantCatalog.Dish(target.DishId).Name+": "+string.Join("  ",parts);
   }
   static string ComponentDisplay(string id)=>id=="bun"?"bun":id=="cooked_patty"?"cooked patty":id=="chopped_greens"?"chopped greens":id=="midnight_sauce"?"midnight sauce":id;
-  GameObject CreateFurnishing(string id,Transform parent)=>new[]{"pantry","plate_rack","sink","assembly"}.Contains(id)?KitchenArt.CreateStation(id,parent):RestaurantArt.CreateFurniture(id,parent);
+  GameObject CreateFurnishing(string id,Transform parent)=>id=="counter"?KitchenArt.CreateStation("assembly",parent):new[]{"pantry","plate_rack","sink","assembly"}.Contains(id)?KitchenArt.CreateStation(id,parent):RestaurantArt.CreateFurniture(id,parent);
   GameObject menuBoard;
   void PhysicalSetup(){Game.State.Kitchen.EnsureStations(Data);RebuildLayout();KitchenArt.DecorateStreet(transform);RefreshMenuBoard();}
   // A4: a wall board prop showing the active-menu recipes, alongside the Cookbook management tab.
@@ -56,7 +56,7 @@ namespace RestaurantCity {
   }
   public bool InspectPlayerRay(FirstPersonPlayer p,RaycastHit hit,bool pressed,bool held){
    var city=hit.collider.GetComponentInParent<Interactable>();
-   if(city&&city.Kind==InteractionKind.Supplier&&Data.Owned){supplierChoice.TryGetValue(p.ActorId,out int choice);bool protein=choice%2==0;prompts[p.ActorId]="Milo's market / E or A: buy 6 "+(protein?"protein / $10":"produce / $6")+"\nQ / B switches supplies. Your partner keeps working.";if(pressed){if(!Data.Restock(Game.State,protein,out var m)&&!protein&&Data.Produce==0&&Game.State.Cash<6)Data.RequestSupplyHelp(Game.State,out m);Feedback(m);Game.Save();}return true;}
+   if(city&&city.Kind==InteractionKind.Supplier&&Data.Owned){supplierChoice.TryGetValue(p.ActorId,out int choice);bool protein=choice%2==0;prompts[p.ActorId]="Milo's market / E or A: buy 6 "+(protein?"protein / $10":"produce / $6")+"\nQ / B switches supplies. Your partner keeps working.";if(pressed){if(!Data.Restock(Game.State,protein,out var m)&&Game.State.Cash<(protein?10:6))Data.RequestSupplyHelp(Game.State,out m);Feedback(m);Game.Save();}return true;}
    var target=hit.collider.GetComponentInParent<RestaurantTarget>();if(!target)return false;
    string actor=p.ActorId,message="";var k=Game.State.Kitchen;
    if(!Data.Owned){prompts[actor]="Buy this restaurant at the front sign / $150";return true;}

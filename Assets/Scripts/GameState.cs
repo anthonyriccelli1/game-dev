@@ -27,8 +27,11 @@ namespace RestaurantCity {
             Cash -= 6; Stock += 3; return true;
         }
         public bool Prepare() {
-            if (!StandBuilt || Stock < 1 || Food != FoodStage.Empty) return false;
-            Stock--; Food = FoodStage.Prepared; CookSeconds = 0; SignatureDish = RecipeUnlocked; return true;
+            if (!StandBuilt || Food != FoodStage.Empty) return false;
+            // The stand shares the restaurant pantry once you own it, so you are never stuck with stock in one place.
+            if (Stock >= 1) Stock--;
+            else if (Restaurant != null && Restaurant.Owned && Restaurant.Protein > 0) Restaurant.Protein--;
+            else return false; Food = FoodStage.Prepared; CookSeconds = 0; SignatureDish = RecipeUnlocked; return true;
         }
         public bool UseGrill() {
             if (Food == FoodStage.Prepared) { Food = FoodStage.Cooking; return true; }
@@ -45,7 +48,8 @@ namespace RestaurantCity {
         }
         public bool RequestHelp() {
             if (!StandBuilt || Cash >= 6 || Stock != 0 || Food != FoodStage.Empty) return false;
-            Stock = 1; return true;
+            if (Restaurant != null && Restaurant.Owned && Restaurant.Protein > 0) return false;
+            Stock = 3; return true;
         }
         public void Discard() { Food = FoodStage.Empty; CookSeconds = 0; }
         public void Respawn() {
