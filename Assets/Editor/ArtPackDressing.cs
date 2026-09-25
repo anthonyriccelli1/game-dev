@@ -51,7 +51,7 @@ public static class ArtPackDressing {
     public static void Dress(Transform world) {
         if (!AssetDatabase.IsValidFolder("Assets/Synty")) return;
         var root = new GameObject("Art pack dressing").transform; root.SetParent(world, false);
-        for (int i = 0; i < 6; i++) {
+        if (!CityMap.Available) for (int i = 0; i < 6; i++) {
             Put(Generic + "Building/SM_Gen_Bld_Background_" + (i + 1).ToString("00") + ".prefab", new Vector3(-28 + i * 11, 0, 42), 180, root);
             Put(Generic + "Building/SM_Gen_Bld_Background_" + (i + 6).ToString("00") + ".prefab", new Vector3(-28 + i * 11, 0, -34), 0, root);
         }

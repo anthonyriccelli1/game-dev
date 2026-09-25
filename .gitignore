@@ -24,3 +24,6 @@ SaveBackups/
 /Assets/Synty.meta
 /Assets/ThirdParty/
 /Assets/ThirdParty.meta
+/EditorOutput/
+/Snapshots/
+/editor-command.*

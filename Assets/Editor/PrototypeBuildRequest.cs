@@ -12,9 +12,22 @@ public static class PrototypeBuildRequest {
     const string Result = "prototype-build.result";
     static double nextCheck;
     static PrototypeBuildRequest() { EditorApplication.update += Check; }
+    // Lets tools outside Unity run an Editor utility: the request file names a static method on EditorTools.
+    static void RunCommand() {
+        AssetDatabase.Refresh();
+        if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
+        string name = File.ReadAllText("editor-command.request").Trim(); File.Delete("editor-command.request");
+        try {
+            var method = typeof(EditorTools).GetMethod(name);
+            if (method == null) throw new Exception("No EditorTools method named " + name);
+            var result = method.Invoke(null, null);
+            File.WriteAllText("editor-command.result", "PASS: " + result);
+        } catch (Exception e) { File.WriteAllText("editor-command.result", "FAIL: " + (e.InnerException ?? e)); Debug.LogException(e); }
+    }
     static void Check() {
         if (EditorApplication.isCompiling || EditorApplication.isUpdating || EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.timeSinceStartup < nextCheck) return;
         nextCheck = EditorApplication.timeSinceStartup + 2;
+        if (File.Exists("editor-command.request")) { RunCommand(); return; }
         if (!File.Exists(Request)) return;
         // Pick up script edits made outside the Editor (it may be unfocused with auto-refresh off).
         // If that starts a compile, keep the request; after the domain reload this check runs again.

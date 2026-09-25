@@ -35,6 +35,9 @@ public static class PrototypeBuilder {
         var fontBinding = game.gameObject.AddComponent<WorldTextFont>(); fontBinding.Font = textFont; fontBinding.Material = textMaterial;
         game.gameObject.AddComponent<CityHud>().Game = game;
         var world = new GameObject("Market Row / World").transform;
+        bool city = CityMap.Available;
+        if (city) Cube("Ground", new Vector3(0, -.6f, 0), new Vector3(200, .6f, 200), stone, world);
+        else {
         Cube("Ground", new Vector3(0, -.35f, 8), new Vector3(60, .6f, 62), stone, world);
         Cube("Street", new Vector3(0, -.025f, 0), new Vector3(48, .05f, 10), asphalt, world);
         for (int i = -5; i <= 5; i++) Cube("Lane marking", new Vector3(i * 4, .01f, 0), new Vector3(1.8f, .02f, .10f), cream, world, false);
@@ -46,17 +49,19 @@ public static class PrototypeBuilder {
             Cube("Curb", new Vector3(0, .09f, side * 5.2f), new Vector3(48, .18f, .28f), cream, world);
             for (int i = -11; i < 12; i++) Cube("Paving seam", new Vector3(i * 2, .015f, side * 8), new Vector3(.025f, .02f, 5.4f), Mat("Seam", "AAAFA4"), world, false);
         }
-        Building("Milo's Supply", -13, 17, 12, 10, teal, world);
-        Building("Apartments", -1, 19, 10, 14, coral, world);
+        }
+        if (!city) { Building("Milo's Supply", -13, 17, 12, 10, teal, world); Building("Apartments", -1, 19, 10, 14, coral, world); }
         RivalRestaurantShell(world);
-        Building("Corner cafe", -20, -15, 7, 9, Mat("Sage", "8DAB91"), world);
+        if (!city) Building("Corner cafe", -20, -15, 7, 9, Mat("Sage", "8DAB91"), world);
         Building("Future Restaurant", -10, -15, 10, 11, Mat("Brick", "BC896D"), world);
-        Building("Records", 2, -16, 10, 14, teal, world);
-        Building("Bodega", 16, -15, 13, 10, Mat("Mustard", "CEAE70"), world);
-        Cube("North district boundary", new Vector3(0, 2, 32), new Vector3(58, 4, 1), dark, world);
-        Cube("West boundary", new Vector3(-25, 3, 6), new Vector3(1, 6, 54), teal, world);
-        Cube("East boundary", new Vector3(25, 3, 6), new Vector3(1, 6, 54), teal, world);
-        Cube("South boundary", new Vector3(0, 3, -24), new Vector3(58, 6, 1), dark, world);
+        if (!city) { Building("Records", 2, -16, 10, 14, teal, world); Building("Bodega", 16, -15, 13, 10, Mat("Mustard", "CEAE70"), world); }
+        if (city) CityMap.Build(world);
+        else {
+            Cube("North district boundary", new Vector3(0, 2, 32), new Vector3(58, 4, 1), dark, world);
+            Cube("West boundary", new Vector3(-25, 3, 6), new Vector3(1, 6, 54), teal, world);
+            Cube("East boundary", new Vector3(25, 3, 6), new Vector3(1, 6, 54), teal, world);
+            Cube("South boundary", new Vector3(0, 3, -24), new Vector3(58, 6, 1), dark, world);
+        }
 
         var supply = Cube("Supplier counter", new Vector3(-12, .65f, 9), new Vector3(4, 1.3f, 1.5f), teal, world);
         supply.AddComponent<Interactable>().Kind = InteractionKind.Supplier;
@@ -129,12 +134,12 @@ public static class PrototypeBuilder {
         sun.transform.rotation = Quaternion.Euler(48, -35, 0); sun.intensity = 1.25f; sun.shadows = LightShadows.Soft;
         game.Sun = sun; game.Lamps = lamps.ToArray();
         RenderSettings.ambientMode = AmbientMode.Flat; RenderSettings.ambientLight = new Color(.66f, .74f, .78f);
-        RenderSettings.fog = true; RenderSettings.fogMode = FogMode.ExponentialSquared; RenderSettings.fogDensity = .011f;
+        RenderSettings.fog = true; RenderSettings.fogMode = FogMode.ExponentialSquared; RenderSettings.fogDensity = city ? .0045f : .011f;
         var player = new GameObject("Player / First person"); player.transform.position = game.SpawnPoint;
         var controller = player.AddComponent<CharacterController>(); controller.height = 1.8f; controller.radius = .3f; controller.center = new Vector3(0, .9f, 0); controller.stepOffset = .3f;
         game.Player = player.AddComponent<FirstPersonPlayer>(); game.Player.Game = game;
         var camera = new GameObject("Player camera").AddComponent<Camera>(); camera.tag = "MainCamera"; camera.transform.parent = player.transform; camera.transform.localPosition = new Vector3(0, 1.65f, 0);
-        camera.nearClipPlane = .05f; camera.farClipPlane = 180; camera.fieldOfView = 72; camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.nearClipPlane = .05f; camera.farClipPlane = city ? 520 : 180; camera.fieldOfView = 72; camera.clearFlags = CameraClearFlags.SolidColor;
         camera.backgroundColor = new Color(.61f, .80f, .83f); camera.gameObject.AddComponent<AudioListener>(); game.Player.View = camera;
         var tool = new GameObject("Spatula").transform; tool.SetParent(camera.transform); tool.localPosition = new Vector3(.38f, -.4f, .75f); tool.localRotation = Quaternion.Euler(-25, -10, -16); tool.localScale = Vector3.one * .6f;
         var handle = Cube("Spatula handle", Vector3.zero, new Vector3(.05f, .45f, .05f), wood, tool, false); handle.transform.localPosition = Vector3.zero;
