@@ -24,6 +24,12 @@ namespace RestaurantCity {
         Quaternion toolRotation;
         Vector3 eyePosition = new Vector3(0, 1.55f, 0);
         bool cameraInitialized;
+        // Target stickiness (Stage A / A1): once a valid target is acquired, a DIFFERENT valid target only
+        // takes over after being seen for >= StickySwitch seconds, and losing the target entirely only
+        // clears it after >= StickyLose seconds. This is the only place interaction targets are resolved;
+        // there is exactly one raycast query, so the prompt and the executed action can never disagree.
+        const float StickySwitch = .12f, StickyLose = .2f;
+        RaycastHit stickyHit; bool hasSticky; Component stickyKey, candidateKey; float candidateTimer, missTimer;
         void Awake() { controller = GetComponent<CharacterController>(); if (Spatula) toolRotation = Spatula.localRotation; }
         public void InitializeCamera() {
             // The CharacterController lives on this root, not on the visual body child.
@@ -65,21 +71,47 @@ namespace RestaurantCity {
             if (Spatula) Spatula.localRotation = toolRotation * Quaternion.Euler(Mathf.Sin(swingTimer / .55f * Mathf.PI) * -65, 0, 0);
             if (transform.position.y < -5) Teleport(Game.SpawnPoint + Vector3.right * PlayerId);
         }
+        static Component TargetKey(RaycastHit hit) {
+            if (!hit.collider) return null;
+            Component key = hit.collider.GetComponentInParent<RestaurantTarget>();
+            return key ? key : hit.collider.GetComponentInParent<Interactable>();
+        }
+        // Single interaction query: one raycast, optionally widened by ONE coaxial sphere-cast (never a
+        // second, differently-angled ray) so a thin station edge still registers without ever letting two
+        // simultaneous queries disagree about what the player is aiming at.
+        //
+        // Stickiness only smooths the choice between two DIFFERENT valid targets (e.g. the ray grazes the
+        // boundary between two adjacent stations) and briefly bridges a true miss (looking at empty space).
+        // A hit on real geometry that simply is not a target (a wall, an obstruction) is reported immediately
+        // and never masked by a lingering old target, so "what's blocking my view" is always accurate.
         public bool TryResolveInteractionHit(out RaycastHit hit) {
             bool direct = Physics.Raycast(InteractionRay, out hit, 3.6f, ~OwnBodyMask, QueryTriggerInteraction.Ignore);
-            if (direct && (hit.collider.GetComponentInParent<RestaurantTarget>() || hit.collider.GetComponentInParent<Interactable>())) return true;
-            // A station can sit just below a level eye ray. Keep each first hit authoritative;
-            // the assist only applies when the lower target is nearer than the center obstruction.
-            var ray = InteractionRay;
-            var lower = new Ray(ray.origin, (ray.direction + Vector3.down * .4f).normalized);
-            if (Physics.Raycast(lower, out var lowHit, 3.6f, ~OwnBodyMask, QueryTriggerInteraction.Ignore)
-                && (lowHit.collider.GetComponentInParent<RestaurantTarget>() || lowHit.collider.GetComponentInParent<Interactable>())
-                && (!direct || lowHit.distance + .05f < hit.distance)) {
-                hit = lowHit;
-                return true;
+            bool hasTarget = direct && TargetKey(hit);
+            if (!hasTarget) {
+                var ray = InteractionRay;
+                if (Physics.SphereCast(ray.origin, .15f, ray.direction, out var wideHit, 3.6f, ~OwnBodyMask, QueryTriggerInteraction.Ignore)
+                    && TargetKey(wideHit) && (!direct || wideHit.distance <= hit.distance + .01f)) {
+                    hit = wideHit; direct = true; hasTarget = true;
+                }
             }
-            return direct;
+            float dt = Time.deltaTime;
+            if (!direct) {
+                candidateKey = null; candidateTimer = 0;
+                missTimer += dt;
+                if (missTimer < StickyLose && hasSticky) { hit = stickyHit; return true; }
+                hasSticky = false; return false;
+            }
+            missTimer = 0;
+            var key = hasTarget ? TargetKey(hit) : null;
+            if (key == null) { hasSticky = false; candidateKey = null; candidateTimer = 0; return true; }
+            if (!hasSticky || key == stickyKey) { hasSticky = true; stickyKey = key; stickyHit = hit; candidateKey = null; candidateTimer = 0; return true; }
+            if (key == candidateKey) candidateTimer += dt; else { candidateKey = key; candidateTimer = dt; }
+            if (candidateTimer >= StickySwitch) { stickyKey = key; stickyHit = hit; candidateKey = null; candidateTimer = 0; hit = stickyHit; return true; }
+            hit = stickyHit; return true;
         }
+        // Teleporting jumps the player to an unrelated part of the world; the previous sticky target would
+        // otherwise linger for up to StickyLose seconds and point at something no longer nearby.
+        public void ResetInteractionTarget() { hasSticky = false; stickyKey = null; candidateKey = null; candidateTimer = 0; missTimer = 0; }
         public void ResolveAndInteract(bool pressed, bool held) {
             Target = null;
             if (Game.Restaurant) Game.Restaurant.ClearPlayerFocus(this);
@@ -134,6 +166,7 @@ namespace RestaurantCity {
         public void Teleport(Vector3 position) {
             if (!controller) controller = GetComponent<CharacterController>();
             controller.enabled = false; transform.position = position; controller.enabled = true; gravity = 0;
+            ResetInteractionTarget();
             if (Elevated) RefreshCameraPose();
         }
         public void LookAt(Vector3 point) {

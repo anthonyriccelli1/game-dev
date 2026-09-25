@@ -6,7 +6,7 @@ namespace RestaurantCity {
     }
     public enum FoodStage { Empty, Prepared, Cooking, Plated }
     [Serializable] public class GameState {
-        public int Version = 3, Cash = 30, Stock, Served, Missed, Health = 100, Day = 1, Flux;
+        public int Version = 4, Cash = 30, Stock, Served, Missed, Health = 100, Day = 1, Flux;
         public bool FluxResearch, FluxIntroduced;
         public KitchenState Kitchen = new KitchenState();
         public RestaurantState Restaurant = new RestaurantState();
@@ -52,7 +52,7 @@ namespace RestaurantCity {
             Cash = Math.Max(StandBuilt ? 0 : 10, Cash - 10); Health = 100; Discard(); HasOrder = false; NextCustomer = 8;
         }
         public void SanitizeAfterLoad() {
-            Version = 3; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
+            Version = 4; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
             Kitchen = Kitchen ?? new KitchenState(); Kitchen.SanitizeAfterLoad(this); Flux = Math.Max(0, Flux);
             if(RecipeUnlocked&&!FluxIntroduced){Flux+=3;FluxIntroduced=true;}
             Cash = Math.Max(StandBuilt ? 0 : 10, Math.Min(999999, Cash)); Stock = Math.Max(0, Math.Min(99, Stock));

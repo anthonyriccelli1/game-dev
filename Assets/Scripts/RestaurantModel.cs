@@ -27,6 +27,38 @@ namespace RestaurantCity {
             Id=id;Name=name;Price=price;ProteinCost=protein;ProduceCost=produce;CookSeconds=cook;Equipment=equipment;RequiredStars=stars;RequiresMidnight=midnight;Description=description;
         }
     }
+    // Stage A: recipes as data. Order-independent plate composition replaces the old bit-flag "Parts" field.
+    public class RecipeDefinition {
+        public string DishId; public List<string> Components; public List<string> Steps;
+        public RecipeDefinition(string dishId,string[] components,string[] steps) { DishId=dishId;Components=new List<string>(components);Steps=new List<string>(steps); }
+    }
+    public static class RecipeBook {
+        public static readonly RecipeDefinition[] Recipes = {
+            new RecipeDefinition("burger",new[]{"bun","cooked_patty"},new[]{
+                "Take a raw patty from the pantry.",
+                "Place it on the grill and wait for it to cook.",
+                "Take a clean plate (or carry it with you) to the assembly counter.",
+                "Add the cooked patty and a bun.",
+                "Carry the finished plate to the matching guest."}),
+            new RecipeDefinition("salad",new[]{"chopped_greens"},new[]{
+                "Take greens from the pantry.",
+                "Chop them at the prep bench (hold interact).",
+                "Add the chopped greens to a plate.",
+                "Carry the finished plate to the matching guest."}),
+            new RecipeDefinition("midnight",new[]{"bun","cooked_patty","midnight_sauce"},new[]{
+                "Requires the midnight recipe from a night city outing.",
+                "Cook a patty like a burger.",
+                "Take sauce ingredients from the pantry and prepare them at the prep bench.",
+                "Add the cooked patty, a bun, and the midnight sauce.",
+                "Carry the finished plate to the matching guest."})
+        };
+        public static RecipeDefinition Find(string dishId) => Array.Find(Recipes,r=>r.DishId==dishId);
+        public static string Match(List<string> components) {
+            if(components==null||components.Count==0)return "";
+            foreach(var r in Recipes)if(components.Count==r.Components.Count&&r.Components.All(components.Contains))return r.DishId;
+            return "";
+        }
+    }
     public class CustomerDefinition {
         public int Id; public string Name,FavoriteDish,Description;
         public float Patience,AmbienceWeight,CleanlinessWeight;

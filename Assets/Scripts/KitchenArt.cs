@@ -64,10 +64,15 @@ namespace RestaurantCity {
                 for(int x=-1;x<=1;x+=2)for(int z=-1;z<=1;z+=2)Box("Shelf upright",p,new Vector3(x*.87f,.87f,z*.35f),new Vector3(.085f,1.74f,.085f),"317E79");
                 for(int n=0;n<3;n++)Box("Oak supply shelf",p,new Vector3(0,.22f+n*.54f,0),new Vector3(1.9f,.085f,.85f),"895343");
                 Crate(p,new Vector3(-.48f,.27f,0),"protein"); Crate(p,new Vector3(.48f,.27f,0),"greens");
-                for(int n=0;n<3;n++){var item=CreateItem("Bun",0,p);item.transform.localPosition=new Vector3(-.67f+n*.22f,.79f,0);}
-                for(int n=0;n<4;n++){var item=CreateItem("RawSauce",0,p);item.transform.localPosition=new Vector3(.25f+n*.16f,.8f,0);}
+                for(int n=0;n<3;n++){var item=CreateItem("Bun",p);item.transform.localPosition=new Vector3(-.67f+n*.22f,.79f,0);}
+                for(int n=0;n<4;n++){var item=CreateItem("RawSauce",p);item.transform.localPosition=new Vector3(.25f+n*.16f,.8f,0);}
                 Crate(p,new Vector3(-.48f,1.35f,0),"greens"); Crate(p,new Vector3(.48f,1.35f,0),"protein");
                 Box("Cream shelf canopy",p,new Vector3(0,1.85f,0),new Vector3(1.95f,.12f,.9f),"F5DBAA");
+                // One aimable hitbox per ingredient shelf (Stage A / A2): the sub-id lets Preview/Act
+                // resolve exactly which ingredient the player is looking at, replacing the hidden Q cycle.
+                PantryShelf(p,"protein",-.48f,0,.62f); PantryShelf(p,"greens",.48f,0,.62f);
+                PantryShelf(p,"bun",-.48f,.62f,1.12f); PantryShelf(p,"sauce",.48f,.62f,1.12f);
+                PantryShelf(p,"greens",-.48f,1.12f,1.8f); PantryShelf(p,"protein",.48f,1.12f,1.8f);
             } else if(id=="plate_rack") {
                 Bench(p,width,"317E79");
                 for(int stack=0;stack<2;stack++)for(int n=0;n<5;n++)Plate(p,new Vector3(stack==0?-.21f:.21f,1+n*.04f,0),.8f);
@@ -84,7 +89,7 @@ namespace RestaurantCity {
                 Bar("Faucet stem",p,new Vector3(-.3f,1,-.4f),new Vector3(-.3f,1.47f,-.4f),.065f,"CA9B53");Bar("Faucet arch",p,new Vector3(-.3f,1.47f,-.4f),new Vector3(-.3f,1.47f,-.03f),.065f,"CA9B53");Bar("Faucet spout",p,new Vector3(-.3f,1.47f,-.03f),new Vector3(-.3f,1.36f,-.03f),.07f,"CA9B53");
                 for(int n=0;n<5;n++)Bar("Drying rack rail",p,new Vector3(.29f+n*.1f,1.075f,-.29f),new Vector3(.29f+n*.1f,1.075f,.29f),.025f,"CA9B53");
                 Box("Folded dish cloth",p,new Vector3(.67f,1.1f,.23f),new Vector3(.3f,.035f,.2f),"D96555");
-                var soap=CreateItem("RawSauce",0,p);soap.name="Soap dispenser";soap.transform.localPosition=new Vector3(.72f,1.02f,-.29f);soap.transform.localScale=Vector3.one*.65f;
+                var soap=CreateItem("RawSauce",p);soap.name="Soap dispenser";soap.transform.localPosition=new Vector3(.72f,1.02f,-.29f);soap.transform.localScale=Vector3.one*.65f;
             } else {
                 Bench(p,width,"317E79");
                 Box("Maple assembly board",p,new Vector3(-.31f,1.026f,.06f),new Vector3(.92f,.04f,.67f),"CA9B53");
@@ -114,12 +119,21 @@ namespace RestaurantCity {
             S("Golden sesame bun",p,Profile("bun",new[]{0f,.02f,.07f,.105f,.12f},new[]{0f,.135f,.13f,.085f,0f}),position,Vector3.one,M("D9A45E"));
             for(int i=0;i<7;i++){float a=i*2.399f;var seed=Box("Sesame seed",p,position+new Vector3(Mathf.Cos(a)*.064f,.107f,Mathf.Sin(a)*.064f),new Vector3(.021f,.007f,.009f),"FFF1D1");seed.transform.localRotation=Quaternion.Euler(0,i*32,0);}
         }
-        public static GameObject CreateItem(string kind,int parts,Transform parent) {
+        public static GameObject CreateItem(string kind,Transform parent) => CreateItem(kind,null,parent);
+        public static GameObject CreateItem(string kind,List<string> components,Transform parent) {
             var root=G("Food_"+kind,parent);var p=root.transform;
+            bool Has(string id)=>components!=null&&components.Contains(id);
             if(kind=="Plate"||kind=="DirtyPlate") {
                 Plate(p,Vector3.zero);
                 if(kind=="DirtyPlate"){Disk("Sauce stain",p,new Vector3(.04f,.029f,0),new Vector3(.17f,.003f,.11f),"89513B");for(int i=0;i<4;i++)Box("Plate crumb",p,new Vector3(-.1f+i*.055f,.036f,.06f),new Vector3(.025f,.018f,.023f),"CA9B53");}
-                else {if((parts&2)!=0)Disk("Bottom bun",p,new Vector3(0,.03f,0),new Vector3(.28f,.045f,.28f),"D9A45E");if((parts&4)!=0)Greens(p,new Vector3(0,.08f,0),true);if((parts&1)!=0)Patty(p,new Vector3(0,(parts&2)!=0?.105f:.04f,0),"CookedPatty");if((parts&8)!=0){Disk("Midnight glaze",p,new Vector3(0,.17f,0),new Vector3(.24f,.012f,.22f),"824DA1");for(int i=0;i<3;i++)Box("Glaze glint",p,new Vector3(-.065f+i*.055f,.187f,0),new Vector3(.023f,.006f,.07f),"B492CB");}if((parts&2)!=0)Bun(p,new Vector3(0,(parts&1)!=0?.18f:.09f,0));}
+                else {
+                    bool bun=Has("bun"),patty=Has("cooked_patty");
+                    if(bun)Disk("Bottom bun",p,new Vector3(0,.03f,0),new Vector3(.28f,.045f,.28f),"D9A45E");
+                    if(Has("chopped_greens"))Greens(p,new Vector3(0,.08f,0),true);
+                    if(patty)Patty(p,new Vector3(0,bun?.105f:.04f,0),"CookedPatty");
+                    if(Has("midnight_sauce")){Disk("Midnight glaze",p,new Vector3(0,.17f,0),new Vector3(.24f,.012f,.22f),"824DA1");for(int i=0;i<3;i++)Box("Glaze glint",p,new Vector3(-.065f+i*.055f,.187f,0),new Vector3(.023f,.006f,.07f),"B492CB");}
+                    if(bun)Bun(p,new Vector3(0,patty?.18f:.09f,0));
+                }
             } else if(kind=="RawGreens"||kind=="ChoppedGreens")Greens(p,Vector3.zero,kind=="ChoppedGreens");
             else if(kind=="RawSauce"||kind=="MidnightSauce") {
                 S("Faceted sauce bottle",p,Profile("bottle",new[]{0f,.02f,.2f,.24f,.29f,.3f},new[]{0f,.065f,.065f,.025f,.025f,0f},8),Vector3.zero,Vector3.one,M(kind=="MidnightSauce"?"824DA1":"D96555"));
@@ -129,16 +143,21 @@ namespace RestaurantCity {
             else Patty(p,Vector3.zero,kind);
             return root;
         }
+        static void PantryShelf(Transform parent,string subId,float x,float yLow,float yHigh) {
+            var zone=G("Pantry shelf "+subId,parent,new Vector3(x,(yLow+yHigh)*.5f,.44f));
+            var box=zone.AddComponent<BoxCollider>(); box.size=new Vector3(.85f,yHigh-yLow,.42f);
+            var target=zone.AddComponent<RestaurantTarget>(); target.Kind="Furniture"; target.SubId=subId;
+        }
         static void Crate(Transform p,Vector3 position,string contents,float scale=1) {
             var root=G("Slatted ingredient crate",p,position);root.transform.localScale=Vector3.one*scale;p=root.transform;
             Box("Crate base",p,new Vector3(0,.025f,0),new Vector3(.79f,.05f,.65f),"895343");
             for(int n=0;n<2;n++)for(int side=-1;side<=1;side+=2){Box("Crate long slat",p,new Vector3(0,.09f+n*.12f,side*.31f),new Vector3(.8f,.095f,.035f),"AD7851");Box("Crate end slat",p,new Vector3(side*.38f,.09f+n*.12f,0),new Vector3(.04f,.095f,.62f),"AD7851");}
-            for(int i=0;i<3;i++){var food=CreateItem(contents=="protein"?"RawProtein":contents=="buns"?"Bun":"RawGreens",0,p);food.transform.localPosition=new Vector3(-.23f+i*.23f,.13f,0);}
+            for(int i=0;i<3;i++){var food=CreateItem(contents=="protein"?"RawProtein":contents=="buns"?"Bun":"RawGreens",p);food.transform.localPosition=new Vector3(-.23f+i*.23f,.13f,0);}
         }
         public static void DecorateStreet(Transform parent) {
             var root=G("Original market and restaurant details",parent);
             // Produce rests above the existing supplier crates; the pavement and counter interaction remain clear.
-            for(int i=0;i<3;i++){var food=CreateItem(i==1?"RawProtein":"RawGreens",0,root.transform);food.transform.localPosition=new Vector3(-13+i,1.59f,9);food.transform.localScale=Vector3.one*1.8f;}
+            for(int i=0;i<3;i++){var food=CreateItem(i==1?"RawProtein":"RawGreens",root.transform);food.transform.localPosition=new Vector3(-13+i,1.59f,9);food.transform.localScale=Vector3.one*1.8f;}
             Crate(root.transform,new Vector3(-14.75f,.05f,10.35f),"greens");Crate(root.transform,new Vector3(-14.75f,.36f,10.35f),"buns");
             // Narrow herb planter sits against the restaurant facade, outside its doorway.
             var herbs=G("Window herb trough",root.transform,new Vector3(-13.2f,1.55f,-8.82f));

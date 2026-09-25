@@ -26,7 +26,7 @@ namespace RestaurantCity {
         void Awake() {
             SmokeMode = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--smoke-test" || arg.StartsWith("--restaurant-") || arg.StartsWith("--physical-") || arg.StartsWith("--interaction-"));
             if (!SmokeMode) Load(); else State = new GameState();
-            State.Version = 3;
+            State.Version = 4;
             SetPaused(true);
             if (Customer) customerPosition = Customer.transform.position;
         }
@@ -162,8 +162,9 @@ namespace RestaurantCity {
         public bool LoadFrom(string path) {
             try {
                 var loaded = JsonUtility.FromJson<GameState>(File.ReadAllText(path));
-                if (loaded == null || loaded.Version < 1 || loaded.Version > 3) throw new InvalidDataException("Unsupported save version");
+                if (loaded == null || loaded.Version < 1 || loaded.Version > 4) throw new InvalidDataException("Unsupported save version");
                 if (loaded.Version < 3 && !File.Exists(path + ".pre-physical-v2.bak")) File.Copy(path, path + ".pre-physical-v2.bak");
+                if (loaded.Version < 4 && !File.Exists(path + ".pre-recipe-v4.bak")) File.Copy(path, path + ".pre-recipe-v4.bak");
                 loaded.SanitizeAfterLoad(); State = loaded; SaveStatus = "Saved progress loaded";
                 return true;
             } catch (Exception e) { SaveStatus = "Save unreadable; starting fresh"; Debug.LogWarning("Load failed: " + e.Message); return false; }

@@ -11,6 +11,9 @@ namespace RestaurantCity {
         public string Kind = "Furniture";
         public int InstanceId = -1;
         public int OrderId = -1;
+        // Set on a child hitbox (e.g. one pantry ingredient shelf) to say which ingredient it offers.
+        // Empty means "the furnishing generally" (Preview falls back to a default sub-choice).
+        public string SubId = "";
     }
 
     public partial class RestaurantController : MonoBehaviour {
@@ -231,6 +234,9 @@ namespace RestaurantCity {
                 obj.transform.position = CellCenter(p.X, p.Z, w, d); obj.transform.rotation = Quaternion.Euler(0, p.Rotation * 90, 0);
                 var target = obj.AddComponent<RestaurantTarget>(); target.InstanceId = p.InstanceId;
                 if (obj.GetComponentsInChildren<Collider>().Length == 0) { var collider = obj.AddComponent<BoxCollider>(); collider.center = new Vector3(0, .65f, 0); collider.size = new Vector3(item.Width * .9f, 1.3f, item.Depth * .9f); }
+                // Child hitboxes (pantry ingredient shelves) share the furnishing's instance id so a
+                // station lookup by InstanceId works no matter which collider the interaction ray hit.
+                foreach (var child in obj.GetComponentsInChildren<RestaurantTarget>()) child.InstanceId = p.InstanceId;
                 Furnishings[p.InstanceId] = obj;
             }
             RestaurantArt.UpdateFinishes(Room, Data.WallId, Data.FloorId, Data.Layout.Any(p => p.CatalogId == "awning_coral"), Data.Layout.Any(p => p.CatalogId == "sign_neon"));
@@ -278,7 +284,7 @@ namespace RestaurantCity {
         public void Clean() { BeginCleaning(); }
         public void Hire(string id) { bool hired = Data.Hire(Game.State, id, out string message); Feedback(message); if (hired) PlayChime(true); Game.Save(); UI.Rebuild(); }
         public void Assign(string id, StaffJob job) { Data.Assign(id, job, out string message); Feedback(message); Game.Save(); UI.Rebuild(); }
-        public void ToggleDish(string id) { Data.ToggleDish(Game.State, id, out string message); Feedback(message); Game.Save(); UI.Rebuild(); }
+        public void ToggleDish(string id) { Data.ToggleDish(Game.State, id, out string message); Feedback(message); RefreshMenuBoard(); Game.Save(); UI.Rebuild(); }
         public void ServeGuest(int id) {
             if (Game.State.Kitchen.Serve(Game.State, Game.Player.ActorId, id, out string message)) PlayChime(false);
             Feedback(message); Game.Save();

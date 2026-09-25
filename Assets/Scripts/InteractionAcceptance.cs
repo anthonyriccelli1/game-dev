@@ -32,22 +32,28 @@ namespace RestaurantCity {
                 var grill = Station("grill");
                 var table = R.Data.Layout.First(x => RestaurantCatalog.Find(x.CatalogId).Seats > 0).InstanceId;
 
-                // A level eye ray aimed at a visible bench should resolve the interactive object.
+                // A level eye ray aimed at a visible bench should resolve the interactive object, consistently
+                // frame after frame (this used to flip between a direct ray and a second, lower-angled ray).
                 var benchCenter = R.Furnishings[prep].GetComponentInChildren<Collider>().bounds.center;
                 P.Teleport(new Vector3(benchCenter.x, .15f, benchCenter.z + 2));
                 Physics.SyncTransforms();
                 P.LookAt(new Vector3(benchCenter.x, P.View.transform.position.y, benchCenter.z));
-                Check(P.TryResolveInteractionHit(out var levelHit) && TargetId(levelHit) == prep,
-                    "level eye ray resolves visible kitchen bench");
+                bool stable = true;
+                for (int i = 0; i < 6; i++) stable &= P.TryResolveInteractionHit(out var repeat) && TargetId(repeat) == prep;
+                Check(stable, "level eye ray resolves the same kitchen bench on every consecutive query");
+
                 var blocker = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 blocker.name = "Interaction test obstruction";
                 blocker.transform.position = P.InteractionRay.origin + P.InteractionRay.direction * 1.05f;
                 blocker.transform.localScale = new Vector3(2, 3, .35f);
                 Physics.SyncTransforms();
                 Check(P.TryResolveInteractionHit(out var blockedHit) && blockedHit.collider == blocker.GetComponent<Collider>(),
-                    "target assist respects a closer wall-like obstruction");
+                    "a closer wall-like obstruction reports immediately, never the target behind it");
                 blocker.SetActive(false);
                 Destroy(blocker);
+                Physics.SyncTransforms();
+                Check(P.TryResolveInteractionHit(out var restored) && TargetId(restored) == prep,
+                    "removing the obstruction immediately restores the bench, no stale block");
 
                 // B is handled before the usual ray pass in FirstPersonPlayer.Update.
                 R.ClearPlayerFocus(P);
@@ -101,9 +107,10 @@ namespace RestaurantCity {
                 Check(K.At(assembly)?.Kind == KitchenItemKind.Plate && K.Hold(P.ActorId) == null,
                     "E places clean plate on assembly counter");
 
-                Check(AimAt(pantry), "ray targets pantry");
+                Check(AimAtShelf(pantry, "protein"), "ray targets the pantry's raw-patty shelf");
+                Check(PromptFor().Contains("raw patty"), "pantry prompt names the sub-id ingredient (A2)");
                 P.ResolveAndInteract(true, false);
-                Check(K.Hold(P.ActorId)?.Kind == KitchenItemKind.RawProtein, "E takes raw protein from pantry");
+                Check(K.Hold(P.ActorId)?.Kind == KitchenItemKind.RawProtein, "E takes raw patty from its own shelf, not a hidden Q cycle");
                 bool tableFocused = AimAt(table);
                 Check(tableFocused, "ray targets dining table");
                 if (tableFocused) P.ResolveAndInteract(true, false);
@@ -111,38 +118,29 @@ namespace RestaurantCity {
                     "E on adjacent table while carrying food never opens furniture menu");
                 if (R.PanelOpen) R.ClosePanel();
 
-                Check(AimAt(prep), "ray targets prep bench");
-                P.ResolveAndInteract(true, false);
-                Check(K.At(prep)?.Kind == KitchenItemKind.RawProtein, "E places protein on prep bench");
-                float elapsed = 0;
-                while (elapsed < 3.3f) {
-                    P.ResolveAndInteract(false, true);
-                    elapsed += Time.deltaTime;
-                    yield return null;
-                }
-                Check(K.At(prep)?.Kind == KitchenItemKind.PreparedPatty, "holding E prepares patty through focused ray");
-                P.ResolveAndInteract(true, false);
-                Check(K.Hold(P.ActorId)?.Kind == KitchenItemKind.PreparedPatty, "E retrieves prepared patty");
+                // Stage A workflow: raw patty goes straight to the grill (no prep-bench chop step).
                 Check(AimAt(grill), "ray targets grill");
                 P.ResolveAndInteract(true, false);
-                Check(K.At(grill)?.Kind == KitchenItemKind.PreparedPatty, "E places patty on grill");
+                Check(K.At(grill)?.Kind == KitchenItemKind.RawProtein, "E places the raw patty directly on the grill");
                 K.Tick(Game.State, 8.1f);
                 Check(K.At(grill)?.Kind == KitchenItemKind.CookedPatty, "grill cooks patty");
+
+                Check(AimAt(assembly), "ray targets assembly for the held plate");
                 P.ResolveAndInteract(true, false);
-                Check(K.Hold(P.ActorId)?.Kind == KitchenItemKind.CookedPatty, "E takes cooked patty");
-                Check(AimAt(assembly), "ray targets plated assembly");
+                Check(K.Hold(P.ActorId)?.Kind == KitchenItemKind.Plate, "E picks the clean plate back up to carry it");
+                Check(AimAt(grill), "ray targets grill while carrying a plate");
+                Check(PromptFor().Contains("cooked patty"), "Preview offers the fewer-press shortcut onto a held plate (A3)");
                 P.ResolveAndInteract(true, false);
-                Check(K.At(assembly)?.Parts == 1 && K.Hold(P.ActorId) == null, "E adds cooked patty to plate");
-                Check(AimAt(pantry), "ray targets pantry for bun");
-                R.HandlePlayerInput(P, false, false, true, false, false);
-                R.HandlePlayerInput(P, false, false, true, false, false);
+                Check(K.Hold(P.ActorId)?.Components.Contains("cooked_patty") == true && K.At(grill) == null,
+                    "E slides the cooked patty straight onto the held plate");
+
+                Check(AimAtShelf(pantry, "bun"), "ray targets the pantry's bun shelf");
                 P.ResolveAndInteract(true, false);
-                Check(K.Hold(P.ActorId)?.Kind == KitchenItemKind.Bun, "pantry choice yields separate bun");
-                Check(AimAt(assembly), "ray targets assembly for bun");
-                P.ResolveAndInteract(true, false);
-                Check(K.At(assembly)?.Parts == 3 && K.Hold(P.ActorId) == null, "E finishes burger on plate");
-                P.ResolveAndInteract(true, false);
-                Check(K.RecipeOf(K.Hold(P.ActorId)) == "burger", "E takes completed burger to serve");
+                Check(K.Hold(P.ActorId)?.Components.Contains("bun") == true, "E adds a bun straight onto the held plate from its shelf");
+                Check(K.RecipeOf(K.Hold(P.ActorId)) == "burger", "components-based recipe match recognizes the finished burger");
+
+                Check(AimAtShelf(pantry, "sauce"), "ray targets the pantry's sauce shelf");
+                Check(!PromptFor().Contains("E  Take"), "midnight sauce shelf is locked before the recipe is learned");
                 P.Teleport(new Vector3(0, .15f, 0));
                 Check(Game.CoOp.Join(), "second player joins isolated input test");
                 var second = Game.CoOp.SecondPlayer;
@@ -154,6 +152,7 @@ namespace RestaurantCity {
         }
         int Station(string id) => R.Data.Layout.First(x => x.CatalogId == id).InstanceId;
         static int TargetId(RaycastHit hit) { var t = hit.collider ? hit.collider.GetComponentInParent<RestaurantTarget>() : null; return t ? t.InstanceId : -1; }
+        string PromptFor() => R.PromptFor(P.ActorId);
         bool AimAt(int id) {
             if (!R.Furnishings.TryGetValue(id, out var furnishing)) return false;
             var collider = furnishing.GetComponentInChildren<Collider>();
@@ -171,6 +170,21 @@ namespace RestaurantCity {
                 misses += " offset=" + offset + " eye=" + P.InteractionRay.origin + " direction=" + P.InteractionRay.direction + " hit=" + (found ? hit.collider.name + ":" + TargetId(hit) + "@" + hit.distance.ToString("0.00") : "none");
             }
             Debug.Log("INTERACTION_AIM_MISS id=" + id + " collider=" + collider.name + " bounds=" + collider.bounds + misses);
+            return false;
+        }
+        // Aims at one named pantry shelf (A2's per-ingredient hitbox) rather than the furnishing's general bounds.
+        bool AimAtShelf(int pantryId, string subId) {
+            if (!R.Furnishings.TryGetValue(pantryId, out var furnishing)) return false;
+            var shelf = furnishing.transform.Find("Pantry shelf " + subId);
+            var collider = shelf ? shelf.GetComponent<Collider>() : null;
+            if (!collider) return false;
+            var center = collider.bounds.center;
+            foreach (var offset in new[] { new Vector3(0, 0, 1.7f), new Vector3(0, .3f, 1.6f) }) {
+                P.Teleport(new Vector3(center.x + offset.x, .15f + offset.y, center.z + offset.z));
+                P.LookAt(center);
+                Physics.SyncTransforms();
+                if (P.TryResolveInteractionHit(out var hit) && hit.collider == collider) return true;
+            }
             return false;
         }
         void Check(bool result, string label) { checks++; if (result) Debug.Log("INTERACTION_CHECK_PASS " + label); else { failures++; Debug.LogWarning("INTERACTION_CHECK_FAIL " + label); } }

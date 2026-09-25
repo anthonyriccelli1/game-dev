@@ -19,7 +19,7 @@ namespace RestaurantCity {
      if(hand!=null){if(hand.Kind==KitchenItemKind.DirtyPlate){plan.Enqueue(new KitchenTask("sink"));plan.Enqueue(new KitchenTask("sink","work"));}else{var order=Data.Orders.FirstOrDefault(o=>o.Stage==RestaurantOrderStage.Waiting&&o.DishId==k.RecipeOf(hand));if(order!=null)plan.Enqueue(new KitchenTask("guest","serve",order.Id));else if(hand.Kind==KitchenItemKind.Plate)plan.Enqueue(new KitchenTask("assembly"));else k.Discard(Game.State,actor,out _);}}
      else if(worker.Job==StaffJob.Clean){var dirty=k.Items.FirstOrDefault(i=>i.Kind==KitchenItemKind.DirtyPlate&&i.Holder.StartsWith("table:"));if(dirty!=null){plan.Enqueue(new KitchenTask("table","clear",dirty.TableInstanceId));plan.Enqueue(new KitchenTask("sink"));plan.Enqueue(new KitchenTask("sink","work"));}}
      else if(worker.Job==StaffJob.Serve){var ready=k.Items.FirstOrDefault(i=>i.Holder.StartsWith("station:")&&k.RecipeOf(i)!=""&&Data.Orders.Any(o=>o.Stage==RestaurantOrderStage.Waiting&&o.DishId==k.RecipeOf(i)));if(ready!=null){int station=int.Parse(ready.Holder.Substring(8));var order=Data.Orders.First(o=>o.Stage==RestaurantOrderStage.Waiting&&o.DishId==k.RecipeOf(ready));plan.Enqueue(new KitchenTask("assembly","",station));plan.Enqueue(new KitchenTask("guest","serve",order.Id));}}
-     else if(worker.Job==StaffJob.Cook){var order=Data.Orders.FirstOrDefault(o=>o.Stage==RestaurantOrderStage.Waiting&&!employees.Values.Any(v=>v!=view&&v.OrderId==o.Id)&&!k.Items.Any(i=>k.RecipeOf(i)==o.DishId));if(order!=null&&k.Stations.Any(s=>s.CatalogId=="assembly"&&k.At(s.InstanceId)==null)){view.OrderId=order.Id;plan.Enqueue(new KitchenTask("plate_rack"));plan.Enqueue(new KitchenTask("assembly"));AddIngredient(plan,order.DishId=="salad"?"greens":"protein",order.DishId!="salad");if(order.DishId!="salad"){plan.Enqueue(new KitchenTask("pantry","bun"));plan.Enqueue(new KitchenTask("assembly"));}if(order.DishId=="midnight")AddIngredient(plan,"sauce",false);}}
+     else if(worker.Job==StaffJob.Cook){var order=Data.Orders.FirstOrDefault(o=>o.Stage==RestaurantOrderStage.Waiting&&!employees.Values.Any(v=>v!=view&&v.OrderId==o.Id)&&!k.Items.Any(i=>k.RecipeOf(i)==o.DishId));if(order!=null&&k.Stations.Any(s=>s.CatalogId=="assembly"&&k.At(s.InstanceId)==null)){view.OrderId=order.Id;plan.Enqueue(new KitchenTask("plate_rack"));plan.Enqueue(new KitchenTask("assembly"));AddIngredient(plan,order.DishId=="salad"?"greens":"protein");if(order.DishId!="salad"){plan.Enqueue(new KitchenTask("pantry","bun"));plan.Enqueue(new KitchenTask("assembly"));}if(order.DishId=="midnight")AddIngredient(plan,"sauce");}}
     }
     if(plan.Count==0){SetBubble(view.Bubble,worker.Id+" / ready / "+(int)worker.Energy+" energy");continue;}
     var task=plan.Peek();Vector3 destination;KitchenStation stationData=null;
@@ -38,7 +38,14 @@ namespace RestaurantCity {
     if(done){plan.Dequeue();worker.TasksCompleted++;if(plan.Count==0)view.OrderId=-1;}
    }
   }
-  static void AddIngredient(Queue<KitchenTask> plan,string ingredient,bool grill){plan.Enqueue(new KitchenTask("pantry",ingredient));plan.Enqueue(new KitchenTask("prep_bench"));plan.Enqueue(new KitchenTask("prep_bench","work"));plan.Enqueue(new KitchenTask("prep_bench"));if(grill){plan.Enqueue(new KitchenTask("grill"));plan.Enqueue(new KitchenTask("grill","wait"));plan.Enqueue(new KitchenTask("grill"));}plan.Enqueue(new KitchenTask("assembly"));}
+  // Raw protein now goes straight from the pantry to the grill (no prep-bench chop step); greens and
+  // midnight sauce still need the prep bench.
+  static void AddIngredient(Queue<KitchenTask> plan,string ingredient){
+   plan.Enqueue(new KitchenTask("pantry",ingredient));
+   if(ingredient=="protein"){plan.Enqueue(new KitchenTask("grill"));plan.Enqueue(new KitchenTask("grill","wait"));plan.Enqueue(new KitchenTask("grill"));}
+   else{plan.Enqueue(new KitchenTask("prep_bench"));plan.Enqueue(new KitchenTask("prep_bench","work"));plan.Enqueue(new KitchenTask("prep_bench"));}
+   plan.Enqueue(new KitchenTask("assembly"));
+  }
  }
 }
 

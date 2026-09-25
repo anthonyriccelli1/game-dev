@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -116,10 +117,10 @@ namespace RestaurantCity {
             modal = Block(canvas.transform, "Restaurant management", 0, 105, 1440, 735, new Color(ink.r, ink.g, ink.b, .60f));
             var sheet = Block(modal, "Order pad", 110, 12, 1220, 710, paper);
             Block(sheet, "Top accent", 0, 0, 1220, 7, teal);
-            Label(sheet, Owner.Panel == "Supplies" ? "Milo's market pantry." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
+            Label(sheet, Owner.Panel == "Supplies" ? "Milo's market pantry." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "How every dish is built." : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
             Button(sheet, "Close  x", 1060, 24, 130, 36, () => Owner.ClosePanel(), ink, paper);
             Label(sheet, "Time pauses while management is open.", 823, 62, 365, 19, 12, muted, false, TextAnchor.MiddleRight);
-            string[] panels = { "Catalog", "Service", "Menu", "Staff", "Reviews", "Furniture" };
+            string[] panels = { "Catalog", "Service", "Menu", "Cookbook", "Staff", "Reviews", "Furniture" };
             for (int i = 0; i < panels.Length; i++) {
                 string tab = panels[i]; bool active = Owner.Panel == tab;
                 Button(sheet, tab == "Catalog" ? "Shop" : tab == "Furniture" ? "Arrange" : tab, 30 + i * 133, 78, 125, 35, () => { Owner.ShowPanel(tab); signature = ""; Refresh(); }, active ? teal : pale, active ? white : ink);
@@ -129,6 +130,7 @@ namespace RestaurantCity {
             if (Owner.Panel == "Supplies") BuildSupplies(sheet);
             else if (Owner.Panel == "Catalog") BuildCatalog(sheet);
             else if (Owner.Panel == "Menu") BuildMenu(sheet);
+            else if (Owner.Panel == "Cookbook") BuildCookbook(sheet);
             else if (Owner.Panel == "Staff") BuildStaff(sheet);
             else if (Owner.Panel == "Reviews") BuildReviews(sheet);
             else if (Owner.Panel == "Furniture") BuildFurniture(sheet);
@@ -194,6 +196,20 @@ namespace RestaurantCity {
             } else Label(pantry, "Restock at Milo's green market across the street.", 524, 16, 620, 35, 17, paper, true);
         }
 
+        void BuildCookbook(RectTransform sheet) {
+            Label(sheet, "Every playable recipe: what it needs and how to build it. Order does not matter.", 30, 141, 1148, 29, 16, ink);
+            var content = Scroller(sheet, 30, 182, 1160, 466, RecipeBook.Recipes.Length * 165);
+            for (int i = 0; i < RecipeBook.Recipes.Length; i++) {
+                var recipe = RecipeBook.Recipes[i];
+                var dish = RestaurantCatalog.Dish(recipe.DishId);
+                bool locked = dish.RequiresMidnight && !Owner.Game.State.RecipeUnlocked;
+                var card = Block(content, dish.Name, 0, i * 165, 1141, 152, white);
+                Label(card, dish.Name + (locked ? "  (locked)" : ""), 18, 12, 700, 30, 22, locked ? muted : ink, true);
+                Label(card, "Needs: " + string.Join(" + ", recipe.Components.Select(ComponentName)), 18, 44, 1100, 24, 15, teal, true);
+                Label(card, locked ? "Find this recipe on a night city outing, then it is usable in service." : string.Join("   >   ", recipe.Steps), 18, 70, 1100, 76, 14, muted);
+            }
+        }
+        static string ComponentName(string id) => id == "bun" ? "bun" : id == "cooked_patty" ? "cooked patty" : id == "chopped_greens" ? "chopped greens" : id == "midnight_sauce" ? "midnight sauce" : id;
         void BuildSupplies(RectTransform sheet) {
             Label(sheet, "Bring something good back to your kitchen.", 35, 146, 1120, 45, 25, ink, true);
             Label(sheet, "Buy six portions at a time. A refrigerator doubles pantry storage from 24 to 48 of each ingredient.", 35, 200, 1120, 40, 18, muted);
