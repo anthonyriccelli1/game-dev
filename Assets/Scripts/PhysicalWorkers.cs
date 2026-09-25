@@ -13,6 +13,8 @@ namespace RestaurantCity {
     if(!workerPlans.TryGetValue(worker.Id,out var plan)){plan=new Queue<KitchenTask>();workerPlans[worker.Id]=plan;}
     if(view.Job!=worker.Job){view.Job=worker.Job;plan.Clear();view.Path.Clear();k.ReleaseWork(actor);}
     view.Motion.Working=false;view.Motion.Walking=false;
+    // Stand workers are drawn at the street stand (PhysicalStand), not in the restaurant.
+    view.Root.SetActive(worker.Job!=StaffJob.Stand);if(worker.Job==StaffJob.Stand){k.ReleaseWork(actor);continue;}
     if(worker.Job==StaffJob.Off||worker.Energy<=2||!ServiceInProgress){SetBubble(view.Bubble,worker.Id+" / resting / "+(int)worker.Energy+" energy");continue;}
     if(plan.Count==0){
      var hand=k.Hold(actor);

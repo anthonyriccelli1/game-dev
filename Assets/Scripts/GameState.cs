@@ -17,6 +17,36 @@ namespace RestaurantCity {
         // Up to StandQueueMax customers line up at the stand. HasOrder/Patience/StandDish mirror the front of the line.
         public List<StandOrder> StandQueue = new List<StandOrder>(); public int NextStandOrder = 1, StandClean = 4, StandDirty;
         [NonSerialized] public int Players = 1;
+        // Passive income: a recruited worker assigned to the stand cooks, serves and washes on their own.
+        public int StandWorkerEarned; [NonSerialized] public string StandWorkerStatus = ""; [NonSerialized] float standWorkTimer;
+        // Where the worker is in their cycle, so the stand view can walk them between stations.
+        [NonSerialized] public float StandWorkerProgress; [NonSerialized] public bool StandWorkerWashing, StandWorkerActive;
+        public const float StandWorkerCut = .4f;
+        public WorkerState StandWorker => Restaurant?.Workers?.Find(w => w.Job == StaffJob.Stand);
+        void TickStandWorker(float seconds) {
+            var w = StandWorker; if (w == null || !StandBuilt) { StandWorkerStatus = ""; return; }
+            var def = RestaurantCatalog.Worker(w.Id); string name = def != null ? def.Name : w.Id;
+            StandWorkerActive = false;
+            if (w.Energy <= 2) { StandWorkerStatus = name + " is exhausted. Set them to Rest."; standWorkTimer = 0; return; }
+            // The sign still controls arrivals: closing it lets the worker finish the line, then idle.
+            bool washing = StandQueue.Count == 0 || StandClean == 0;
+            if (washing && StandDirty == 0) { StandWorkerStatus = name + (StandOpen ? " is waiting for customers." : ": stand is closed."); standWorkTimer = 0; return; }
+            var front = StandQueue.Count > 0 ? StandQueue[0] : null;
+            bool midnight = front != null && front.Dish == "midnight";
+            if (!washing && (Restaurant.Protein < (midnight ? 2 : 1) || Restaurant.Produce < 1)) { StandWorkerStatus = name + " is out of ingredients! Restock at Milo's."; standWorkTimer = 0; return; }
+            w.Energy = Math.Max(0, w.Energy - seconds * .5f);
+            standWorkTimer += seconds;
+            float need = washing ? 6 : def != null && def.Role == StaffJob.Cook ? 12 : 18;
+            StandWorkerActive = true; StandWorkerWashing = washing; StandWorkerProgress = standWorkTimer / need;
+            StandWorkerStatus = name + (washing ? " is washing plates" : " is cooking a " + (midnight ? "midnight burger" : "burger")) + " (" + (int)(standWorkTimer / need * 100) + "%)";
+            if (standWorkTimer < need) return;
+            standWorkTimer = 0;
+            if (washing) { StandDirty--; StandClean++; return; }
+            Restaurant.Protein -= midnight ? 2 : 1; Restaurant.Produce--;
+            int earned = (int)Math.Round(KitchenState.StandPrice(this, front.Dish) * (1 - StandWorkerCut));
+            Cash += earned; StandWorkerEarned += earned; Served++; w.TasksCompleted++;
+            StandClean--; StandDirty++; StandQueue.RemoveAt(0); SyncStandFront();
+        }
         public const int StandQueueMax = 3, StandPlates = 4;
         public float StandArrivalSeconds => Players > 1 ? 9 : 13;
         public void SyncStandFront() {
@@ -98,6 +128,7 @@ namespace RestaurantCity {
                     NextCustomer = StandArrivalSeconds + (id % 3) * 1.5f;
                 }
             }
+            TickStandWorker(seconds);
             SyncStandFront();
         }
     }

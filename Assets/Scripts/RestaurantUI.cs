@@ -90,7 +90,9 @@ namespace RestaurantCity {
             foreach (var order in s.Orders) { if (order.Stage == RestaurantOrderStage.Waiting) waiting++; if (order.Stage == RestaurantOrderStage.Cooking) cooking++; if (order.Stage == RestaurantOrderStage.Ready) ready++; }
             summary.Append(waiting).Append(" waiting  /  ").Append(cooking).Append(" cooking  /  ").Append(ready).Append(" ready\nTab to manage orders");
             orderSummary.text = summary.ToString();
-            if (!Owner.PanelOpen || !visible) {
+            // The crew "phone" (Staff tab) works before you own the restaurant, as soon as the stand is up.
+            bool panelVisible = visible || (Owner.Panel == "Staff" && Owner.Game.State.StandBuilt && Owner.Game.Started && !Owner.Game.Paused);
+            if (!Owner.PanelOpen || !panelVisible) {
                 if (modal) { modal.gameObject.SetActive(false); Destroy(modal.gameObject); modal = null; }
                 tickLabels.Clear(); signature = ""; return;
             }
@@ -262,7 +264,8 @@ namespace RestaurantCity {
         }
 
         void BuildStaff(RectTransform sheet) {
-            Label(sheet, "Recruit the city's odd regulars with Flux. Everyone can do any job; each is fastest at their specialty.   Your Flux: " + Owner.Game.State.Flux, 30, 140, 1144, 35, 16, ink);
+            var gs = Owner.Game.State;
+            Label(sheet, "Recruit with Flux (your Flux: " + gs.Flux + "). Anyone can do any job. \"Run stand\" = passive income from your food stand." + (gs.StandWorker != null ? "   Stand: " + gs.StandWorkerStatus + "  Earned $" + gs.StandWorkerEarned : ""), 30, 140, 1144, 35, 15, ink);
             string[] rivals = { "Maestro Vey|Head chef. Gold toque, glowing eyes. Runs a kitchen like an orchestra.", "Nyx|Sommelier with a crystal halo. Guests tip double when she pours.", "K-9|Chrome line cook with four arms and a neon visor. Never tires.", "Aurora|Maitre d'. Her monocle sees every empty seat before you do.", "Seraphine|Winged pastry chef. Desserts so good customers float out.", "Obsidian Titan|Doorman. Nobody makes a scene with him at the door.", "Lumen|Mixologist with a neon crest. Every drink glows." };
             int rows = Mathf.CeilToInt(RestaurantCatalog.Staff.Length / 2f) + Mathf.CeilToInt(rivals.Length / 2f) + 1;
             var content = Scroller(sheet, 30, 189, 1160, 462, rows * 320 + 20);
@@ -303,10 +306,10 @@ namespace RestaurantCity {
             var current = WorkerJob(hired);
             Text workStatus = Label(card, "", 25, 207, 508, 24, 14, muted);
             tickLabels.Add(() => { if (workStatus) workStatus.text = "Energy " + hired.Energy.ToString("0") + "/100 / " + hired.TasksCompleted + " tasks completed"; });
-            StaffJob[] jobs = { StaffJob.Off, StaffJob.Cook, StaffJob.Serve, StaffJob.Clean };
+            StaffJob[] jobs = { StaffJob.Off, StaffJob.Cook, StaffJob.Serve, StaffJob.Clean, StaffJob.Stand };
             for (int i = 0; i < jobs.Length; i++) {
                 var job = jobs[i]; bool active = current == job;
-                Button(card, job == StaffJob.Off ? "Rest" : job == StaffJob.Clean ? "Wash" : job.ToString(), 25 + i * 129, 233, 121, 43, () => Owner.Assign(workerId, job), active ? teal : pale, active ? white : ink);
+                Button(card, job == StaffJob.Off ? "Rest" : job == StaffJob.Clean ? "Wash" : job == StaffJob.Stand ? "Run stand" : job.ToString(), 25 + i * 102, 233, 97, 43, () => Owner.Assign(workerId, job), active ? teal : pale, active ? white : ink);
             }
         }
 

@@ -64,6 +64,8 @@ namespace RestaurantCity {
             hudTimer -= Time.unscaledDeltaTime;
             if (hudTimer <= 0) { hudTimer = .35f; UI.Refresh(); }
             if (!Game.Paused && !ManagementPauses && !PlacementActive && !Game.SmokeMode) Advance(Time.deltaTime);
+            // "Phone": P opens your crew list from anywhere in the city.
+            if (!Game.Paused && Game.Started && Keyboard.current != null && Keyboard.current.pKey.wasPressedThisFrame && !PlacementActive && (Data.Owned || Game.State.StandBuilt)) { if (PanelOpen) ClosePanel(); else ShowPanel("Staff"); }
         }
         public void Feedback(string message) { Hint = message; Game.Notify(message, 5); if (UI) UI.Refresh(); }
         public bool BuyRestaurant() => BuyRestaurant(Game.Player);
@@ -75,8 +77,9 @@ namespace RestaurantCity {
             return result;
         }
         public void ShowPanel(string panel) {
-            if (!Data.Owned) { Feedback("Earn $150 and buy the restaurant at its front sign."); return; }
-            if (ServiceInProgress) { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
+            bool phone = panel == "Staff" && Game.State.StandBuilt;
+            if (!Data.Owned && !phone) { Feedback("Earn $150 and buy the restaurant at its front sign."); return; }
+            if (ServiceInProgress && panel != "Staff") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
             if (PlacementActive) CancelPlacement(false);
             Panel = panel; PanelOpen = true;
             if (Game.CoOp) Game.CoOp.RefreshViews();
@@ -283,7 +286,7 @@ namespace RestaurantCity {
         }
         public void Clean() { BeginCleaning(); }
         public void Hire(string id) { bool hired = Data.Hire(Game.State, id, out string message); Feedback(message); if (hired) PlayChime(true); Game.Save(); UI.Rebuild(); }
-        public void Assign(string id, StaffJob job) { Data.Assign(id, job, out string message); Feedback(message); Game.Save(); UI.Rebuild(); }
+        public void Assign(string id, StaffJob job) { bool ok = Data.Assign(id, job, out string message); if (ok && job == StaffJob.Stand) Game.State.StandOpen = true; Feedback(message); Game.Save(); UI.Rebuild(); }
         public void ToggleDish(string id) { Data.ToggleDish(Game.State, id, out string message); Feedback(message); RefreshMenuBoard(); Game.Save(); UI.Rebuild(); }
         public void ServeGuest(int id) {
             if (Game.State.Kitchen.Serve(Game.State, Game.Player.ActorId, id, out string message)) PlayChime(false);

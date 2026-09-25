@@ -42,8 +42,8 @@ namespace RestaurantCity {
    var r=Game.State.Restaurant;var k=Game.State.Kitchen;
    for(int i=0;i<views.Count;i++){var v=views[i];var p=Game.CoOp.Players[i];v.Canvas.enabled=Game.Started&&!Game.Paused&&!Game.Restaurant.PanelOpen&&!Game.Restaurant.PlacementActive;if(!v.Canvas.enabled)continue;
     string phase=r.Open?"<color=#4FCB7A>OPEN</color>":r.Orders.Count>0?"<color=#E8C34A>LAST GUESTS</color>":"CLOSED";
-    v.Top.text="$"+Game.State.Cash+"   "+r.Stars+" star   "+phase+"\n<size=12>Plates "+k.CleanPlates+"  |  Protein "+r.Protein+"  |  Produce "+r.Produce+(Game.State.FluxIntroduced?"  |  Flux "+Game.State.Flux:"")+"</size>";
-    string tickets=!r.Owned?StandTicket(Game.State):TicketRail(r);
+    v.Top.text="$"+Game.State.Cash+"   "+r.Stars+" star   "+phase+"\n<size=12>Plates "+k.CleanPlates+"  |  Protein "+r.Protein+"  |  Produce "+r.Produce+(Game.State.FluxIntroduced?"  |  Flux "+Game.State.Flux:"")+(Game.State.StandBuilt?"  |  P phone":"")+"</size>";
+    string tickets=!r.Owned?StandTicket(Game.State):TicketRail(r)+(Game.State.StandWorker!=null?(TicketRail(r)==""?"":"\n")+"<size=12><color=#9FD8C8>Stand: "+Game.State.StandWorkerStatus+" (+$"+Game.State.StandWorkerEarned+")</color></size>":"");
     v.Tickets.transform.parent.gameObject.SetActive(tickets!="");v.Tickets.text=tickets;
     string prompt=Game.Restaurant.PromptFor(p.ActorId);if(prompt==""&&p.Target)prompt="E / A  "+p.Target.Prompt(Game);
     var held=k.Hold(p.ActorId);string checklist=Game.Restaurant.HeldPlateChecklist(p.ActorId);
@@ -61,7 +61,7 @@ namespace RestaurantCity {
     float ratio=Mathf.Clamp01(o.Patience/Mathf.Max(1,o.MaxPatience));string c=ratio>.55f?"#4FCB7A":ratio>.25f?"#E8C34A":"#E1543B";int f=Mathf.Max(1,Mathf.CeilToInt(ratio*8));
     lines.Add((o.Dish=="midnight"?"Midnight burger [bun+patty+sauce]":"Burger [bun+patty]")+"  <color="+c+">"+new string('|',f)+"</color>"+new string('.',8-f)+" "+(int)o.Patience+"s");
    }
-   lines.Add("<size=12>Plates: "+s.StandClean+" clean, "+s.StandDirty+" dirty</size>");lines.Add(goal);
+   lines.Add("<size=12>Plates: "+s.StandClean+" clean, "+s.StandDirty+" dirty</size>");if(s.StandWorker!=null)lines.Add("<size=12><color=#9FD8C8>"+s.StandWorkerStatus+"  (+$"+s.StandWorkerEarned+")</color></size>");lines.Add(goal);
    return string.Join("\n",lines);
   }
   // Ticket rail (A4): one card per waiting order with table, dish, its components, and a colored patience bar.

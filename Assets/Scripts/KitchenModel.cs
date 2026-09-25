@@ -226,7 +226,7 @@ namespace RestaurantCity {
    foreach(var s in Stations){var item=At(s.InstanceId);if((s.CatalogId!="grill"&&s.CatalogId!="oven")||item==null)continue;if(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.CookedPatty){s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=24){item.Kind=KitchenItemKind.BurntPatty;item.Quality=0;}else if(s.Progress>=(s.CatalogId=="oven"?6:8))item.Kind=KitchenItemKind.CookedPatty;}}
    foreach(var item in Items){if(!item.Holder.StartsWith("table:"))continue;int id;if(!int.TryParse(item.Holder.Substring(6),out id))continue;var order=game.Restaurant.Orders.Find(o=>o.Id==id);if(order==null||order.Stage==RestaurantOrderStage.Leaving){item.Kind=KitchenItemKind.DirtyPlate;item.Components.Clear();}}
    foreach(var item in Items)if(!item.Holder.StartsWith("station:")&&(item.Kind==KitchenItemKind.CookedPatty||item.Kind==KitchenItemKind.Plate&&item.Components.Count>0)){item.Age+=seconds;item.Quality=Math.Min(item.Quality,Math.Max(.4f,1-Math.Max(0,item.Age-40)*.008f));}
-   foreach(var worker in game.Restaurant.Workers)if(worker.Job==StaffJob.Off||!game.Restaurant.Open)worker.Energy=Math.Min(100,worker.Energy+seconds*.6f);
+   foreach(var worker in game.Restaurant.Workers)if(worker.Job==StaffJob.Off||(!game.Restaurant.Open&&worker.Job!=StaffJob.Stand))worker.Energy=Math.Min(100,worker.Energy+seconds*.6f);
   }
   public bool SpendFlux(GameState game,string choice,out string message){
    if(choice=="research"){if(game.FluxResearch)return Fail("Research already unlocked.",out message);if(game.Flux<3)return Fail("Prep research costs 3 Flux.",out message);game.Flux-=3;game.FluxResearch=true;message="Permanent research: prep is 35% faster.";return true;}
