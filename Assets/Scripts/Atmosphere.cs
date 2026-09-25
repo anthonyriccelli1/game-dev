@@ -40,6 +40,7 @@ namespace RestaurantCity {
                     windows.Add(r); windowDay.Add(r.sharedMaterial);
                 }
             }
+            Debug.LogWarning("Atmosphere: night windows " + windows.Count + ", shader " + (shader ? shader.name : "missing"));
             warm = new[] {
                 Warm(new Vector3(0, 3.0f, 8.1f), 2.2f, 7f),      // food stand, under the awning
                 Warm(new Vector3(-12, 3.0f, 8.6f), 1.8f, 6f),    // Milo's market
