@@ -26,7 +26,9 @@ namespace RestaurantCity {
             for (int i = 0; i < KitchenState.StandKit.Length; i++) {
                 int id = KitchenState.StandBase + 1 + i; string kind = KitchenState.StandKit[i];
                 if (standObjects.TryGetValue(id, out var existing) && existing) continue;
-                var obj = kind == "stand_plates" ? KitchenArt.CreateStation("counter", Game.Stand.transform) : CreateFurnishing(kind, Game.Stand.transform);
+                var obj = kind == "stand_plates" ? KitchenArt.CreateStation("plate_rack", Game.Stand.transform) : CreateFurnishing(kind, Game.Stand.transform);
+                // The rack's decorative plates are replaced by a live stack showing the real count.
+                if (kind == "stand_plates") foreach (Transform part in obj.GetComponentsInChildren<Transform>(true)) if (part.name == "Glazed cream plate") part.gameObject.SetActive(false);
                 obj.name = "Stand " + kind;
                 obj.transform.position = new Vector3(StandX[i], 0, StandZ);
                 obj.transform.rotation = Quaternion.Euler(0, 180, 0);
@@ -86,7 +88,7 @@ namespace RestaurantCity {
             if (standPlatesText) { standPlatesText.text = "Clean plates: " + s.StandClean; standPlatesText.transform.rotation = Quaternion.identity; }
             if (standSinkText) { standSinkText.text = s.StandDirty > 0 ? "<color=#E8C34A>Dirty pile: " + s.StandDirty + "</color>" : "Sink"; standSinkText.transform.rotation = Quaternion.identity; }
             if (Game.Customer && Game.Customer.activeSelf) Game.Customer.SetActive(false);
-            SyncPlateStack(cleanStack, KitchenState.StandBase + 4, s.StandClean, "Plate", new Vector3(0, 1.04f, 0));
+            SyncPlateStack(cleanStack, KitchenState.StandBase + 4, s.StandClean, "Plate", new Vector3(0, 1.0f, .05f));
             SyncPlateStack(dirtyStack, KitchenState.StandBase + 5, s.StandDirty, "DirtyPlate", new Vector3(.75f, 1.08f, .2f));
             var world = Game.Stand ? Game.Stand.transform.parent : transform;
             var live = new HashSet<int>();

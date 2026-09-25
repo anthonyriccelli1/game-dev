@@ -80,7 +80,13 @@ namespace RestaurantCity {
     var plate=hand;
     return Tap("Add midnight sauce to plate",()=>{game.Restaurant.Protein--;ShiftCosts+=10f/6;plate.Components.Add("midnight_sauce");return "Midnight sauce added. That's a midnight burger if it has a bun and patty!";});
    }
-   if(hand!=null)return Blocked("Your hands are full.");
+   // Changed your mind? Put an untouched ingredient back on its own shelf for a full refund.
+   if(hand!=null){
+    var shelfKind=choice=="protein"?KitchenItemKind.RawProtein:choice=="greens"?KitchenItemKind.RawGreens:choice=="bun"?KitchenItemKind.Bun:KitchenItemKind.RawSauce;
+    if(hand.Kind!=shelfKind)return Blocked("Your hands are full. Put it on a counter or its own shelf.");
+    var back=hand;int bp=choice=="protein"||choice=="sauce"?1:0,bq=choice=="greens"?2:choice=="bun"?1:0;
+    return Tap("Put "+Label(hand).ToLower()+" back",()=>{game.Restaurant.Protein+=bp;game.Restaurant.Produce+=bq;ShiftCosts=Math.Max(0,ShiftCosts-(bp*10f/6+bq));Items.Remove(back);return "Put it back.";});
+   }
    int protein=choice=="protein"||choice=="sauce"?1:0,produce=choice=="greens"?2:choice=="bun"?1:0;
    if(game.Restaurant.Protein<protein||game.Restaurant.Produce<produce)return Blocked("Out of ingredients. Visit the city supplier.");
    var kind=choice=="protein"?KitchenItemKind.RawProtein:choice=="greens"?KitchenItemKind.RawGreens:choice=="bun"?KitchenItemKind.Bun:KitchenItemKind.RawSauce;
@@ -103,11 +109,13 @@ namespace RestaurantCity {
     return Tap("Throw away "+what,()=>{Discard(game,actor,out string msg);return msg;});
    }
    if(s.CatalogId=="plate_rack"){
+    if(hand!=null&&hand.Kind==KitchenItemKind.Plate&&hand.Components.Count==0&&!hand.StandPlate&&!hand.Disposable){var back=hand;return Tap("Put the clean plate back",()=>{Items.Remove(back);CleanPlates++;return "Plate back on the rack.";});}
     if(hand!=null)return Blocked("Your hands are full.");
     if(CleanPlates<=0)return Blocked("No clean plates. Clear a table and wash a dirty plate.");
     return Tap("Take a clean plate",()=>{CleanPlates--;Create(KitchenItemKind.Plate,actor);return "Clean plate collected.";});
    }
    if(s.CatalogId=="stand_plates"){
+    if(hand!=null&&hand.Kind==KitchenItemKind.Plate&&hand.Components.Count==0&&hand.StandPlate){var back=hand;return Tap("Put the clean plate back",()=>{Items.Remove(back);game.StandClean++;return "Plate back on the stack.";});}
     if(hand!=null)return Blocked("Your hands are full.");
     if(game.StandClean<=0)return Blocked("No clean plates! Wash dirty ones at the stand sink.");
     return Tap("Take a plate ("+game.StandClean+" clean)",()=>{game.StandClean--;var p=Create(KitchenItemKind.Plate,actor);p.StandPlate=true;return "Plate ready. Build it: bun + cooked patty.";});
