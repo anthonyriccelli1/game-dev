@@ -121,6 +121,7 @@ namespace RestaurantCity {
             RenderSettings.ambientLight = Color.Lerp(new Color(.66f, .74f, .78f), new Color(.30f, .34f, .52f), dusk);
             Player.View.backgroundColor = Color.Lerp(new Color(.61f, .80f, .83f), new Color(.055f, .075f, .16f), dusk);
             RenderSettings.fogColor = Player.View.backgroundColor;
+            if (RenderSettings.skybox) { RenderSettings.skybox.SetFloat("_Exposure", Mathf.Lerp(1.1f, .05f, dusk)); RenderSettings.skybox.SetColor("_SkyTint", Color.Lerp(new Color(.52f, .56f, .6f), new Color(.2f, .25f, .5f), dusk)); }
             foreach (var lamp in Lamps) lamp.intensity = Mathf.Lerp(.2f, 4, dusk);
         }
         public string Objective {

@@ -65,8 +65,8 @@ public static class PrototypeBuilder {
 
         var supply = Cube("Supplier counter", new Vector3(-12, .65f, 9), new Vector3(4, 1.3f, 1.5f), teal, world);
         supply.AddComponent<Interactable>().Kind = InteractionKind.Supplier;
-        Awning(new Vector3(-12, 3.3f, 9), 5, teal, world);
-        Sign("MILO'S SUPPLY", new Vector3(-12, 2.6f, 9.1f), 4.8f, teal, world, .18f);
+        if (city) Sign("MILO'S SUPPLY", new Vector3(-15.5f, 3.35f, 13.25f), 4.4f, teal, world, .2f);
+        else { Awning(new Vector3(-12, 3.3f, 9), 5, teal, world); Sign("MILO'S SUPPLY", new Vector3(-12, 2.6f, 9.1f), 4.8f, teal, world, .18f); }
         Label("FRESH PACKS  /  3 FOR $6", new Vector3(-12, 1, 8.23f), .11f, cream.color, world);
         Person("Milo", new Vector3(-12, 0, 10.1f), gold, world);
         for (int i = 0; i < 3; i++) {
@@ -135,12 +135,19 @@ public static class PrototypeBuilder {
         sun.transform.rotation = Quaternion.Euler(48, -35, 0); sun.intensity = 1.25f; sun.shadows = LightShadows.Soft;
         game.Sun = sun; game.Lamps = lamps.ToArray();
         RenderSettings.ambientMode = AmbientMode.Flat; RenderSettings.ambientLight = new Color(.66f, .74f, .78f);
+        if (city) {
+            var sky = AssetDatabase.LoadAssetAtPath<Material>("Assets/Generated/Sky.mat");
+            if (!sky) { sky = new Material(Shader.Find("Skybox/Procedural")); AssetDatabase.CreateAsset(sky, "Assets/Generated/Sky.mat"); }
+            sky.SetFloat("_SunDisk", 2); sky.SetFloat("_SunSize", .045f); sky.SetFloat("_SunSizeConvergence", 6); sky.SetFloat("_AtmosphereThickness", 1.05f);
+            sky.SetColor("_SkyTint", new Color(.52f, .56f, .6f)); sky.SetColor("_GroundColor", new Color(.55f, .6f, .62f)); sky.SetFloat("_Exposure", 1.1f);
+            RenderSettings.skybox = sky; RenderSettings.sun = sun;
+        }
         RenderSettings.fog = true; RenderSettings.fogMode = FogMode.ExponentialSquared; RenderSettings.fogDensity = city ? .0045f : .011f;
         var player = new GameObject("Player / First person"); player.transform.position = game.SpawnPoint;
         var controller = player.AddComponent<CharacterController>(); controller.height = 1.8f; controller.radius = .3f; controller.center = new Vector3(0, .9f, 0); controller.stepOffset = .3f;
         game.Player = player.AddComponent<FirstPersonPlayer>(); game.Player.Game = game;
         var camera = new GameObject("Player camera").AddComponent<Camera>(); camera.tag = "MainCamera"; camera.transform.parent = player.transform; camera.transform.localPosition = new Vector3(0, 1.65f, 0);
-        camera.nearClipPlane = .05f; camera.farClipPlane = city ? 1400 : 180; camera.fieldOfView = 72; camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.nearClipPlane = .05f; camera.farClipPlane = city ? 1400 : 180; camera.fieldOfView = 72; camera.clearFlags = city ? CameraClearFlags.Skybox : CameraClearFlags.SolidColor;
         camera.backgroundColor = new Color(.61f, .80f, .83f); camera.gameObject.AddComponent<AudioListener>(); game.Player.View = camera;
         var tool = new GameObject("Spatula").transform; tool.SetParent(camera.transform); tool.localPosition = new Vector3(.38f, -.4f, .75f); tool.localRotation = Quaternion.Euler(-25, -10, -16); tool.localScale = Vector3.one * .6f;
         var handle = Cube("Spatula handle", Vector3.zero, new Vector3(.05f, .45f, .05f), wood, tool, false); handle.transform.localPosition = Vector3.zero;

@@ -46,6 +46,8 @@ namespace RestaurantCity {
             ("26_phone_map", new Vector3(0, 0, 3), 0, 0, 60),
             ("27_bayside_day", new Vector3(-182, 0, 5), 200, -8, 60),
             ("28_bayside_night", new Vector3(-182, 0, 5), 200, -8, 190),
+            ("29_milo_front_day", new Vector3(-15.5f, 0, 8), 0, -4, 60),
+            ("30_milo_inside_day", new Vector3(-15.5f, 0, 14.2f), 0, 6, 60),
         };
 
         IEnumerator Start() {

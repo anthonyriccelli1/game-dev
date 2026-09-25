@@ -143,6 +143,10 @@ public static class CityMap {
         if (stacks == 0 && shop) { if (H(s, 19) % 3 == 0) RoofSign(parent, x0, z0, facing, roofY + .5f, s); }
         else RoofClutter(parent, x0, z0, roofY + .5f, s);
         if (stacks > 0 && H(s, 23) % 3 == 0) FireEscapes(parent, x0, z0, facing, stacks);
+        if (!shop && H(s, 29) % 2 == 0) foreach (float lat in new[] { -1.7f, 1.7f }) {
+            var b = PutGeneric("Environment/SM_Gen_Env_Bush_0" + (H(s, 31) % 4 + 1), OnFace(x0, z0, facing, lat, .7f, 0), s * 33, parent);
+            if (b) b.transform.localScale = Vector3.one * .75f;
+        }
     }
     // Ring a block with buildings on the street sides. Heights change every 10 m so the skyline steps up and down;
     // lowPct of those runs are one-storey shops.
@@ -302,11 +306,100 @@ public static class CityMap {
     }
     // Milo's corner store: glass shopfronts with stocked shelves visible inside.
     static void MilosStore() {
-        foreach (var (x0, ground) in new[] { (-18f, "Buildings/SM_Bld_Shop_01"), (-13f, "Buildings/SM_Bld_Shop_04") }) {
-            Tower(x0, 13.5f, 2, 1, true, ground, 0);
-            foreach (float lat in new[] { -1.2f, 1.2f }) Put("Props/SM_Prop_ShopInterior_Shelf_01", OnFace(x0, 13.5f, 2, lat, -3.9f, .05f), 180, root);
-            Put("Props/SM_Prop_ShopInterior_Display_0" + (x0 < -15 ? 1 : 2), OnFace(x0, 13.5f, 2, 0, -2f, .05f), 0, root);
+        // Left module (x -18..-13): the walk-in store. Right module: a display window with stocked shelves.
+        Tower(-18, 13.5f, 2, 1, true, "Buildings/SM_Bld_Shop_01", 0);
+        var shopBuilding = root.GetChild(root.childCount - 1);
+        Tower(-13, 13.5f, 2, 1, true, "Buildings/SM_Bld_Shop_04", 0);
+        foreach (float lat in new[] { -1.2f, 1.2f }) Put("Props/SM_Prop_ShopInterior_Shelf_01", OnFace(-13, 13.5f, 2, lat, -3.9f, .05f), 180, root);
+        Put("Props/SM_Prop_ShopInterior_Display_02", OnFace(-13, 13.5f, 2, 0, -2f, .05f), 0, root);
+        MilosWalkIn(shopBuilding);
+    }
+
+    // A street tree in its own planted square: grass and a couple of bushes (the "lived-in" street look).
+    public static void StreetTree(Vector3 p, int k, Transform parent = null) {
+        Put("Environments/SM_Env_Tree_0" + (k % 3 + 1), p, k * 47, parent);
+        var g = Put("Environments/SM_Env_Grass_01", new Vector3(p.x - 1.25f, .005f, p.z + 1.25f), 0, parent); if (g) g.transform.localScale = new Vector3(.5f, 1, .5f);
+        for (int i = 0; i < 2; i++) {
+            var b = PutGeneric("Environment/SM_Gen_Env_Bush_0" + ((k + i) % 4 + 1), p + new Vector3(i == 0 ? -.8f : .7f, 0, i == 0 ? .6f : -.7f), k * 90 + i * 130, parent);
+            if (b) b.transform.localScale = Vector3.one * .6f;
         }
+    }
+    static Material GlowMat(string name, string hex, float glow) {
+        string path = "Assets/Generated/Sign_" + name + ".mat"; var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (!m) { m = new Material(Shader.Find("Universal Render Pipeline/Lit")); AssetDatabase.CreateAsset(m, path); }
+        ColorUtility.TryParseHtmlString("#" + hex, out var c); m.color = c; m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", c * glow); return m;
+    }
+    // A tall roadside pole sign, readable from both directions along the street.
+    public static void PoleSign(string text, Vector3 p, string hex) {
+        var s = new GameObject("Pole sign / " + text).transform; s.SetParent(root, false);
+        Slab("Pole", p + Vector3.up * 3.2f, new Vector3(.28f, 6.4f, .28f), InteriorMat("PolePaint", "2F3A36"), s, true);
+        Slab("Sign box", p + Vector3.up * 7.2f, new Vector3(.5f, 1.6f, 5.4f), GlowMat(text.Replace(" ", ""), hex, .35f), s, false);
+        Slab("Sign trim", p + Vector3.up * 8.06f, new Vector3(.6f, .14f, 5.6f), InteriorMat("SignTrim", "F2E6C8"), s, false);
+        foreach (int side in new[] { -1, 1 }) {
+            var l = PrototypeBuilder.Label(text, p + new Vector3(side * .27f, 7.2f, 0), .34f, new Color(1, .96f, .86f), s);
+            l.transform.rotation = Quaternion.Euler(0, side > 0 ? 270 : 90, 0);
+        }
+    }
+    // ---------- Walk-in interiors ----------
+    // City pack modules are outer shells: no inside faces and a solid door. A walk-in store gets a doorway cut into the
+    // module mesh (and its collider) plus its own inner room: floor, walls, ceiling, light.
+    static Mesh CutDoor(Mesh src, float x0, float x1, float y1, float z0, float z1, string path) {
+        var m = Object.Instantiate(src); m.name = src.name + "_Door"; var v = m.vertices;
+        for (int sm = 0; sm < m.subMeshCount; sm++) {
+            var t = m.GetTriangles(sm); var keep = new List<int>();
+            for (int i = 0; i < t.Length; i += 3) {
+                var c = (v[t[i]] + v[t[i + 1]] + v[t[i + 2]]) / 3;
+                if (c.x > x0 && c.x < x1 && c.y < y1 && c.z > z0 && c.z < z1) continue;
+                // Also drop the fake "shop interior" box behind the glass, so the real room shows through.
+                if (c.x > -4.85f && c.x < -.15f && c.y > .05f && c.y < 2.95f && c.z > -4.85f && c.z < -.25f) continue;
+                keep.Add(t[i]); keep.Add(t[i + 1]); keep.Add(t[i + 2]);
+            }
+            m.SetTriangles(keep, sm);
+        }
+        m.RecalculateBounds();
+        System.IO.Directory.CreateDirectory("Assets/Generated/Meshes");
+        if (AssetDatabase.LoadAssetAtPath<Mesh>(path)) AssetDatabase.DeleteAsset(path);
+        AssetDatabase.CreateAsset(m, path); return m;
+    }
+    static Material InteriorMat(string name, string hex) {
+        string path = "Assets/Generated/Interior_" + name + ".mat"; var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (!m) { m = new Material(Shader.Find("Universal Render Pipeline/Lit")); AssetDatabase.CreateAsset(m, path); }
+        ColorUtility.TryParseHtmlString("#" + hex, out var c); m.color = c; m.SetFloat("_Smoothness", .25f); return m;
+    }
+    static GameObject Slab(string n, Vector3 center, Vector3 size, Material m, Transform parent, bool collide) {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Cube); go.name = n; go.transform.SetParent(parent, false);
+        go.transform.position = center; go.transform.localScale = size; go.GetComponent<Renderer>().sharedMaterial = m;
+        if (!collide) Object.DestroyImmediate(go.GetComponent<Collider>()); return go;
+    }
+    static void MilosWalkIn(Transform building) {
+        // Door: local x -3.35..-1.65 (centred), up to 2.45 m, through the front 1.3 m of the module.
+        var cuts = new Dictionary<Mesh, Mesh>();
+        foreach (var mf in building.GetComponentsInChildren<MeshFilter>()) {
+            var src = mf.sharedMesh; if (!src || !src.name.StartsWith("SM_Bld_Shop_01")) continue;
+            if (!cuts.TryGetValue(src, out var cut)) cuts[src] = cut = CutDoor(src, -3.35f, -1.65f, 2.45f, -1.3f, 1f, "Assets/Generated/Meshes/" + src.name + "_Door.asset");
+            mf.sharedMesh = cut;
+        }
+        foreach (var mc in building.GetComponentsInChildren<MeshCollider>()) if (mc.sharedMesh && cuts.TryGetValue(mc.sharedMesh, out var cut)) mc.sharedMesh = cut;
+        var room = new GameObject("Milo's walk-in").transform; room.SetParent(root, false);
+        var wall = InteriorMat("MiloWall", "E8DCC0"); var floor = InteriorMat("MiloFloor", "8C6B4F"); var trim = InteriorMat("MiloTrim", "2F6B5E");
+        Slab("Floor", new Vector3(-15.5f, .03f, 16), new Vector3(4.8f, .06f, 4.6f), floor, room, true);
+        Slab("Wall left", new Vector3(-17.86f, 1.5f, 16), new Vector3(.06f, 3, 4.6f), wall, room, true);
+        Slab("Wall right", new Vector3(-13.14f, 1.5f, 16), new Vector3(.06f, 3, 4.6f), wall, room, true);
+        Slab("Wall back", new Vector3(-15.5f, 1.5f, 18.3f), new Vector3(4.8f, 3, .06f), wall, room, true);
+        Slab("Ceiling", new Vector3(-15.5f, 2.97f, 16), new Vector3(4.8f, .06f, 4.6f), wall, room, false);
+        Slab("Header left", new Vector3(-17.1f, 2.55f, 13.75f), new Vector3(1.6f, .9f, .06f), wall, room, false);
+        Slab("Header right", new Vector3(-13.9f, 2.55f, 13.75f), new Vector3(1.6f, .9f, .06f), wall, room, false);
+        Slab("Door header", new Vector3(-15.5f, 2.73f, 13.75f), new Vector3(1.6f, .54f, .06f), wall, room, false);
+        // Outside: a clean door frame over the cut edges.
+        Slab("Door header outside", new Vector3(-15.5f, 2.5f, 13.38f), new Vector3(2.0f, .55f, .12f), trim, room, false);
+        foreach (float x in new[] { -16.42f, -14.58f }) Slab("Door post", new Vector3(x, 1.15f, 13.4f), new Vector3(.14f, 2.3f, .14f), trim, room, true);
+        Slab("Chair rail", new Vector3(-15.5f, 1, 18.26f), new Vector3(4.8f, .08f, .03f), trim, room, false);
+        foreach (float y in new[] { .4f, 1.2f, 2 }) Slab("Wall shelf", new Vector3(-15.5f, y, 18.1f), new Vector3(1.6f, .05f, .35f), trim, room, false);
+        Put("Props/SM_Prop_ShopInterior_Shelf_01", new Vector3(-17.3f, .06f, 17.4f), 90, room);
+        Put("Props/SM_Prop_ShopInterior_Shelf_01", new Vector3(-13.7f, .06f, 17.4f), 270, room);
+        Put("Props/SM_Prop_ShopInterior_Desk_02", new Vector3(-15.5f, .06f, 17.25f), 180, room);
+        var light = new GameObject("Shop light").AddComponent<Light>(); light.transform.SetParent(room, false); light.transform.position = new Vector3(-15.5f, 2.6f, 16);
+        light.type = LightType.Point; light.color = new Color(1, .86f, .66f); light.intensity = 1.6f; light.range = 7;
     }
 
     public static void Build(Transform world) {
@@ -330,6 +423,7 @@ public static class CityMap {
         foreach (var x0 in new[] { -5f, 0f }) Tower(x0, 15f, 2, 2, false, "Buildings/SM_Bld_Apartment_Door_0" + (x0 < -1 ? 1 : 2), 0);
         GildedTower();
         RestaurantBuilding();
+        PoleSign("THE ODD TABLE", new Vector3(-1.6f, 0, -7.6f), "C8553D");
         RivalAlley();
         // City blocks: storefront rows on every street side, corner buildings where two streets meet.
         //      x range        z range      N      S      E      W     shops  stacks  low-rise %
@@ -362,10 +456,10 @@ public static class CityMap {
         int t = 0;
         for (float x = -75; x <= 75; x += 15) {
             if (Mathf.Abs(x) < 30 || Mathf.Abs(Mathf.Abs(x) - 40) < 6) continue;
-            Put("Environments/SM_Env_Tree_0" + (t++ % 3 + 1), new Vector3(x, 0, 7.5f), 0); Put("Environments/SM_Env_Tree_0" + (t++ % 3 + 1), new Vector3(x + 5, 0, -7.5f), 0);
+            StreetTree(new Vector3(x, 0, 7.5f), t++); StreetTree(new Vector3(x + 5, 0, -7.5f), t++);
         }
-        for (float x = -75; x <= 75; x += 20) { if (Mathf.Abs(Mathf.Abs(x) - 40) < 6) continue; Put("Environments/SM_Env_Tree_0" + (t++ % 3 + 1), new Vector3(x, 0, 57.5f), 0); Put("Environments/SM_Env_Tree_0" + (t++ % 3 + 1), new Vector3(x, 0, -57.5f), 0); }
-        for (float z = -75; z <= 75; z += 20) { if (Mathf.Abs(z) < 12 || Mathf.Abs(Mathf.Abs(z) - 50) < 6) continue; Put("Environments/SM_Env_Tree_0" + (t++ % 3 + 1), new Vector3(-32.5f, 0, z), 0); Put("Environments/SM_Env_Tree_0" + (t++ % 3 + 1), new Vector3(32.5f, 0, z), 0); }
+        for (float x = -75; x <= 75; x += 20) { if (Mathf.Abs(Mathf.Abs(x) - 40) < 6) continue; StreetTree(new Vector3(x, 0, 57.5f), t++); StreetTree(new Vector3(x, 0, -57.5f), t++); }
+        for (float z = -75; z <= 75; z += 20) { if (Mathf.Abs(z) < 12 || Mathf.Abs(Mathf.Abs(z) - 50) < 6) continue; StreetTree(new Vector3(-32.5f, 0, z), t++); StreetTree(new Vector3(32.5f, 0, z), t++); }
         Put("Props/SM_Prop_HotdogStand_01", new Vector3(30, 0, 8), 180);
         Put("Props/SM_Prop_BusStop_01", new Vector3(-30, 0, -7.2f), 0);
         foreach (float x in new[] { -28f, 27, -55, 60 }) { Put("Props/SM_Prop_ParkBench_01", new Vector3(x, 0, x > 0 ? 8.6f : -8.6f), x > 0 ? 180 : 0); }

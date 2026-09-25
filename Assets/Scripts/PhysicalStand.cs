@@ -146,6 +146,7 @@ namespace RestaurantCity {
             foreach (var id in new List<int>(standGuests.Keys)) if (!live.Contains(id)) { if (standGuests[id]) Destroy(standGuests[id]); standGuests.Remove(id); standBubbles.Remove(id); }
         }
 
+        public static Vector2 MiloSpot = new Vector2(-12, 9); public static float MiloRadius = 4.5f;
         void BuildMilo(Transform world) {
             if (!world || world.Find("Milo shopkeeper")) return;
             var old = world.Find("Milo"); if (old) old.gameObject.SetActive(false);
@@ -154,15 +155,19 @@ namespace RestaurantCity {
                 if (child.name == "Produce crate" || child.name == "Produce") child.gameObject.SetActive(false);
                 var tm = child.GetComponent<TextMesh>(); if (tm && tm.text.StartsWith("FRESH PACKS")) child.gameObject.SetActive(false);
             }
+            // In the city build Milo works inside his store (CityMap made a walk-in room); otherwise at the street stall.
+            bool walkIn = GameObject.Find("Milo's walk-in");
+            MiloSpot = walkIn ? new Vector2(-15.5f, 16) : new Vector2(-12, 9); MiloRadius = walkIn ? 3.2f : 4.5f;
             var counter = world.Find("Supplier counter");
+            if (counter && walkIn) { var legacy = counter.GetComponent<Interactable>(); if (legacy) Destroy(legacy); counter.position = new Vector3(-15.5f, .45f, 17.25f); counter.localScale = new Vector3(2.4f, .9f, 1.2f); counter.GetComponent<Renderer>().enabled = false; counter = null; }
             if (counter) { var legacy = counter.GetComponent<Interactable>(); if (legacy) Destroy(legacy); counter.localScale = new Vector3(counter.localScale.x, .8f, counter.localScale.z); counter.position = new Vector3(counter.position.x, .4f, counter.position.z); }
             var milo = RestaurantArt.CreateCharacter(5, world); milo.name = "Milo shopkeeper";
-            milo.transform.position = new Vector3(-12, 0, 10.3f); milo.transform.rotation = Quaternion.Euler(0, 180, 0);
+            milo.transform.position = walkIn ? new Vector3(-15.5f, .06f, 18) : new Vector3(-12, 0, 10.3f); milo.transform.rotation = Quaternion.Euler(0, 180, 0);
             var motion = milo.GetComponent<CharacterMotion>(); if (motion) motion.SetMood(.9f);
             var caption = WorldCaption(milo.transform, "MILO\nFresh every morning", new Vector3(0, 2.35f, 0), .02f);
             caption.transform.rotation = Quaternion.Euler(0, 0, 0);
-            MakeCrate(world, "protein", new Vector3(-13.3f, 0, 7.6f), "MEAT\n6 patties / $10");
-            MakeCrate(world, "produce", new Vector3(-10.7f, 0, 7.6f), "PRODUCE\n6 buns & greens / $6");
+            MakeCrate(world, "protein", walkIn ? new Vector3(-17.15f, .06f, 15.4f) : new Vector3(-13.3f, 0, 7.6f), "MEAT\n6 patties / $10");
+            MakeCrate(world, "produce", walkIn ? new Vector3(-13.85f, .06f, 15.4f) : new Vector3(-10.7f, 0, 7.6f), "PRODUCE\n6 buns & greens / $6");
         }
 
         void MakeCrate(Transform world, string contents, Vector3 position, string label) {
@@ -170,7 +175,7 @@ namespace RestaurantCity {
             crate.transform.position = position;
             var box = crate.AddComponent<BoxCollider>(); box.center = new Vector3(0, .75f, 0); box.size = new Vector3(1.2f, 1.5f, 1f);
             crate.AddComponent<Interactable>().Kind = contents == "protein" ? InteractionKind.SupplyProtein : InteractionKind.SupplyProduce;
-            var text = WorldCaption(crate.transform, label, new Vector3(0, 1.95f, 0), .018f);
+            bool indoor = GameObject.Find("Milo's walk-in"); var text = WorldCaption(crate.transform, label, new Vector3(0, indoor ? 1.55f : 1.95f, 0), indoor ? .011f : .018f);
             text.transform.rotation = Quaternion.Euler(0, 0, 0);
         }
 

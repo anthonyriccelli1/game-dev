@@ -115,10 +115,39 @@ public static class CityGreybox {
         }
 
         Landmarks();
+        StreetTrees();
         Massing();
         Signs();
         Coast();
         LockBarriers();
+        Clouds();
+        CityMap.PoleSign("THE BAYSIDE", new Vector3(-181.6f, 0, -7.6f), "2F7F9A");
+    }
+    static void Clouds() {
+        var c = new GameObject("Clouds").transform; c.SetParent(root, false);
+        for (int i = 0; i < 38; i++) {
+            var p = new Vector3(-600 + R01(i, 3) * 1500, 150 + R01(i, 5) * 60, -600 + R01(i, 7) * 1300);
+            var cloud = CityMap.Prefab("Environments/SM_Env_Cloud_0" + (i % 3 + 1), p, R01(i, 9) * 360, c);
+            if (cloud) { cloud.transform.localScale = Vector3.one * (2.5f + R01(i, 11) * 2.5f); foreach (var col in cloud.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(col); }
+        }
+    }
+    // Planted street trees along the city roads (not the docks or the island).
+    static void StreetTrees() {
+        var t = new GameObject("Street trees").transform; t.SetParent(root, false); int k = 0;
+        foreach (var r in roads) {
+            if (r.width < r.height ? r.height < 40 : r.width < 40) continue;
+            bool alongX = r.width > r.height; float len = alongX ? r.width : r.height;
+            for (float s = 12; s < len - 8; s += 28) foreach (int side in new[] { -1, 1 }) {
+                var p = alongX ? new Vector3(r.xMin + s, 0, r.center.y + side * (r.height / 2 + 1.6f)) : new Vector3(r.center.x + side * (r.width / 2 + 1.6f), 0, r.yMin + s);
+                var spot = new Rect(p.x - 1.3f, p.z - 1.3f, 2.6f, 2.6f);
+                var d = At(new Vector2(p.x, p.z)); if (d.Style == 1 || d.Style == 5) continue;
+                if (!IsLand(spot) || spot.Overlaps(Expand(Built, 10))) continue;
+                bool clash = false; foreach (var q in reserved) if (q.Overlaps(spot)) { clash = true; break; }
+                foreach (var q in roads) if (q.Overlaps(spot)) { clash = true; break; }
+                if (clash) continue;
+                CityMap.StreetTree(p, k++, t);
+            }
+        }
     }
     static void AddRoad(Rect r, float top, Material m, Transform parent) {
         if (r.width < .5f || r.height < .5f) return;

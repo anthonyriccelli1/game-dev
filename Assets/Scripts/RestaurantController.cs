@@ -37,7 +37,7 @@ namespace RestaurantCity {
             }
             anyoneInsideLastFrame = anyoneInside;
         }
-        public bool AtSupplier => Vector2.Distance(new Vector2(Game.Player.transform.position.x, Game.Player.transform.position.z), new Vector2(-12, 9)) < 4.5f;
+        public bool AtSupplier => Vector2.Distance(new Vector2(Game.Player.transform.position.x, Game.Player.transform.position.z), MiloSpot) < MiloRadius;
         public bool PanelOpen { get; private set; }
         public string Panel { get; private set; } = "Catalog";
         public int SelectedInstanceId { get; private set; } = -1;

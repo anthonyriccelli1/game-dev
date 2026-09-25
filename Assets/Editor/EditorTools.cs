@@ -73,4 +73,31 @@ public static class EditorTools {
         sheet.Apply(); File.WriteAllBytes("EditorOutput/previews/_sheet.png", sheet.EncodeToPNG());
         return done + " previews";
     }
+
+    // Reports the Shop_01 module's mesh layout: submeshes, and triangles by position/normal, to plan a walk-in doorway.
+    public static string InspectShopMesh() {
+        var sb = new StringBuilder();
+        foreach (var name in new[] { "SM_Bld_Shop_01", "SM_Bld_Shop_04", "SM_Bld_Shop_02" }) {
+            var go = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Synty/PolygonCity/Prefabs/Buildings/" + name + ".prefab");
+            foreach (var mf in go.GetComponentsInChildren<MeshFilter>()) {
+                var m = mf.sharedMesh; sb.AppendLine(name + " / " + mf.name + " mesh " + m.name + " verts " + m.vertexCount + " sub " + m.subMeshCount + " bounds " + m.bounds + " local " + mf.transform.localPosition + " rot " + mf.transform.localEulerAngles);
+                var r = mf.GetComponent<Renderer>(); sb.AppendLine("  mats: " + string.Join(",", r.sharedMaterials.Select(x => x ? x.name : "null")));
+                var v = m.vertices;
+                for (int sm = 0; sm < m.subMeshCount; sm++) {
+                    var t = m.GetTriangles(sm); int inward = 0, backIn = 0, floorUp = 0, frontOut = 0;
+                    for (int i = 0; i < t.Length; i += 3) {
+                        Vector3 a = v[t[i]], b = v[t[i + 1]], c = v[t[i + 2]]; var n = Vector3.Cross(b - a, c - a).normalized; var ctr = (a + b + c) / 3;
+                        if (ctr.z < -4.7f && n.z > .7f) backIn++;
+                        if (ctr.y < .2f && n.y > .7f && ctr.z < -.5f) floorUp++;
+                        if (ctr.z > -.2f && n.z > .7f) frontOut++;
+                        if (ctr.x > -4.7f && ctr.x < -.3f && ctr.z < -.5f && ctr.z > -4.7f && ctr.y > .2f && ctr.y < 2.8f) inward++;
+                    }
+                    sb.AppendLine("  sub" + sm + " tris " + t.Length / 3 + " backwallFacingIn " + backIn + " floorUp " + floorUp + " frontOut " + frontOut + " interiorVolume " + inward);
+                }
+            }
+            foreach (var col in go.GetComponentsInChildren<Collider>()) sb.AppendLine("  collider " + col.GetType().Name + " on " + col.name);
+        }
+        File.WriteAllText("EditorOutput/shop-mesh.txt", sb.ToString());
+        return "ok";
+    }
 }
