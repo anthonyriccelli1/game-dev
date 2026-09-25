@@ -79,7 +79,7 @@ namespace RestaurantCity {
         public void ShowPanel(string panel) {
             bool phone = panel == "Staff" && Game.State.StandBuilt;
             if (!Data.Owned && !phone) { Feedback("Earn $150 and buy the restaurant at its front sign."); return; }
-            if (ServiceInProgress && panel != "Staff") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
+            if (ServiceInProgress && panel != "Staff" && panel != "Service") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
             if (PlacementActive) CancelPlacement(false);
             Panel = panel; PanelOpen = true;
             if (Game.CoOp) Game.CoOp.RefreshViews();

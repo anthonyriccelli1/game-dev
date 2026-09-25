@@ -40,7 +40,7 @@ namespace RestaurantCity {
   public void ClearPlayerFocus(FirstPersonPlayer p){prompts[p.ActorId]="";if(!p.InteractHeld)Game.State.Kitchen.ReleaseWork(p.ActorId);}
   public bool HandlePlayerInput(FirstPersonPlayer p,bool pressed,bool held,bool secondary,bool menu,bool build){
    if(PanelOpen||PlacementActive)return true;
-   if(menu&&!ServiceInProgress){ShowPanel("Service");return true;}
+   if(menu){ShowPanel("Service");return true;}
    if(build&&!ServiceInProgress){
     int id=-1;
     if(p.TryResolveInteractionHit(out var hit)){var target=hit.collider.GetComponentInParent<RestaurantTarget>();if(target&&target.Kind=="Furniture")id=target.InstanceId;}
@@ -102,6 +102,21 @@ namespace RestaurantCity {
     obj.SetActive(found);obj.transform.SetParent(parent,false);obj.transform.localPosition=pos;
    }
    DrawProgressBars();
+   DrawRestaurantPlates();
+  }
+  readonly List<List<GameObject>> rackStacks=new List<List<GameObject>>();readonly List<GameObject> sinkPileStack=new List<GameObject>();
+  // Same plate rules as the stand: a visible stack per rack (4 each) and a visible dirty pile by the first sink.
+  void DrawRestaurantPlates(){
+   var k=Game.State.Kitchen;int left=k.CleanPlates;int n=0;
+   foreach(var st in k.Stations.Where(x=>x.CatalogId=="plate_rack"&&!KitchenState.IsStandStation(x.InstanceId))){
+    var rack=StationObject(st.InstanceId);if(!rack)continue;
+    if(!rack.name.EndsWith("(stack)")){foreach(Transform part in rack.GetComponentsInChildren<Transform>(true))if(part.name=="Glazed cream plate")part.gameObject.SetActive(false);rack.name+=" (stack)";}
+    while(rackStacks.Count<=n)rackStacks.Add(new List<GameObject>());
+    int here=Mathf.Min(4,left);left-=here;SyncPlateStack(rackStacks[n],rack,here,"Plate",new Vector3(0,1f,.05f));n++;
+   }
+   for(int i=n;i<rackStacks.Count;i++)SyncPlateStack(rackStacks[i],(GameObject)null,0,"Plate",Vector3.zero);
+   var sink=k.Stations.FirstOrDefault(x=>x.CatalogId=="sink"&&!KitchenState.IsStandStation(x.InstanceId));
+   SyncPlateStack(sinkPileStack,sink==null?null:StationObject(sink.InstanceId),k.SinkPile,"DirtyPlate",new Vector3(.75f,1.08f,.2f));
   }
   readonly Dictionary<int,GameObject> progressBars=new Dictionary<int,GameObject>();
   // Cooking-game style bars over stations: yellow fills while cooking/chopping, green = ready,

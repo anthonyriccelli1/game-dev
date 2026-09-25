@@ -231,8 +231,8 @@ namespace RestaurantCity {
 
         void BuildService(RectTransform sheet) {
             Label(sheet,"Physical kitchen / Everyone can cook. No worker required.",30,139,1100,40,23,ink,true);
-            Button(sheet,"Open for service",848,188,339,40,()=>Owner.ToggleService(),teal,white);
-            Label(sheet,"BURGER: Take protein from pantry > prep bench > hold E to chop.\nTake prepared patty > grill. Cook 8 seconds; remove before 24 seconds.\nTake a clean plate > assembly counter. Add cooked patty and a bun.\nTake the finished plate > matching guest > E to serve.\n\nSALAD: Chop greens, then add them to a plate on the assembly counter.\nMIDNIGHT: Burger plus midnight sauce, prepared from pantry sauce ingredients.\n\nAfter eating: E at table to clear > sink > hold E to wash.\nQ cycles pantry ingredients when empty handed; Q discards held food.\nV switches first-person / elevated service view without moving you.",30,194,797,300,18,ink);
+            Button(sheet,Owner.Data.Open?"Close to new guests":"Open for service",848,188,339,40,()=>Owner.ToggleService(),Owner.Data.Open?ink:teal,Owner.Data.Open?paper:white);
+            Label(sheet,"BURGER: Patty on the grill (ready at 8s, burns at 24s) > plate from the rack > E bun shelf > E grill to add the patty > serve.\nSALAD: Greens on the prep bench, hold E to chop > onto a plate.  MIDNIGHT: burger + E the sauce shelf while holding the plate.\nDirty plates: clear tables, stack them at the sink, hold E to wash one at a time.",30,190,790,200,16,muted);
             Button(sheet,"Wait until night (+30% sales)",848,242,339,40,()=>{Owner.Game.State.Clock=180;Owner.Feedback("Night service pays 30% more. Watch the rush.");},pale,ink);
             Button(sheet,"Prep research / 3 Flux",848,297,339,40,()=>{Owner.Game.State.Kitchen.SpendFlux(Owner.Game.State,"research",out var m);Owner.Feedback(m);},pale,ink);
             int i=0;foreach(var w in Owner.Data.Workers){string id=w.Id;Button(sheet,id+" energy boost / 1 Flux",848,351+i++*48,339,40,()=>{Owner.Game.State.Kitchen.SpendFlux(Owner.Game.State,id,out var m);Owner.Feedback(m);},pale,ink);}
@@ -306,10 +306,10 @@ namespace RestaurantCity {
             var current = WorkerJob(hired);
             Text workStatus = Label(card, "", 25, 207, 508, 24, 14, muted);
             tickLabels.Add(() => { if (workStatus) workStatus.text = "Energy " + hired.Energy.ToString("0") + "/100 / " + hired.TasksCompleted + " tasks completed"; });
-            StaffJob[] jobs = { StaffJob.Off, StaffJob.Cook, StaffJob.Serve, StaffJob.Clean, StaffJob.Stand };
+            StaffJob[] jobs = { StaffJob.Cook, StaffJob.Serve, StaffJob.Clean, StaffJob.Stand, StaffJob.Off };
             for (int i = 0; i < jobs.Length; i++) {
                 var job = jobs[i]; bool active = current == job;
-                Button(card, job == StaffJob.Off ? "Rest" : job == StaffJob.Clean ? "Wash" : job == StaffJob.Stand ? "Run stand" : job.ToString(), 25 + i * 102, 233, 97, 43, () => Owner.Assign(workerId, job), active ? teal : pale, active ? white : ink);
+                Button(card, job == StaffJob.Off ? "Rest" : job == StaffJob.Clean ? "Wash" : job == StaffJob.Stand ? "Stand" : job == StaffJob.Any ? "Any job" : job.ToString(), 25 + i * 102, 233, 97, 43, () => Owner.Assign(workerId, job), active ? teal : pale, active ? white : ink);
             }
         }
 
