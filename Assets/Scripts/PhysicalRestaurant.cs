@@ -91,7 +91,8 @@ namespace RestaurantCity {
    var k=Game.State.Kitchen;
    foreach(var id in physicalItems.Keys.ToArray())if(!k.Items.Any(i=>i.Id==id)){Destroy(physicalItems[id]);physicalItems.Remove(id);itemLooks.Remove(id);}
    foreach(var item in k.Items){string look=item.Kind+":"+string.Join(",",item.Components.OrderBy(c=>c));
-    if(!physicalItems.TryGetValue(item.Id,out var obj)||itemLooks[item.Id]!=look){if(obj)Destroy(obj);obj=KitchenArt.CreateItem(item.Kind.ToString(),item.Components,transform);physicalItems[item.Id]=obj;itemLooks[item.Id]=look;}
+    // A layout rebuild destroys furniture and any item models parented to it; recreate those.
+    if(!physicalItems.TryGetValue(item.Id,out var obj)||!obj||itemLooks[item.Id]!=look){if(obj)Destroy(obj);obj=KitchenArt.CreateItem(item.Kind.ToString(),item.Components,transform);physicalItems[item.Id]=obj;itemLooks[item.Id]=look;}
     Transform parent=transform;Vector3 pos=Vector3.zero;bool found=false;
     if(item.Holder.StartsWith("player:")){var p=Game.CoOp?.Players.FirstOrDefault(v=>v.ActorId==item.Holder);if(p){parent=p.Elevated?p.transform:p.View.transform;pos=p.Elevated?new Vector3(.3f,1,.6f):new Vector3(.32f,-.32f,.7f);found=true;}}
     else if(item.Holder.StartsWith("staff:")){if(employees.TryGetValue(item.Holder.Substring(6),out var w)){parent=w.Root.transform;pos=new Vector3(.25f,1,.45f);found=true;}}
