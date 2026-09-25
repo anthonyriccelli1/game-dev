@@ -70,10 +70,21 @@ namespace RestaurantCity {
     string glyph=preview.Kind==KitchenActionKind.Hold?"Hold E / A  ":"E / A  ";
     string line=preview.Kind==KitchenActionKind.None?preview.FailReason:glyph+(preview.Allowed?preview.Label:preview.FailReason);
     prompts[actor]=station.CatalogId.Replace('_',' ')+(string.IsNullOrEmpty(line)?"":"\n"+line);
+    prompts[actor]+=CookStatus(station,k.At(station.InstanceId));
     if(pressed&&preview.Kind==KitchenActionKind.Tap){k.Act(Game.State,actor,station.InstanceId,target.SubId,out message);Feedback(message);}
     if(held&&k.Hold(actor)==null)k.Work(Game.State,actor,station.InstanceId,Time.deltaTime,out _);
    }else{bool dirty=k.DirtyAtTable(target.InstanceId)>0;prompts[actor]=dirty?"E / A: clear dirty plate | B / D-pad up: edit furniture":"B / D-pad up: edit furniture";if(pressed&&dirty){k.ClearTable(Game.State,actor,target.InstanceId,out message);Feedback(message);}}
    return true;
+  }
+  // Grill feedback: a small bar that fills while cooking, turns green when done, red when burning.
+  static string CookStatus(KitchenStation s,KitchenItem item){
+   if(item==null||(s.CatalogId!="grill"&&s.CatalogId!="oven"))return "";
+   float done=s.CatalogId=="oven"?6:8,burn=24,t=s.Progress;
+   if(item.Kind==KitchenItemKind.BurntPatty)return "\n<color=#E1543B>BURNT - take it and press Q to discard</color>";
+   if(item.Kind==KitchenItemKind.CookedPatty){int left=Mathf.Max(0,Mathf.CeilToInt(burn-t));return "\n<color="+(left<6?"#E1543B":"#4FCB7A")+">READY"+(left<6?" - burning in "+left+"s!":"")+"</color>";}
+   if(item.Kind!=KitchenItemKind.RawProtein)return "";
+   int filled=Mathf.Clamp(Mathf.FloorToInt(t/done*10),0,10);
+   return "\n<color=#E8C34A>Cooking ["+new string('#',filled)+new string('-',10-filled)+"]</color>";
   }
   void TickPhysicalService(float dt){var k=Game.State.Kitchen;if(k.ShiftActive){shiftTime+=dt;if(Data.Open&&shiftTime>=120)Data.EndService(out _);if(!Data.Open&&Data.Orders.Count==0){k.FinishShift(Game.State);shiftTime=0;ShowPanel("Service");Game.Save();}}DrawKitchenItems();}
   void DrawKitchenItems(){

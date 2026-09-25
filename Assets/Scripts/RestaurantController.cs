@@ -62,7 +62,7 @@ namespace RestaurantCity {
         void Update() {
             if (!Game || !Room) return;
             hudTimer -= Time.unscaledDeltaTime;
-            if (hudTimer <= 0) { UI.Refresh(); hudTimer = .35f; }
+            if (hudTimer <= 0) { hudTimer = .35f; UI.Refresh(); }
             if (!Game.Paused && !ManagementPauses && !PlacementActive && !Game.SmokeMode) Advance(Time.deltaTime);
         }
         public void Feedback(string message) { Hint = message; Game.Notify(message, 5); if (UI) UI.Refresh(); }
