@@ -6,6 +6,7 @@ using UnityEngine;
 // missing (e.g. a teammate without the pack), the game falls back to the code-built look.
 public static class ArtPackDressing {
     const string Generic = "Assets/Synty/PolygonGeneric/Prefabs/";
+    const string City = "Assets/Synty/PolygonCity/Prefabs/";
     const string Starter = "Assets/Synty/PolygonStarter/Prefabs/";
 
     // Model slots filled from the pack: (category, slot id, source prefab, largest dimension in meters)
@@ -13,6 +14,16 @@ public static class ArtPackDressing {
         ("Items", "RawProtein", Generic + "Props/SM_Gen_Prop_Food_Meat_01.prefab", .24f),
         ("Items", "Bun", Generic + "Props/SM_Gen_Prop_Food_Bread_01.prefab", .2f),
         ("Items", "RawGreens", Generic + "Props/SM_Gen_Prop_Food_Vegetable_01.prefab", .22f),
+        ("Furniture", "potted_palm", City + "Props/SM_Prop_PotPlant_02.prefab", 1.6f),
+        ("Furniture", "flower_pot", City + "Props/SM_Prop_PotPlant_01.prefab", .8f),
+        ("Furniture", "planter_box", City + "Props/SM_Prop_Planter_02.prefab", 1.4f),
+        ("Furniture", "display_shelf", City + "Props/SM_Prop_ShopInterior_Shelf_01.prefab", 1.8f),
+        ("Furniture", "bottle_shelf", Generic + "Props/SM_Gen_Prop_Shelf_02.prefab", 1.6f),
+        ("Furniture", "rustic_crates", Generic + "Props/SM_Gen_Prop_Crate_Preset_01.prefab", 1.2f),
+        ("Furniture", "flour_sacks", Generic + "Props/SM_Gen_Prop_Sack_Stack_01.prefab", 1f),
+        ("Furniture", "oak_barrel", Generic + "Props/SM_Gen_Prop_Barrel_Wood_01.prefab", 1f),
+        ("Furniture", "lounge_couch", City + "Props/SM_Prop_Couch_01.prefab", 1.9f),
+        ("Furniture", "statue", Generic + "Props/SM_Gen_Prop_Statue_02.prefab", 1.5f),
     };
 
     public static void GenerateOverrides() {

@@ -121,7 +121,7 @@ namespace RestaurantCity {
             // v5 briefly counted dollars as reputation; v6 counts customers, stars and discoveries, so cap the carried-over amount.
             if (Version == 5) Xp = Math.Min(Xp, Reputation.Thresholds[1] - 1);
             Version = 6; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
-            Xp = Math.Max(0, Math.Min(999999, Xp)); RankUpTo = -1; Goals = Goals ?? new List<string>(); RankEarned = Math.Max(0, Math.Min(Reputation.Titles.Length - 1, RankEarned)); CheckRankUp();
+            Xp = Math.Max(0, Math.Min(999999, Xp)); RankUpTo = -1; Goals = Goals ?? new List<string>(); RankEarned = Math.Max(0, Math.Min(Reputation.Titles.Length - 1, RankEarned)); CheckRankUp(); Restaurant.PlayerRank = RankEarned;
             // Old saves kept stand "Stock" separately; it now lives in the one shared pantry.
             if (Stock > 0) { Restaurant.Protein += Stock; Restaurant.Produce += Stock; Stock = 0; }
             Kitchen = Kitchen ?? new KitchenState(); Kitchen.SanitizeAfterLoad(this); Flux = Math.Max(0, Flux);
@@ -135,6 +135,7 @@ namespace RestaurantCity {
         public void Tick(float seconds) {
             if (seconds <= 0 || float.IsNaN(seconds) || float.IsInfinity(seconds)) return;
             Clock += seconds;
+            if (Restaurant != null) Restaurant.PlayerRank = RankEarned;
             if (Restaurant != null && Restaurant.PendingReputation != 0) { int rep = Restaurant.PendingReputation; Restaurant.PendingReputation = 0; GainReputation(rep); }
             else CheckRankUp();
             while (Clock >= 240) { Clock -= 240; Day++; }

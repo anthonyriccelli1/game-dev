@@ -120,7 +120,7 @@ namespace RestaurantCity {
             if (TryResolveInteractionHit(out var hit)) {
                 bool usedRestaurant = Game.Restaurant && Game.Restaurant.InspectPlayerRay(this, hit, pressed, held);
                 Target = hit.collider.GetComponentInParent<Interactable>();
-                if (!usedRestaurant && Target && pressed) Game.InteractForPlayer(Target.Kind, this);
+                if (!usedRestaurant && Target && pressed) Game.InteractForPlayer(Target.Kind, this, Target.Site);
             }
         }
         public void ApplyLook(Vector2 degrees) {

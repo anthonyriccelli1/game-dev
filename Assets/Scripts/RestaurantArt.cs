@@ -117,6 +117,7 @@ namespace RestaurantCity {
             var text=g.AddComponent<TextMesh>();text.text=value;text.font=Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");text.fontSize=60;text.characterSize=size*.25f;text.anchor=TextAnchor.MiddleCenter;text.alignment=TextAlignment.Center;text.color=color;
             var shader=Shader.Find("RestaurantCity/WorldText");if(shader){var m=new Material(shader);m.mainTexture=text.font.material.mainTexture;g.GetComponent<MeshRenderer>().sharedMaterial=m;var sync=g.AddComponent<WorldTextFont>();sync.Font=text.font;sync.Material=m;}
         }
+        public static string RestaurantName = "THE ODD TABLE";
         public static GameObject BuildRoom(Transform parent) {
             var room=Group("RestaurantInterior",parent);var p=room.transform;
             var wallpaper=Mat("OldWallpaper",C("C9BA95"),0,false,"wallpaper");var worn=Mat("OldTile",C("B6AA87"),0,false,"worn");var brick=Mat("FacadeBrick",C("A36553"));
@@ -153,7 +154,7 @@ namespace RestaurantCity {
                 Box("InsideMullion",p,new Vector3(x,2,-9.28f),new Vector3(.1f,2.02f,.06f),Cream);
             }
             Box("HeaderBacking",p,new Vector3(-10,3.48f,-8.73f),new Vector3(11.8f,.68f,.27f),Teal);
-            Label("THE ODD TABLE",p,new Vector3(-10,3.48f,-8.53f),.19f,White);
+            Label(RestaurantName,p,new Vector3(-10,3.48f,-8.53f),.19f,White);
             // Layered storefront, a shallow parapet, brick courses, pilasters, and period lamps.
             Box("FacadeCornice",p,new Vector3(-10,3.95f,-8.96f),new Vector3(13.35f,.2f,.7f),Cream);
             Box("FacadeParapet",p,new Vector3(-10,4.17f,-9.1f),new Vector3(13.15f,.34f,.28f),Wood);
@@ -183,7 +184,7 @@ namespace RestaurantCity {
             Rod("CopperWaterPipe",p,new Vector3(-16.16f,.3f,-21.64f),new Vector3(-16.16f,3.5f,-21.64f),.075f,Brass);
             Rod("CopperCeilingPipe",p,new Vector3(-16.16f,3.45f,-21.64f),new Vector3(-4,3.45f,-21.64f),.075f,Brass);
             Box("OldMenuBoard",p,new Vector3(-10,2.45f,-21.72f),new Vector3(2.8f,1.3f,.12f),Wood);Box("Slate",p,new Vector3(-10,2.45f,-21.62f),new Vector3(2.55f,1.09f,.05f),Ink);
-            Label("TODAY AT THE ODD TABLE\nGOOD FOOD. ODD COMPANY.",p,new Vector3(-10,2.45f,-21.57f),.069f,Cream);
+            Label("TODAY AT "+RestaurantName+"\nGOOD FOOD. ODD COMPANY.",p,new Vector3(-10,2.45f,-21.57f),.069f,Cream);
             return room;
         }
         public static void UpdateFinishes(GameObject room,string wallId,string floorId,bool awning,bool neon) {

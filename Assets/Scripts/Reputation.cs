@@ -45,7 +45,7 @@ namespace RestaurantCity {
         public static bool Unlocked(CityDistrict d, int rank) => d == null || rank >= d.Rank;
         public static CityDistrict OpenedAt(int rank) { foreach (var d in All) if (d.Rank == rank) return d; return null; }
         public static readonly CityPlace[] Places = {
-            new CityPlace("Your stand", "you", 0, 8), new CityPlace("Milo's", "supply", -12, 10), new CityPlace("The Odd Table", "restaurant", -10, -15),
+            new CityPlace("Your stand", "you", 0, 8), new CityPlace("Milo's", "supply", -12, 10), new CityPlace("The Odd Table", "restaurant", -10, -15), new CityPlace("The Bayside", "restaurant", -190, -15),
             new CityPlace("Gilded Orbit", "rival", 19, 22), new CityPlace("Rival Alley", "recipe", 11.6f, 24),
             new CityPlace("Fishmarket", "supply", -100, -130), new CityPlace("The Salty Hatch", "restaurant", 10, -222), new CityPlace("Captain Krill's", "rival", 120, -222), new CityPlace("Container 13", "recipe", 240, -228),
             new CityPlace("Lucky Comet casino", "service", 225, 25), new CityPlace("Burger Baron", "rival", 225, -16), new CityPlace("Night Owl Noodles", "restaurant", 350, -16),

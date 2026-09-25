@@ -172,6 +172,18 @@ public static class CityGreybox {
         Place("NEBULA BAZAAR", "Flux supplier  /  night only", 400, -228, 30, 20, 7, 1, "5B3FA0", .8f);
         Place("CRATER KITCHEN", "Restaurant for sale  /  Little Nebula", 500, -215, 20, 16, 8, 3, "3FA08C", .6f);
         Place("THE VOID", "Rival  /  Little Nebula", 505, -248, 16, 14, 14, 3, "0E0E14");
+        // The Bayside: the second starter restaurant (built at runtime by RestaurantController) on an open waterfront.
+        reserved.Add(Rect.MinMaxRect(-220, -36, -170, -2));
+        var bay = new GameObject("Bayside waterfront").transform; bay.SetParent(lm, false);
+        Box("Quay rail", new Vector3(-219.4f, .55f, -19), new Vector3(.2f, 1.1f, 34), M("Rail", "D9D4C8"), bay);
+        for (float z = -32; z <= -6; z += 8) {
+            CityMap.Prefab("Props/SM_Prop_ParkBench_01", new Vector3(-216.5f, 0, z), 270, bay);
+            CityMap.Prefab("Props/SM_Prop_LightPole_Base_02", new Vector3(-218.6f, 0, z + 4), 90, bay);
+        }
+        foreach (var t in new[] { new Vector3(-205, 0, -30), new Vector3(-176, 0, -30), new Vector3(-210, 0, -8), new Vector3(-174, 0, -6) })
+            CityMap.Prefab("Environments/SM_Env_Tree_0" + (Mathf.Abs((int)t.x) % 3 + 1), t, t.z * 11, bay);
+        CityMap.Prefab("Props/SM_Prop_Umbrella_01", new Vector3(-201, 1.3f, -14), 0, bay);
+        CityMap.Prefab("Props/SM_Prop_PicnicTable_01", new Vector3(-201, 0, -14), 90, bay);
         // Docks set dressing: container stacks and cranes on the quay; the Drive-In lot.
         var dock = new GameObject("Container yard").transform; dock.SetParent(lm, false);
         string[] cols = { "B8402F", "2F6DB8", "D1A33A", "3F8F5A", "7A7F86" };

@@ -44,6 +44,8 @@ namespace RestaurantCity {
             ("23_bridge_day", new Vector3(440, 0, -100), 180, 4, 60),
             ("25_docks_lock_day", new Vector3(-40, 0, -96), 180, 6, 60),
             ("26_phone_map", new Vector3(0, 0, 3), 0, 0, 60),
+            ("27_bayside_day", new Vector3(-182, 0, 5), 200, -8, 60),
+            ("28_bayside_night", new Vector3(-182, 0, 5), 200, -8, 190),
         };
 
         IEnumerator Start() {
@@ -65,6 +67,7 @@ namespace RestaurantCity {
                 for (int i = 0; i < 20; i++) yield return null;
                 ScreenCapture.CaptureScreenshot(Path.Combine(dir, shot.name + ".png"));
                 for (int i = 0; i < 5; i++) yield return null;
+                if (rc && rc.PanelOpen) rc.ClosePanel();
             }
             yield return new WaitForSeconds(1);
             Application.Quit();

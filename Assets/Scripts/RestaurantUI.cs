@@ -157,7 +157,7 @@ namespace RestaurantCity {
                 if (category != "All" && item.Category.ToString() != category) continue;
                 var entry = item; int col = index % 3, row = index / 3; index++;
                 var card = Block(content, entry.Name, col * 386, row * 232, 372, 219, white);
-                bool locked = entry.RequiredStars > Owner.Data.Stars;
+                bool tierLocked = entry.Tier > Owner.Game.State.RankEarned, locked = tierLocked || entry.RequiredStars > Owner.Data.Stars;
                 Block(card, "Swatch", 0, 0, 372, 5, locked ? muted : teal);
                 var thumbnail = Box(card, "Product picture", 12, 17, 105, 106);
                 var raw = thumbnail.gameObject.AddComponent<RawImage>();
@@ -166,7 +166,7 @@ namespace RestaurantCity {
                 Label(card, "$" + entry.Price, 128, 67, 227, 30, 23, locked ? muted : teal, true);
                 Label(card, entry.Category + (entry.Seats > 0 ? "  /  " + entry.Seats + " seats" : "") + (entry.Ambience > 0 ? "  /  +" + entry.Ambience + " ambience" : ""), 128, 103, 230, 28, 12, muted);
                 Label(card, entry.Description, 14, 134, 344, 43, 14, ink);
-                string action = locked ? "Unlock at " + entry.RequiredStars + " stars" : entry.Category == CatalogCategory.Finishes || entry.Category == CatalogCategory.Exterior ? "Install for $" + entry.Price : "Preview & place";
+                string action = tierLocked ? "Unlocks at " + Reputation.Titles[entry.Tier] : locked ? "Unlock at " + entry.RequiredStars + " stars" : entry.Category == CatalogCategory.Finishes || entry.Category == CatalogCategory.Exterior ? "Install for $" + entry.Price : "Preview & place";
                 bool can = !locked && Owner.Data.CanCustomize && Owner.Game.State.Cash >= entry.Price;
                 if (!locked && Owner.Game.State.Cash < entry.Price) action = "Save $" + (entry.Price - Owner.Game.State.Cash) + " more";
                 Button(card, action, 14, 178, 344, 30, () => Owner.SelectCatalogItem(entry.Id), can ? teal : pale, can ? white : muted, can);

@@ -10,12 +10,12 @@ namespace RestaurantCity {
     public class CatalogItem {
         public string Id, Name, Description;
         public CatalogCategory Category;
-        public int Price, Width, Depth, Seats, Ambience, RequiredStars;
+        public int Price, Width, Depth, Seats, Ambience, RequiredStars, Tier;   // Tier = reputation rank needed (0 Old Market, 1 Docks, ...)
         public bool IsFinish => Category == CatalogCategory.Finishes;
         public bool IsExterior => Category == CatalogCategory.Exterior;
         public bool OccupiesFloor => !IsFinish && !IsExterior && Id != "pendant_amber" && Id != "neon_moon" && Id != "art_orbit" && Id != "rug_sunset";
-        public CatalogItem(string id,string name,CatalogCategory category,int price,int width,int depth,int seats,int ambience,string description,int stars=1) {
-            Id=id;Name=name;Category=category;Price=price;Width=width;Depth=depth;Seats=seats;Ambience=ambience;Description=description;RequiredStars=stars;
+        public CatalogItem(string id,string name,CatalogCategory category,int price,int width,int depth,int seats,int ambience,string description,int stars=1,int tier=0) {
+            Tier=tier;Id=id;Name=name;Category=category;Price=price;Width=width;Depth=depth;Seats=seats;Ambience=ambience;Description=description;RequiredStars=stars;
         }
     }
     public class DishDefinition {
@@ -84,8 +84,8 @@ namespace RestaurantCity {
             new CatalogItem("sink","Deep washing sink",CatalogCategory.Kitchen,30,1,1,0,0,"Wash dirty plates for six seconds to replenish the rack."),
             new CatalogItem("prep_bench","Steel prep bench",CatalogCategory.Kitchen,28,2,1,0,0,"Prepare one ingredient at a time. Extra benches let partners prep together."),
             new CatalogItem("grill","Comet grill",CatalogCategory.Kitchen,45,2,1,0,1,"Burgers and midnight buns. Extra grills add a cooking slot."),
-            new CatalogItem("stove","Little red stove",CatalogCategory.Kitchen,55,1,1,0,1,"A decorative stove for your growing kitchen. Soup is not in this playable menu yet."),
-            new CatalogItem("oven","Starlight oven",CatalogCategory.Kitchen,100,2,1,0,2,"TWO STARS: cooks patties in six seconds instead of eight.",2),
+            new CatalogItem("stove","Little red stove",CatalogCategory.Kitchen,55,1,1,0,1,"LINE COOK gear: a second cooking line for soups and stews.",1,1),
+            new CatalogItem("oven","Starlight oven",CatalogCategory.Kitchen,100,2,1,0,2,"LINE COOK gear: cooks patties in six seconds instead of eight.",2,1),
             new CatalogItem("fridge","Mint refrigerator",CatalogCategory.Kitchen,40,1,1,0,1,"Raises each stock limit from 24 to 48; keeps ready dishes fresh longer."),
             new CatalogItem("stool_pair","Counter stools",CatalogCategory.Seating,20,2,2,2,1,"Two inexpensive customer seats."),
             new CatalogItem("cafe_table","Daisy cafe table",CatalogCategory.Seating,30,2,2,2,2,"Two seats and a cheery tabletop."),
@@ -103,6 +103,16 @@ namespace RestaurantCity {
             new CatalogItem("fern","Giant fern",CatalogCategory.Decor,12,1,1,0,2,"Leafy, cheerful ambience in a clay pot."),
             new CatalogItem("art_orbit","Orbit print",CatalogCategory.Decor,15,1,1,0,2,"An original space-travel print; mounts above furniture."),
             new CatalogItem("rug_sunset","Sunset rug",CatalogCategory.Decor,20,2,2,0,2,"A woven coral rug; fits under tables."),
+            new CatalogItem("potted_palm","Potted palm",CatalogCategory.Decor,14,1,1,0,2,"A tall palm for a bare corner."),
+            new CatalogItem("flower_pot","Little flower pot",CatalogCategory.Decor,8,1,1,0,1,"Cheap, cheerful and hard to kill."),
+            new CatalogItem("planter_box","Window planter",CatalogCategory.Decor,10,1,1,0,1,"A long box of greenery."),
+            new CatalogItem("display_shelf","Grocery display",CatalogCategory.Decor,22,1,1,0,2,"Stocked shelves that make the place feel busy."),
+            new CatalogItem("bottle_shelf","Bottle shelf",CatalogCategory.Decor,18,1,1,0,2,"Old bottles and jars, for character."),
+            new CatalogItem("rustic_crates","Rustic crates",CatalogCategory.Decor,10,1,1,0,1,"Market crates stacked as decoration."),
+            new CatalogItem("flour_sacks","Flour sacks",CatalogCategory.Decor,8,1,1,0,1,"A pile of sacks: it looks like real cooking happens here."),
+            new CatalogItem("oak_barrel","Oak barrel",CatalogCategory.Decor,9,1,1,0,1,"A rustic barrel in the corner."),
+            new CatalogItem("lounge_couch","Waiting couch",CatalogCategory.Decor,40,2,1,0,3,"Somewhere comfy for the line to wait."),
+            new CatalogItem("statue","Odd little statue",CatalogCategory.Decor,35,1,1,0,3,"Nobody knows who it is. Everyone loves it."),
             new CatalogItem("jukebox","Rocket jukebox",CatalogCategory.Decor,110,1,1,0,6,"TWO STARS: the district's most coveted statement piece.",2),
             new CatalogItem("awning_coral","Coral street awning",CatalogCategory.Exterior,35,1,1,0,3,"Transforms the restaurant frontage with striped canvas."),
             new CatalogItem("sign_neon","Orbit Cafe neon sign",CatalogCategory.Exterior,85,1,1,0,5,"TWO STARS: your restaurant becomes a glowing local landmark.",2)
@@ -159,7 +169,8 @@ namespace RestaurantCity {
         public int Stars => Rank;
         public bool CanCustomize => Owned && !Open && Orders.Count==0;
         public int Seats => Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.Seats??0);
-        public int Ambience => Math.Min(40,Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.Ambience??0));
+        [NonSerialized]public int PlayerRank;public string SiteId="oddtable";public int SiteAmbience=>SiteId=="bayside"?4:0;
+        public int Ambience => Math.Min(40,SiteAmbience+Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.Ambience??0));
         public int CookSlots => Math.Max(1,Layout.Count(p=>p.CatalogId=="grill"||p.CatalogId=="stove"||p.CatalogId=="oven"));
         public int StockLimit => HasEquipment("fridge")?48:24;
         public int WagesPerOrder => Workers.Count(w=>w.Job!=StaffJob.Off);
@@ -200,6 +211,7 @@ namespace RestaurantCity {
             if(item==null)return Fail("Unknown catalog item.",out message);
             if(rotation<0||rotation>3)return Fail("Rotation must be 0, 1, 2, or 3.",out message);
             if(item.RequiredStars>Stars)return Fail("Reach two stars to unlock this item.",out message);
+            if(item.Tier>PlayerRank)return Fail("Unlocks at "+Reputation.Titles[item.Tier]+": better gear arrives with each district.",out message);
             if(item.IsFinish||item.IsExterior){message="Ready to install.";return true;}
             int width=rotation%2==0?item.Width:item.Depth,depth=rotation%2==0?item.Depth:item.Width;
             if(x<0||z<0||x+width>12||z+depth>10)return Fail("Keep the furnishing inside the restaurant.",out message);
@@ -382,7 +394,7 @@ namespace RestaurantCity {
             ActiveMenu=ActiveMenu.Where(id=>id=="burger"||id=="salad"||id=="midnight").Distinct().ToList();if(ActiveMenu.Count==0)ActiveMenu.Add("burger");
             // Unfinished service ends on load; durable restaurant layout, finances, menu, stock, reviews and workers survive.
             Orders.Clear();Open=false;Produce=Math.Max(0,Math.Min(StockLimit,Produce));Protein=Math.Max(0,Math.Min(StockLimit,Protein));
-            Cleanliness=Clamp(Cleanliness,0,100);Satisfaction=Clamp(Satisfaction,0,100);Rank=Math.Max(1,Math.Min(2,Rank));Served=Math.Max(0,Served);Lost=Math.Max(0,Lost);UpdateRank();
+            if(SiteId!="oddtable"&&SiteId!="bayside")SiteId="oddtable";Cleanliness=Clamp(Cleanliness,0,100);Satisfaction=Clamp(Satisfaction,0,100);Rank=Math.Max(1,Math.Min(2,Rank));Served=Math.Max(0,Served);Lost=Math.Max(0,Lost);UpdateRank();
             foreach(var worker in Workers){worker.Energy=Clamp(worker.Energy,0,100);if(worker.Job==StaffJob.Any)worker.Job=RestaurantCatalog.Worker(worker.Id)?.Role??StaffJob.Cook;}
             EnsurePhysicalKit();
         }

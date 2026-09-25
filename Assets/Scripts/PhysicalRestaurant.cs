@@ -33,7 +33,7 @@ namespace RestaurantCity {
   // A4: a wall board prop showing the active-menu recipes, alongside the Cookbook management tab.
   public void RefreshMenuBoard(){
    if(menuBoard)Destroy(menuBoard);
-   menuBoard=new GameObject("Kitchen menu board");menuBoard.transform.SetParent(transform,false);menuBoard.transform.position=new Vector3(-5.4f,2.35f,-10.9f);
+   menuBoard=new GameObject("Kitchen menu board");menuBoard.transform.SetParent(transform,false);menuBoard.transform.position=W(-5.4f,2.35f,-10.9f);
    var lines=Data.ActiveMenu.Select(id=>{var recipe=RecipeBook.Find(id);var dish=RestaurantCatalog.Dish(id);return recipe==null||dish==null?"":dish.Name+": "+string.Join("+",recipe.Components.Select(ComponentDisplay));});
    WorldCaption(menuBoard.transform,"TONIGHT'S MENU\n"+string.Join("\n",lines),Vector3.zero,.02f);
   }

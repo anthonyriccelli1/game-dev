@@ -53,7 +53,7 @@ namespace RestaurantCity {
                     arrival = Rush ? 14 : Game.State.RecipeUnlocked && Data.ActiveMenu.Contains("midnight") ? 13 : 17;
                     if (queue.Count < 3) {
                         var guest = NewGuest(nextType++ % RestaurantCatalog.Customers.Length);
-                        guest.Root.transform.position = new Vector3(-8.7f, .055f, -5.4f + queue.Count);
+                        guest.Root.transform.position = W(-8.7f, .055f, -5.4f + queue.Count);
                         queue.Add(guest);
                     }
                 }
@@ -73,15 +73,15 @@ namespace RestaurantCity {
                         view.SeatIndex = seatIndex;
                         view.Seat = Furnishings[place.InstanceId].transform.Find("Seat_" + view.SeatIndex);
                         view.Root.GetComponent<RestaurantTarget>().OrderId = order.Id;
-                        view.Path.Enqueue(new Vector3(-10, .055f, -8));
-                        AppendRoute(view.Path, new Vector3(-10, .055f, -10.5f), view.Seat.position);
+                        view.Path.Enqueue(W(-10, .055f, -8));
+                        AppendRoute(view.Path, W(-10, .055f, -10.5f), view.Seat.position);
                         view.Path.Enqueue(view.Seat.position); guests[order.Id] = view;
                         observedTypes.Add(view.Type); Feedback(message);
                         continue;
                     }
                 }
                 if (!Data.Open || view.QueueWait > 32) { if(Data.Open)Data.RecordQueueLoss(view.Type);Destroy(view.Root); queue.RemoveAt(i); continue; }
-                Vector3 spot = new Vector3(-8.5f, .055f, -7.4f + i * .95f);
+                Vector3 spot = W(-8.5f, .055f, -7.4f + i * .95f);
                 view.Motion.Walking = StepTo(view.Root.transform, spot, seconds * 1.9f);
                 SetBubble(view.Bubble, "Waiting for a table\n" + RestaurantCatalog.Customers[view.Type].Name);
             }
@@ -90,8 +90,8 @@ namespace RestaurantCity {
                 if (order == null || order.Stage == RestaurantOrderStage.Leaving) {
                     if (!view.Leaving) {
                         view.Leaving = true; view.Seated = false; view.Path.Clear();
-                        AppendRoute(view.Path, view.Root.transform.position, new Vector3(-10, .055f, -11));
-                        view.Path.Enqueue(new Vector3(-10, .055f, -7)); view.Path.Enqueue(new Vector3(-3, .055f, -5.5f));
+                        AppendRoute(view.Path, view.Root.transform.position, W(-10, .055f, -11));
+                        view.Path.Enqueue(W(-10, .055f, -7)); view.Path.Enqueue(W(-3, .055f, -5.5f));
                     }
                     view.Motion.Seated = false; view.Motion.Walking = Follow(view.Root.transform, view.Path, seconds * 2.5f);
                     SetBubble(view.Bubble, "See you around!");
@@ -121,7 +121,7 @@ namespace RestaurantCity {
             UpdatePhysicalEmployees(seconds);
             DrawKitchenItems();
             if (crumbs.Count == 0) for (int i = 0; i < 14; i++) {
-                var crumb = SmallShape("Service crumbs", PrimitiveType.Cylinder, transform, new Vector3(-14.5f + i % 4 * 2.7f, .071f, -17.3f + i / 4 * 2), new Vector3(.12f + i % 3 * .04f, .006f, .08f), new Color(.37f,.24f,.16f)); crumbs.Add(crumb);
+                var crumb = SmallShape("Service crumbs", PrimitiveType.Cylinder, transform, W(-14.5f + i % 4 * 2.7f, .071f, -17.3f + i / 4 * 2), new Vector3(.12f + i % 3 * .04f, .006f, .08f), new Color(.37f,.24f,.16f)); crumbs.Add(crumb);
             }
             for (int i = 0; i < crumbs.Count; i++) crumbs[i].SetActive(i < (100 - Data.Cleanliness) / 6);
             if (Data.Stars > lastRank) { Feedback("TWO STARS! The faster Starlight oven, jukebox and neon sign are yours to unlock."); PlayChime(true); Game.Save(); }
@@ -151,7 +151,7 @@ namespace RestaurantCity {
         void UpdateEmployees(float dt) {
             foreach (var worker in Data.Workers) {
                 if (!employees.TryGetValue(worker.Id, out var view)) {
-                    var root = RestaurantArt.CreateCharacter(RestaurantCatalog.Worker(worker.Id)?.ModelType??8,transform); root.transform.position = new Vector3(-9, .055f, -12);
+                    var root = RestaurantArt.CreateCharacter(RestaurantCatalog.Worker(worker.Id)?.ModelType??8,transform); root.transform.position = W(-9, .055f, -12);
                     view = new EmployeeView { Root=root, Motion=root.GetComponent<CharacterMotion>(), Bubble=WorldCaption(root.transform,"",new Vector3(0,2.4f,0),.023f) }; employees[worker.Id]=view;
                 }
                 if (view.Job != worker.Job) { view.Job=worker.Job; view.OrderId=-1; view.Phase=0;view.Path.Clear();view.Work=0;if(view.Plate)Destroy(view.Plate); }
@@ -163,7 +163,7 @@ namespace RestaurantCity {
                 var order=Data.Orders.Find(o=>o.Id==view.OrderId);
                 if (worker.Job==StaffJob.Clean) {
                     if(Data.Cleanliness>=92){SetBubble(view.Bubble,worker.Id+" / keeping things tidy");continue;}
-                    if(view.Phase==0){view.Phase=1;AppendRoute(view.Path,view.Root.transform.position,new Vector3(-12,.055f,-16));continue;}
+                    if(view.Phase==0){view.Phase=1;AppendRoute(view.Path,view.Root.transform.position,W(-12,.055f,-16));continue;}
                     view.Motion.Working=true;view.Work+=dt;SetBubble(view.Bubble,worker.Id+" / wiping tables");
                     if(view.Work>=taskSeconds){Data.Clean(out _);worker.TasksCompleted++;view.Work=0;view.Phase=0;}continue;
                 }
@@ -192,7 +192,7 @@ namespace RestaurantCity {
         Vector3 KitchenPosition(RestaurantOrder order) {
             var item=Data.Layout.FirstOrDefault(p=>p.CatalogId==RestaurantCatalog.Dish(order.DishId).Equipment);
             if(item!=null&&Furnishings.TryGetValue(item.InstanceId,out var obj)){var work=obj.transform.Find("WorkPoint");if(work)return work.position;return obj.transform.position+Vector3.forward;}
-            return new Vector3(-12,.055f,-19);
+            return W(-12,.055f,-19);
         }
         void UpdateDishes() {
             foreach(var pair in kitchenPlates.ToArray()) if(!Data.Orders.Any(o=>o.Id==pair.Key&&(o.Stage==RestaurantOrderStage.Cooking||o.Stage==RestaurantOrderStage.Ready)&&o.Id!=CarriedOrderId&&!employees.Values.Any(w=>w.OrderId==o.Id&&w.Phase==2))){Destroy(pair.Value);kitchenPlates.Remove(pair.Key);}

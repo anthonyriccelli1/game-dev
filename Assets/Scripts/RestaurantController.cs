@@ -20,7 +20,10 @@ namespace RestaurantCity {
         public CityGame Game;
         public RestaurantState Data => Game.State.Restaurant;
         public bool Inside => InRestaurant(Game.Player.transform.position);
-        static bool InRestaurant(Vector3 p) => p.x > -17 && p.x < -3 && p.z < -8;
+        // All restaurant coordinates are written for The Odd Table; Site shifts them to whichever property you chose.
+        public static Vector3 Site; public static bool ArriveAfterReload;
+        public static Vector3 W(float x, float y, float z) => new Vector3(x, y, z) + Site;
+        static bool InRestaurant(Vector3 p) { p -= Site; return p.x > -17 && p.x < -3 && p.z < -8 && p.z > -23; }
         bool anyoneInsideLastFrame = true;
         // When the last player walks out mid-service, flash a 3-second warning for any job nobody covers.
         void CheckLeavingStaffing() {
@@ -62,16 +65,45 @@ namespace RestaurantCity {
             Game = game;
             if (Game.State.Restaurant == null) Game.State.Restaurant = new RestaurantState();
             var previous = GameObject.Find("Future Restaurant"); if (previous) previous.SetActive(false);
-            Room = RestaurantArt.BuildRoom(transform);
+            var site = RestaurantSites.Get(Data.SiteId); Site = site.Offset;
+            var siteRoot = new GameObject("Restaurant site / " + site.Title).transform; siteRoot.SetParent(transform, false); siteRoot.localPosition = Site;
+            RestaurantArt.RestaurantName = site.Sign;
+            Room = RestaurantArt.BuildRoom(siteRoot);
+            BuildShowrooms();
             Room.name = "Little Flame / Your restaurant";
             RebuildLayout();
             var desk = new GameObject("Restaurant management"); desk.transform.SetParent(Room.transform);
-            desk.transform.position = new Vector3(-5.4f, 1, -10.4f);
+            desk.transform.position = W(-5.4f, 1, -10.4f);
             var deskCollider = desk.AddComponent<BoxCollider>(); deskCollider.size = new Vector3(1.2f, 1.8f, .7f);
             desk.AddComponent<RestaurantTarget>().Kind = "Management";
             WorldCaption(desk.transform, "LITTLE FLAME\n[E] MANAGE", new Vector3(0, 1.15f, 0), .024f);
             UI = gameObject.AddComponent<RestaurantUI>(); UI.Owner = this; UI.Rebuild();
             PhysicalSetup();
+            if (ArriveAfterReload) { ArriveAfterReload = false; StartCoroutine(ArriveAtNewRestaurant()); }
+        }
+        System.Collections.IEnumerator ArriveAtNewRestaurant() {
+            yield return null; yield return null;
+            Game.Player.Teleport(W(-10, .15f, -10.7f)); Game.Player.LookAt(W(-10, 1.5f, -18)); PlayChime(true);
+            Feedback("Welcome to " + RestaurantSites.Get(Data.SiteId).Title + ". Four walls and a lot of dust: press B inside to start buying your kitchen.");
+        }
+        // The properties you didn't pick stay on the map as shabby, empty shells with a lease sign.
+        void BuildShowrooms() {
+            foreach (var other in RestaurantSites.All) {
+                if (other.Id == Data.SiteId) continue;
+                var root = new GameObject("Property for lease / " + other.Title).transform; root.SetParent(transform, false); root.localPosition = other.Offset;
+                RestaurantArt.RestaurantName = other.Sign; RestaurantArt.BuildRoom(root);
+                if (other.Id != "oddtable") {
+                    var sign = GameObject.CreatePrimitive(PrimitiveType.Cube); sign.name = "Lease sign / " + other.Title; sign.transform.SetParent(root, false);
+                    sign.transform.localPosition = new Vector3(-6.2f, 1.25f, -8.7f); sign.transform.localScale = new Vector3(2.9f, 2.2f, .15f);
+                    var signMat = new Material(Shader.Find("Universal Render Pipeline/Lit")); signMat.color = new Color(.12f, .13f, .15f); sign.GetComponent<Renderer>().sharedMaterial = signMat;
+                    var it = sign.AddComponent<Interactable>(); it.Kind = InteractionKind.FutureRestaurant; it.Site = other.Id;
+                    var text = new GameObject("Lease text"); text.transform.SetParent(root, false); text.transform.localPosition = new Vector3(-6.2f, 1.35f, -8.6f); text.transform.localRotation = Quaternion.Euler(0, 180, 0);
+                    WorldCaption(text.transform, other.Sign + "\n\nRESTAURANT LEASE\nBUY FOR $150", Vector3.zero, .03f);
+                }
+            }
+            RestaurantArt.RestaurantName = RestaurantSites.Get(Data.SiteId).Sign;
+            // The scene's original lease sign belongs to The Odd Table.
+            foreach (var it in FindObjectsByType<Interactable>(FindObjectsSortMode.None)) if (it.Kind == InteractionKind.FutureRestaurant && it.name == "Future restaurant sign") it.Site = "oddtable";
         }
         void Update() {
             if (!Game || !Room) return;
@@ -84,12 +116,24 @@ namespace RestaurantCity {
         }
         public void Feedback(string message) { Hint = message; Game.Notify(message, 5); if (UI) UI.Refresh(); }
         public bool BuyRestaurant() => BuyRestaurant(Game.Player);
-        public bool BuyRestaurant(FirstPersonPlayer buyer) {
-            if (Data.Owned) { ShowPanel("Service"); return true; }
+        public bool BuyRestaurant(FirstPersonPlayer buyer) => BuyRestaurant(buyer, Data.SiteId);
+        public bool BuyRestaurant(FirstPersonPlayer buyer, string siteId) {
+            var chosen = RestaurantSites.Get(siteId);
+            if (Data.Owned) {
+                if (chosen.Id == Data.SiteId) { ShowPanel("Service"); return true; }
+                Feedback("You run " + RestaurantSites.Get(Data.SiteId).Title + ". Owning a second restaurant comes later, and " + chosen.Title + " will still be here."); return false;
+            }
             bool result = Data.BuyRestaurant(Game.State, out string message);
             Feedback(message);
-            if (result) { RebuildLayout(); PlayChime(true); Game.Save(); buyer.Teleport(new Vector3(-10, .15f, -10.7f)); buyer.LookAt(new Vector3(-10, 1.5f, -18)); ShowPanel("Service"); }
-            return result;
+            if (!result) return false;
+            if (chosen.Id != Data.SiteId) {
+                // Rebuild the whole restaurant at the new property: save, then reload the scene around it.
+                Data.SiteId = chosen.Id; Game.Save(); ArriveAfterReload = true;
+                UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+                return true;
+            }
+            RebuildLayout(); PlayChime(true); Game.Save(); buyer.Teleport(W(-10, .15f, -10.7f)); buyer.LookAt(W(-10, 1.5f, -18)); ShowPanel("Service");
+            return true;
         }
         public void ShowPanel(string panel) {
             bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map";
@@ -130,7 +174,7 @@ namespace RestaurantCity {
             var ray = Game.Player.View.ScreenPointToRay(screenPosition);
             var plane = new Plane(Vector3.up, Vector3.zero);
             if (!plane.Raycast(ray, out float distance)) return false;
-            var p = ray.GetPoint(distance); var item = RestaurantCatalog.Find(SelectedCatalogId);
+            var p = ray.GetPoint(distance) - Site; var item = RestaurantCatalog.Find(SelectedCatalogId);
             int w = PreviewRotation % 2 == 0 ? item.Width : item.Depth;
             int d = PreviewRotation % 2 == 0 ? item.Depth : item.Width;
             previewX = Mathf.RoundToInt(p.x + 15.5f - (w - 1) * .5f);
@@ -166,6 +210,7 @@ namespace RestaurantCity {
         public void SelectCatalogItem(string id) {
             if (!Data.CanCustomize) { Feedback("Close service and finish your remaining guests before remodeling."); return; }
             var item = RestaurantCatalog.Find(id); if (item == null) return;
+            if (item.Tier > Game.State.RankEarned) { Feedback(item.Name + " unlocks at " + Reputation.Titles[item.Tier] + ". Better gear arrives with each district."); return; }
             if (Data.Stars < item.RequiredStars) { Feedback("Earn two stars to unlock " + item.Name + "."); return; }
             if (item.IsFinish || item.IsExterior) {
                 bool bought = Data.Place(Game.State, id, 0, 0, 0, out string reason); Feedback(reason);
@@ -181,7 +226,7 @@ namespace RestaurantCity {
             savedPosition = Game.Player.transform.position; savedViewLocal = Game.Player.View.transform.localPosition;
             savedViewRotation = Game.Player.View.transform.localRotation;
             savedLook = Game.Player.View.transform.position + Game.Player.View.transform.forward * 10;
-            Game.Player.View.transform.position = new Vector3(-10, 14, -15.5f);
+            Game.Player.View.transform.position = W(-10, 14, -15.5f);
             Game.Player.View.transform.rotation = Quaternion.Euler(90, 0, 0); Game.Player.View.orthographic = true; Game.Player.View.orthographicSize = 8;
             if (Game.CoOp) Game.CoOp.RefreshViews();
             Game.Player.Spatula.gameObject.SetActive(false); Game.HandFood.SetActive(false);
@@ -238,7 +283,7 @@ namespace RestaurantCity {
             bool sold = Data.Sell(Game.State, id, out string reason); Feedback(reason);
             if (sold) { SelectedInstanceId = -1; RebuildLayout(); Game.Save(); ShowPanel("Catalog"); }
         }
-        public static Vector3 CellCenter(int x, int z, int width = 1, int depth = 1) => new Vector3(-15.5f + x + (width - 1) * .5f, .055f, -20.5f + z + (depth - 1) * .5f);
+        public static Vector3 CellCenter(int x, int z, int width = 1, int depth = 1) => new Vector3(-15.5f + x + (width - 1) * .5f, .055f, -20.5f + z + (depth - 1) * .5f) + Site;
         public void RebuildLayout() {
             Game.State.Kitchen.EnsureStations(Data);
             foreach (var obj in Furnishings.Values) if (obj) { obj.SetActive(false); Destroy(obj); }

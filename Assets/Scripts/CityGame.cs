@@ -61,8 +61,8 @@ namespace RestaurantCity {
             if (value && Started) Save();
         }
         public void Notify(string message, float duration = 4) { Notice = message; noticeUntil = Time.unscaledTime + duration; }
-        public bool InteractForPlayer(InteractionKind kind, FirstPersonPlayer player) {
-            if (kind == InteractionKind.FutureRestaurant) return Restaurant.BuyRestaurant(player);
+        public bool InteractForPlayer(InteractionKind kind, FirstPersonPlayer player, string site = null) {
+            if (kind == InteractionKind.FutureRestaurant) return site == null ? Restaurant.BuyRestaurant(player) : Restaurant.BuyRestaurant(player, site);
             return Interact(kind);
         }
         public bool Interact(InteractionKind kind) {
