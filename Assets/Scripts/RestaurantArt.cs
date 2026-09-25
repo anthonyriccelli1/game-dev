@@ -323,7 +323,7 @@ namespace RestaurantCity {
                 Box("ServerApron",b,new Vector3(0,.89f,.25f),new Vector3(.43f,.54f,.045f),Cream);Box("ApronPocket",b,new Vector3(0,.86f,.282f),new Vector3(.23f,.15f,.018f),Coral);Round("CheekL",head,new Vector3(-.22f,-.08f,.19f),new Vector3(.1f,.065f,.055f),Coral);Round("CheekR",head,new Vector3(.22f,-.08f,.19f),new Vector3(.1f,.065f,.055f),Coral);
                 var hand=b.Find("ArmR");Lathe("ServiceTray",hand,new Vector3(.02f,-.42f,.14f),new[]{0f,.035f},new[]{.25f,.25f},Solid(Brass));break;
             }
-            g.AddComponent<CharacterMotion>();return g;
+            g.AddComponent<CharacterMotion>();ArtOverrides.Apply(g,"Characters",names[type]);return g;
         }
         // Luxury pieces only the rival restaurant has (for now).
         public static GameObject CreateLuxury(string id,Transform parent) {
@@ -364,6 +364,7 @@ namespace RestaurantCity {
                 Box("CurtainTie",p,new Vector3(0,1.4f,.1f),new Vector3(.85f,.08f,.14f),gold);
                 break;
             }
+            ArtOverrides.Apply(g,"Furniture",id);
             return g;
         }
         // Rival restaurant staff: built on the base bodies, restyled so nobody in the player's crew looks like them.
@@ -371,6 +372,7 @@ namespace RestaurantCity {
             int[] bases={6,2,8,1,7,3,0};variant=Mathf.Clamp(variant,0,6);
             var g=CreateCharacter(bases[variant],parent);var b=g.transform.Find("BodyRig");var head=b?b.Find("HeadRig"):null;
             string[] names={"Maestro Vey / head chef","Nyx / sommelier","K-9 / line cook","Aurora / maitre d'","Seraphine / pastry chef","Obsidian Titan / doorman","Lumen / mixologist"};g.name=names[variant];
+            string[] slots={"Elite_MaestroVey","Elite_Nyx","Elite_K9","Elite_Aurora","Elite_Seraphine","Elite_ObsidianTitan","Elite_Lumen"};
             Color[] coats={C("F7F4EE"),C("15121F"),C("B9C3CC"),C("3A1D3F"),C("FFF6F0"),C("0E0D12"),C("F2F2F7")};
             var coat=Mat("EliteCoat"+variant,coats[variant],variant==2?.85f:0);var trousers=Mat("EliteTrousers",C("121017"));
             var gold=Mat("EliteGold",C("E2AE48"),.9f);Color[] glow={C("B77CFF"),C("6EF2FF"),C("39F5C9"),C("FFD36E"),C("FF9BD2"),C("FF3B3B"),C("4FE3FF")};var neon=Mat("EliteGlow"+variant,glow[variant],0,true);
@@ -417,6 +419,7 @@ namespace RestaurantCity {
                 Box("BlackTie",b,new Vector3(0,1.25f,.29f),new Vector3(.05f,.25f,.03f),Mat("TieBlack",C("0E0D12")));
                 break;
             }
+            ArtOverrides.Apply(g,"Characters",slots[variant]);
             return g;
         }
     }
