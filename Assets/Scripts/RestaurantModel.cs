@@ -74,8 +74,8 @@ namespace RestaurantCity {
         public static readonly CatalogItem[] Items = {
             new CatalogItem("pantry","Ingredient pantry",CatalogCategory.Kitchen,25,1,1,0,0,"Take protein, greens, buns or midnight sauce ingredients."),
             new CatalogItem("plate_rack","Plate rack",CatalogCategory.Kitchen,18,1,1,0,0,"Six shared reusable plates. Return dirty plates to the sink."),
-            new CatalogItem("assembly","Assembly counter",CatalogCategory.Kitchen,25,2,1,0,0,"Place a clean plate, then add prepared ingredients."),
-            new CatalogItem("counter","Prep counter",CatalogCategory.Kitchen,15,2,1,0,0,"Set anything down here: plates, patties, buns, sauce. Build dishes on it."),
+            new CatalogItem("assembly","Plating counter",CatalogCategory.Kitchen,15,1,1,0,0,"One-tile counter. Set a plate down and build the dish on it, or park anything here."),
+            new CatalogItem("counter","Pass counter",CatalogCategory.Kitchen,15,1,1,0,0,"Set anything down here: plates, patties, buns, sauce. Build dishes on it."),
             new CatalogItem("sink","Deep washing sink",CatalogCategory.Kitchen,30,1,1,0,0,"Wash dirty plates for six seconds to replenish the rack."),
             new CatalogItem("prep_bench","Steel prep bench",CatalogCategory.Kitchen,28,2,1,0,0,"Prepare one ingredient at a time. Extra benches let partners prep together."),
             new CatalogItem("grill","Comet grill",CatalogCategory.Kitchen,45,2,1,0,1,"Burgers and midnight buns. Extra grills add a cooking slot."),

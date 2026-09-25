@@ -59,7 +59,7 @@ namespace RestaurantCity {
             for(int x=-1;x<=1;x+=2)for(int z=-1;z<=1;z+=2)Box("Rubber cabinet foot",p,new Vector3(x*(width*.5f-.16f),.06f,z*.3f),new Vector3(.12f,.12f,.12f),"233B46");
         }
         public static GameObject CreateStation(string id,Transform parent) {
-            var root=G("Kitchen_"+id,parent); var p=root.transform;float width=id=="plate_rack"? .9f:1.9f;
+            var root=G("Kitchen_"+id,parent); var p=root.transform;float width=id=="plate_rack"? .9f:id=="counter"? .95f:1.9f;
             if(id=="pantry") {
                 for(int x=-1;x<=1;x+=2)for(int z=-1;z<=1;z+=2)Box("Shelf upright",p,new Vector3(x*.87f,.87f,z*.35f),new Vector3(.085f,1.74f,.085f),"317E79");
                 for(int n=0;n<3;n++)Box("Oak supply shelf",p,new Vector3(0,.22f+n*.54f,0),new Vector3(1.9f,.085f,.85f),"895343");
@@ -79,6 +79,12 @@ namespace RestaurantCity {
                 Box("Rack back",p,new Vector3(0,1.39f,-.36f),new Vector3(.86f,.72f,.08f),"895343");
                 for(int n=0;n<7;n++)Bar("Plate divider",p,new Vector3(-.32f+n*.105f,1.42f,-.28f),new Vector3(-.32f+n*.105f,1.68f,-.09f),.025f,"CA9B53");
                 for(int n=0;n<4;n++){var plate=Plate(p,new Vector3(-.26f+n*.15f,1.5f,-.2f),.7f);plate.transform.localRotation=Quaternion.Euler(76,0,0);}
+            } else if(id=="counter") {
+                // Plain one-tile square counter: a place to set plates and ingredients down.
+                Box("Counter top",p,new Vector3(0,.99f,0),new Vector3(.92f,.07f,.92f),"CA9B53");
+                Box("Counter apron",p,new Vector3(0,.91f,0),new Vector3(.86f,.1f,.86f),"317E79");
+                for(int x=-1;x<=1;x+=2)for(int z=-1;z<=1;z+=2)Box("Counter leg",p,new Vector3(x*.38f,.45f,z*.38f),new Vector3(.08f,.9f,.08f),"317E79");
+                Box("Counter shelf",p,new Vector3(0,.25f,0),new Vector3(.8f,.04f,.8f),"895343");
             } else if(id=="sink") {
                 // Open basin is built from its rim, sloped sides, and lowered bottom.
                 Bench(p,width,"317E79");
