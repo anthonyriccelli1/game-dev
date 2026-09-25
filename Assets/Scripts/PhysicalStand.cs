@@ -78,9 +78,16 @@ namespace RestaurantCity {
                 standWorkerBubble = WorldCaption(standWorkerView.transform, "", new Vector3(0, 2.4f, 0), .016f);
             }
             standWorkerView.SetActive(true);
+            // Walk the stand like a player: pantry -> grill -> plate rack -> serving spot, or to the sink to wash.
+            float p = s.StandWorkerProgress;
+            float x = !s.StandWorkerActive ? -1.0f : s.StandWorkerWashing ? 2.6f : p < .15f ? -2.6f : p < .7f ? -1.0f : p < .85f ? 1.6f : 2.2f;
+            var target = new Vector3(x, 0, 9.35f); var before = standWorkerView.transform.position;
+            standWorkerView.transform.position = Vector3.MoveTowards(before, target, Time.deltaTime * 3f);
+            bool moving = (standWorkerView.transform.position - before).sqrMagnitude > .000001f;
+            standWorkerView.transform.rotation = Quaternion.Euler(0, moving ? (target.x > before.x ? 90 : 270) : 180, 0);
             var motion = standWorkerView.GetComponent<CharacterMotion>();
-            if (motion) { motion.Working = s.StandQueue.Count > 0 && w.Energy > 2; motion.SetMood(w.Energy / 100f); }
-            SetBubble(standWorkerBubble, s.StandWorkerStatus + "\n<size=48>Energy " + (int)w.Energy + "  |  Earned $" + s.StandWorkerEarned + "</size>");
+            if (motion) { motion.Walking = moving; motion.Working = !moving && s.StandWorkerActive; motion.SetMood(w.Energy / 100f); }
+            SetBubble(standWorkerBubble, s.StandWorkerStatus + "\n<size=48>Energy " + (int)w.Energy + "  |  Your cut so far $" + s.StandWorkerEarned + " (they keep 40%)</size>");
         }
 
         // Visible plate stacks: clean plates on the plate counter, dirty ones piled on the sink.
