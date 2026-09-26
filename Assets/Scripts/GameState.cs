@@ -1,14 +1,16 @@
 using System;
 using System.Collections.Generic;
 namespace RestaurantCity {
-    [Serializable] public class StandOrder { public int Id, Type; public string Dish = "burger"; public float Patience, MaxPatience; }
+    // Stand guests: Stage 0 = in line for a table, 1 = seated and waiting for food, 2 = eating. Patience only runs before they eat.
+    [Serializable] public class StandOrder { public int Id, Type, Stage, Table = -1; public string Dish = "burger"; public float Patience, MaxPatience, EatLeft; }
     public static class EncounterRules {
         // Keep pursuit inside the clear corridor, away from the warehouse and stash.
         public static bool InTerritory(float x, float z) => x > 9.35f && x < 13.85f && z > 14 && z < 24;
     }
     public enum FoodStage { Empty, Prepared, Cooking, Plated }
     [Serializable] public class GameState {
-        public int Version = 6, Cash = 30, Xp, RankEarned, Stock, Served, Missed, Health = 100, Day = 1, Flux, LastStashDay;
+        public const int CurrentVersion = 7;
+        public int Version = CurrentVersion, Cash = 30, Xp, RankEarned, Stock, Served, Missed, Health = 100, Day = 1, Flux, LastStashDay;
         public bool FluxResearch, FluxIntroduced;
         public KitchenState Kitchen = new KitchenState();
         public RestaurantState Restaurant = new RestaurantState();
@@ -21,9 +23,15 @@ namespace RestaurantCity {
         [NonSerialized] public int RankUpTo = -1;
         // Xp is reputation. It never drops below the floor of the rank you already hold, and a rank needs its keystone goal too.
         public bool BeatAlleyRival; public List<string> Goals = new List<string>();
-        public void GainReputation(int amount) {
+        public List<RepGain> RepSources = new List<RepGain>();
+        public void GainReputation(int amount, string source = "Other") {
             if (amount == 0) return;
+            int before = Xp;
             Xp = Math.Max(Reputation.Thresholds[RankEarned], Math.Min(999999, Xp + amount)); CheckRankUp();
+            RepSources = RepSources ?? new List<RepGain>();
+            var line = RepSources.Find(r => r.Source == source);
+            if (line == null) RepSources.Add(line = new RepGain { Source = source });
+            line.Amount += Xp - before; line.Count++;
         }
         public bool KeystoneMet(int rank) {
             if (rank == 1) return Restaurant != null && Restaurant.Stars >= 2;
@@ -45,26 +53,47 @@ namespace RestaurantCity {
             StandWorkerActive = false;
             if (w.Energy <= 2) { StandWorkerStatus = name + " is exhausted. Set them to Rest."; standWorkTimer = 0; return; }
             // The sign still controls arrivals: closing it lets the worker finish the line, then idle.
-            bool washing = StandQueue.Count == 0 || StandClean == 0;
-            if (washing && StandDirty == 0) { StandWorkerStatus = name + (StandOpen ? " is waiting for customers." : ": stand is closed."); standWorkTimer = 0; return; }
-            var front = StandQueue.Count > 0 ? StandQueue[0] : null;
+            // A worker cooks for a seated guest; otherwise clears a sidewalk table or washes the dirty pile.
+            StandOrder front = null; foreach (var o in StandQueue) if (o.Stage == 1) { front = o; break; }
+            int dirtyTable = StandTableDirty.IndexOf(true);
+            bool washing = front == null || StandClean == 0;
+            if (washing && StandDirty == 0 && dirtyTable < 0) { StandWorkerStatus = name + (StandOpen ? " is waiting for customers." : ": stand is closed."); standWorkTimer = 0; return; }
             bool midnight = front != null && front.Dish == "midnight";
             if (!washing && (Restaurant.Protein < (midnight ? 2 : 1) || Restaurant.Produce < 1)) { StandWorkerStatus = name + " is out of ingredients! Restock at Milo's."; standWorkTimer = 0; return; }
             w.Energy = Math.Max(0, w.Energy - seconds * .5f);
             standWorkTimer += seconds;
             float need = washing ? 6 : def != null && def.Role == StaffJob.Cook ? 12 : 18;
             StandWorkerActive = true; StandWorkerWashing = washing; StandWorkerProgress = standWorkTimer / need;
-            StandWorkerStatus = name + (washing ? " is washing plates" : " is cooking a " + (midnight ? "midnight burger" : "burger")) + " (" + (int)(standWorkTimer / need * 100) + "%)";
+            StandWorkerStatus = name + (washing ? (dirtyTable >= 0 ? " is clearing a table" : " is washing plates") : " is cooking a " + (midnight ? "midnight burger" : "burger")) + " (" + (int)(standWorkTimer / need * 100) + "%)";
             if (standWorkTimer < need) return;
             standWorkTimer = 0;
-            if (washing) { StandDirty--; StandClean++; return; }
+            if (washing) { if (dirtyTable >= 0) StandTableDirty[dirtyTable] = false; else StandDirty--; StandClean++; return; }
             Restaurant.Protein -= midnight ? 2 : 1; Restaurant.Produce--;
             int earned = (int)Math.Round(KitchenState.StandPrice(this, front.Dish) * (1 - StandWorkerCut));
-            Cash += earned; GainReputation(Reputation.OkCustomer); StandWorkerEarned += earned; Served++; w.TasksCompleted++;
-            StandClean--; StandDirty++; StandQueue.RemoveAt(0); SyncStandFront();
+            Cash += earned; StandWorkerEarned += earned; Served++; w.TasksCompleted++;
+            StandClean--; front.Stage = 2; front.EatLeft = StandEatSeconds; SyncStandFront();
         }
-        public const int StandQueueMax = 3, StandPlates = 4;
-        public float StandArrivalSeconds => Players > 1 ? 9 : 13;
+        public const int StandQueueMax = 3, StandPlates = 4, StandTables = 2;
+        public const float StandEatSeconds = 12, StandPatience = 75, StandFirstPatience = 100;
+        public List<bool> StandTableDirty = new List<bool> { false, false };
+        public float StandArrivalSeconds => Players > 1 ? 14 : 22;
+        public int FreeStandTable() {
+            for (int t = 0; t < StandTables; t++) {
+                if (StandTableDirty[t]) continue;
+                bool taken = false; foreach (var o in StandQueue) if (o.Stage > 0 && o.Table == t) taken = true;
+                if (!taken) return t;
+            }
+            return -1;
+        }
+        void SeatStandGuests() {
+            foreach (var o in StandQueue) { if (o.Stage != 0) continue; int t = FreeStandTable(); if (t < 0) break; o.Stage = 1; o.Table = t; }
+        }
+        // Guests leaving without the table cycle finishing (respawn, reload): an eating guest's plate goes to the dirty pile.
+        public void ClearStandGuests() {
+            if (StandQueue == null) { StandQueue = new List<StandOrder>(); return; }
+            foreach (var o in StandQueue) if (o.Stage == 2) StandDirty++;
+            StandQueue.Clear();
+        }
         public void SyncStandFront() {
             HasOrder = StandQueue.Count > 0;
             if (!HasOrder) return;
@@ -99,12 +128,12 @@ namespace RestaurantCity {
         }
         public bool Serve() {
             if (!HasOrder || Food != FoodStage.Plated || IsBurnt) return false;
-            Cash += SalePrice; GainReputation(Reputation.OkCustomer); Served++; Food = FoodStage.Empty; HasOrder = false; NextCustomer = 6; return true;
+            Cash += SalePrice; Served++; Food = FoodStage.Empty; HasOrder = false; NextCustomer = 6; return true;
         }
         public bool ClaimRecipe(bool guardDefeated) {
             // The rival guards his stash every night. First win: the midnight recipe + 3 Flux. After that: +2 Flux per night.
             if (!IsNight || !guardDefeated || LastStashDay == Day) return false;
-            GainReputation(RecipeUnlocked ? Reputation.NightlyStash : Reputation.HiddenRecipe);
+            GainReputation(RecipeUnlocked ? Reputation.NightlyStash : Reputation.HiddenRecipe, RecipeUnlocked ? "Rival stash raids" : "Midnight recipe");
             LastStashDay = Day; Flux += RecipeUnlocked ? 2 : 3; RecipeUnlocked = true; FluxIntroduced = true; return true;
         }
         public bool RequestHelp() {
@@ -114,13 +143,14 @@ namespace RestaurantCity {
         }
         public void Discard() { Food = FoodStage.Empty; CookSeconds = 0; }
         public void Respawn() {
-            Cash = Math.Max(StandBuilt ? 0 : 10, Cash - 10); Health = 100; Discard(); HasOrder = false; StandQueue?.Clear(); NextCustomer = 8;
+            Cash = Math.Max(StandBuilt ? 0 : 10, Cash - 10); Health = 100; Discard(); HasOrder = false; ClearStandGuests(); NextCustomer = 8;
         }
         public void SanitizeAfterLoad() {
             // Saves from before reputation existed get credit for what their restaurant already earned.
             // v5 briefly counted dollars as reputation; v6 counts customers, stars and discoveries, so cap the carried-over amount.
             if (Version == 5) Xp = Math.Min(Xp, Reputation.Thresholds[1] - 1);
-            Version = 6; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
+            Version = CurrentVersion; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
+            RepSources = RepSources ?? new List<RepGain>();
             Xp = Math.Max(0, Math.Min(999999, Xp)); RankUpTo = -1; Goals = Goals ?? new List<string>(); RankEarned = Math.Max(0, Math.Min(Reputation.Titles.Length - 1, RankEarned)); CheckRankUp(); Restaurant.PlayerRank = RankEarned;
             // Old saves kept stand "Stock" separately; it now lives in the one shared pantry.
             if (Stock > 0) { Restaurant.Protein += Stock; Restaurant.Produce += Stock; Stock = 0; }
@@ -130,29 +160,39 @@ namespace RestaurantCity {
             Served = Math.Max(0, Served); Missed = Math.Max(0, Missed); Day = Math.Max(1, Day);
             Clock = float.IsNaN(Clock) || float.IsInfinity(Clock) ? 0 : Math.Max(0, Clock) % 240;
             Health = 100; HasOrder = false; NextCustomer = 2; Discard();
+            // Plates left on the sidewalk tables go to the dirty pile, so no plate is ever lost across a reload.
+            if (StandTableDirty == null || StandTableDirty.Count != StandTables) StandTableDirty = new List<bool> { false, false };
+            for (int t = 0; t < StandTables; t++) if (StandTableDirty[t]) { StandDirty++; StandTableDirty[t] = false; }
             StandQueue = new List<StandOrder>(); StandDirty = Math.Max(0, Math.Min(StandPlates, StandDirty)); StandClean = StandPlates - StandDirty;
         }
         public void Tick(float seconds) {
             if (seconds <= 0 || float.IsNaN(seconds) || float.IsInfinity(seconds)) return;
             Clock += seconds;
             if (Restaurant != null) Restaurant.PlayerRank = RankEarned;
-            if (Restaurant != null && Restaurant.PendingReputation != 0) { int rep = Restaurant.PendingReputation; Restaurant.PendingReputation = 0; GainReputation(rep); }
+            if (Restaurant != null && Restaurant.PendingRep != null && Restaurant.PendingRep.Count > 0) { foreach (var g in Restaurant.PendingRep) GainReputation(g.Amount, g.Source); Restaurant.PendingRep.Clear(); }
             else CheckRankUp();
             while (Clock >= 240) { Clock -= 240; Day++; }
             if (Food == FoodStage.Cooking) CookSeconds += seconds;
             StandQueue = StandQueue ?? new List<StandOrder>();
-            foreach (var o in StandQueue) o.Patience -= seconds;
-            int walked = StandQueue.RemoveAll(o => o.Patience <= 0); Missed += walked; if (walked > 0) GainReputation(walked * Reputation.LostCustomer);
+            if (StandTableDirty == null || StandTableDirty.Count != StandTables) StandTableDirty = new List<bool> { false, false };
+            foreach (var o in StandQueue) {
+                if (o.Stage < 2) o.Patience -= seconds;
+                else { o.EatLeft -= seconds; if (o.EatLeft <= 0 && o.Table >= 0) StandTableDirty[o.Table] = true; }
+            }
+            StandQueue.RemoveAll(o => o.Stage == 2 && o.EatLeft <= 0);   // finished: they leave the dirty plate on the table
+            int walked = StandQueue.RemoveAll(o => o.Stage < 2 && o.Patience <= 0); Missed += walked; if (walked > 0) GainReputation(walked * Reputation.LostCustomer, "Stand walk-outs");
             if (StandBuilt && StandOpen && StandQueue.Count < StandQueueMax) {
                 NextCustomer -= seconds;
                 if (NextCustomer <= 0) {
                     int id = NextStandOrder++;
-                    float patience = StandQueue.Count == 0 && Served == 0 ? 80 : 60;
+                    float patience = StandQueue.Count == 0 && Served == 0 ? StandFirstPatience : StandPatience;
                     StandQueue.Add(new StandOrder { Id = id, Type = (id * 3) % 10, Dish = RecipeUnlocked && id % 3 == 0 ? "midnight" : "burger", Patience = patience, MaxPatience = patience });
                     NextCustomer = StandArrivalSeconds + (id % 3) * 1.5f;
                 }
             }
+            SeatStandGuests();
             TickStandWorker(seconds);
+            SeatStandGuests();
             SyncStandFront();
         }
     }

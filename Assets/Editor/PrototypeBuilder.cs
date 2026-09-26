@@ -105,7 +105,7 @@ public static class PrototypeBuilder {
 
         var future = Cube("Future restaurant sign", new Vector3(-6.2f, 1.25f, -8.7f), new Vector3(2.9f, 2.2f, .15f), dark, world);
         future.AddComponent<Interactable>().Kind = InteractionKind.FutureRestaurant;
-        var futureText = Label("LITTLE FLAME\n\nRESTAURANT LEASE\nBUY FOR $150", new Vector3(-6.2f, 1.35f, -8.58f), .15f, cream.color, world);
+        var futureText = Label("THE ODD TABLE\n\nFOR LEASE  /  $150\nE: LEASE IT", new Vector3(-6.2f, 1.35f, -8.58f), .15f, cream.color, world);
         futureText.transform.rotation = Quaternion.Euler(0, 180, 0);
         Sign("RIVAL ALLEY", new Vector3(11.6f, 3.8f, 14), 5, dark, world, .21f);
         Label("NIGHTS ONLY  /  ENTER AT YOUR OWN RISK", new Vector3(11.6f, 3.2f, 13.98f), .10f, coral.color, world);
@@ -171,8 +171,8 @@ public static class PrototypeBuilder {
         if (!game || !game.Player || !game.Player.View || !game.Guard || !game.Stand || !game.SetupMarker || !game.Customer || !game.Sun) throw new Exception("Scene is missing required references");
         var kinds = new HashSet<InteractionKind>();
         foreach (var item in UnityEngine.Object.FindObjectsByType<Interactable>(FindObjectsInactive.Include, FindObjectsSortMode.None)) kinds.Add(item.Kind);
-        // Milo's supply crates are created at runtime by PhysicalStand.
-        foreach (InteractionKind kind in Enum.GetValues(typeof(InteractionKind))) if (kind != InteractionKind.SupplyProtein && kind != InteractionKind.SupplyProduce && kind != InteractionKind.StandSign && !kinds.Contains(kind)) throw new Exception("Missing interaction: " + kind);
+        // Milo's supply crates, the stand sign and the sidewalk-table targets are created at runtime by PhysicalStand.
+        foreach (InteractionKind kind in Enum.GetValues(typeof(InteractionKind))) if (kind != InteractionKind.SupplyProtein && kind != InteractionKind.SupplyProduce && kind != InteractionKind.StandSign && kind != InteractionKind.StandTable && !kinds.Contains(kind)) throw new Exception("Missing interaction: " + kind);
         foreach (var renderer in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None)) {
             if (!renderer.sharedMaterial || !renderer.sharedMaterial.shader) throw new Exception("Missing material: " + renderer.name);
         }

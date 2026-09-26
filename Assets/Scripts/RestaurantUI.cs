@@ -119,7 +119,7 @@ namespace RestaurantCity {
             modal = Block(canvas.transform, "Restaurant management", 0, 105, 1440, 735, new Color(ink.r, ink.g, ink.b, .60f));
             var sheet = Block(modal, "Order pad", 110, 12, 1220, 710, paper);
             Block(sheet, "Top accent", 0, 0, 1220, 7, teal);
-            Label(sheet, Owner.Panel == "Supplies" ? "Milo's market pantry." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "How every dish is built." : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
+            Label(sheet, Owner.Panel == "Listing" ? "For sale later." : Owner.Panel == "Supplies" ? "Milo's market pantry." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "How every dish is built." : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
             Button(sheet, "Close  x", 1060, 24, 130, 36, () => Owner.ClosePanel(), ink, paper);
             Label(sheet, "Time pauses while management is open.", 823, 62, 365, 19, 12, muted, false, TextAnchor.MiddleRight);
             string[] panels = { "Catalog", "Service", "Menu", "Cookbook", "Staff", "Map", "Reviews", "Furniture" };
@@ -129,7 +129,8 @@ namespace RestaurantCity {
             }
             Label(sheet, "Your budget  $" + Owner.Game.State.Cash, 950, 82, 236, 28, 17, ink, true, TextAnchor.MiddleRight);
             Block(sheet, "Rule", 30, 124, 1160, 2, pale);
-            if (Owner.Panel == "Supplies") BuildSupplies(sheet);
+            if (Owner.Panel == "Listing") BuildListing(sheet);
+            else if (Owner.Panel == "Supplies") BuildSupplies(sheet);
             else if (Owner.Panel == "Catalog") BuildCatalog(sheet);
             else if (Owner.Panel == "Menu") BuildMenu(sheet);
             else if (Owner.Panel == "Cookbook") BuildCookbook(sheet);
@@ -213,6 +214,26 @@ namespace RestaurantCity {
             }
         }
         static string ComponentName(string id) => id == "bun" ? "bun" : id == "cooked_patty" ? "cooked patty" : id == "chopped_greens" ? "chopped greens" : id == "midnight_sauce" ? "midnight sauce" : id;
+        // The second restaurant's listing: what it is, and the checklist that gets you there.
+        void BuildListing(RectTransform sheet) {
+            var site = RestaurantSites.Get(Owner.ListingSite); var d = Owner.Data; var st = Owner.Game.State;
+            Label(sheet, site.Title, 35, 146, 1120, 48, 34, ink, true);
+            Label(sheet, site.Pitch, 35, 200, 1120, 50, 19, muted);
+            var card = Block(sheet, "Listing checklist", 35, 262, 700, 330, white);
+            Label(card, "To buy it, your first restaurant has to run without you:", 24, 20, 650, 30, 19, ink, true);
+            var checks = new (bool done, string text)[] {
+                (d.Owned, "Own The Odd Table"),
+                (d.Stars >= RestaurantSites.SecondSiteStars, "The Odd Table at " + RestaurantSites.SecondSiteStars + " stars (now " + d.Stars + ")"),
+                (d.Workers.Count >= RestaurantSites.SecondSiteCrew, "A crew of " + RestaurantSites.SecondSiteCrew + " to keep it running while you're away (now " + d.Workers.Count + ")"),
+                (st.Cash >= site.Price, "$" + site.Price + " (you have $" + st.Cash + ")"),
+            };
+            float y = 68; foreach (var c in checks) { Label(card, (c.done ? "DONE    " : "TO DO   ") + c.text, 24, y, 650, 30, 18, c.done ? teal : coral, true); y += 44; }
+            Label(card, "Running both restaurants is the fastest way to reach Line Cook.", 24, 262, 650, 40, 16, muted);
+            var soon = Block(sheet, "Listing note", 755, 262, 430, 330, ink);
+            Label(soon, "Coming soon", 24, 20, 380, 34, 24, paper, true);
+            Label(soon, "Buying a second restaurant arrives once workers can keep The Odd Table running while you're across town. Everything on the checklist still counts toward it.", 24, 66, 382, 200, 17, paper);
+        }
+
         void BuildSupplies(RectTransform sheet) {
             Label(sheet, "Bring something good back to your kitchen.", 35, 146, 1120, 45, 25, ink, true);
             Label(sheet, "Buy six portions at a time. A refrigerator doubles pantry storage from 24 to 48 of each ingredient.", 35, 200, 1120, 40, 18, muted);
@@ -366,7 +387,9 @@ namespace RestaurantCity {
                 Label(sheet, (xp >= Reputation.Thresholds[rank + 1] ? "DONE   " : "") + xp + " / " + Reputation.Thresholds[rank + 1] + " reputation", rx, 244, rw, 18, 13, xp >= Reputation.Thresholds[rank + 1] ? teal : ink);
                 Label(sheet, (keyDone ? "DONE   " : "GOAL   ") + Reputation.Keystones[rank + 1], rx, 262, rw, 18, 13, keyDone ? teal : coral, true);
             }
-            Label(sheet, "Happy guest +3   OK guest +1   Walk-out -1   New star +50   Hidden recipe +40   Beat a rival +40   Recruit +20   New kind of guest +10", rx, 284, rw, 34, 11, muted);
+            // Where your reputation actually came from (biggest first), so pacing can be tuned from real play.
+            var sources = st.RepSources == null ? new System.Collections.Generic.List<RepGain>() : st.RepSources.Where(r => r.Amount != 0).OrderByDescending(r => System.Math.Abs(r.Amount)).Take(5).ToList();
+            Label(sheet, sources.Count == 0 ? "Earn reputation with happy restaurant guests, new stars, hidden recipes, rivals and recruits." : "Earned from:  " + string.Join("   ", sources.Select(r => r.Source + " " + (r.Amount > 0 ? "+" : "") + r.Amount)), rx, 284, rw, 34, 11, muted);
             for (int i = 0; i < Reputation.Titles.Length; i++) {
                 var d = CityDistricts.OpenedAt(i); bool got = rank >= i; float y = 322 + i * 44;
                 Block(sheet, "Rank row", rx, y, rw, 38, got ? new Color(teal.r, teal.g, teal.b, .16f) : new Color(pale.r, pale.g, pale.b, .55f));

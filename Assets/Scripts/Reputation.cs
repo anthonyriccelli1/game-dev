@@ -11,6 +11,10 @@ namespace RestaurantCity {
         public static readonly string[] Keystones = { "", "The Odd Table reaches 2 stars", "Beat Captain Krill at the Docks", "Win the Neon Row cook-off", "Any restaurant reaches 4 stars", "Beat the Gilded Orbit flagship" };
         public static readonly string[] KeystoneGoal = { "", "", "beat_krill", "win_cookoff", "", "beat_flagship" };
         // Reputation awards.
+        // The street stand pays cash, not reputation: a fast sale earns a token +1, a slow one nothing.
+        // Reputation is earned by the restaurant, so The Odd Table alone gets you most of the way to Line Cook,
+        // and running a second restaurant is what finishes the climb.
+        public const int StandFast = 1;
         public const int HappyCustomer = 3, OkCustomer = 1, LostCustomer = -1, NewStar = 50, HiddenRecipe = 40, NightlyStash = 10, BeatRival = 40, RematchRival = 10, Recruit = 20, NewResident = 10;
         public static bool IsMax(int rank) => rank >= Thresholds.Length - 1;
         public static float Progress(int rep, int rank) {
@@ -54,4 +58,6 @@ namespace RestaurantCity {
             new CityPlace("Nebula Bazaar", "supply", 400, -228), new CityPlace("Crater Kitchen", "restaurant", 500, -215), new CityPlace("The Void", "rival", 505, -248),
         };
     }
+    // One line of the "where did my reputation come from" breakdown.
+    [System.Serializable] public class RepGain { public string Source; public int Amount, Count; }
 }

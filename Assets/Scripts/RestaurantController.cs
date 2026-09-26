@@ -98,7 +98,7 @@ namespace RestaurantCity {
                     var signMat = new Material(Shader.Find("Universal Render Pipeline/Lit")); signMat.color = new Color(.12f, .13f, .15f); sign.GetComponent<Renderer>().sharedMaterial = signMat;
                     var it = sign.AddComponent<Interactable>(); it.Kind = InteractionKind.FutureRestaurant; it.Site = other.Id;
                     var text = new GameObject("Lease text"); text.transform.SetParent(root, false); text.transform.localPosition = new Vector3(-6.2f, 1.35f, -8.6f); text.transform.localRotation = Quaternion.Euler(0, 180, 0);
-                    WorldCaption(text.transform, other.Sign + "\n\nRESTAURANT LEASE\nBUY FOR $150", Vector3.zero, .03f);
+                    WorldCaption(text.transform, other.Sign + "\n\nFOR SALE LATER\nE: VIEW LISTING", Vector3.zero, .03f);
                 }
             }
             RestaurantArt.RestaurantName = RestaurantSites.Get(Data.SiteId).Sign;
@@ -115,28 +115,22 @@ namespace RestaurantCity {
             if (!Game.Paused && Game.Started && Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame && !PlacementActive) { if (PanelOpen && Panel == "Map") ClosePanel(); else ShowPanel("Map"); }
         }
         public void Feedback(string message) { Hint = message; Game.Notify(message, 5); if (UI) UI.Refresh(); }
+        public string ListingSite = "bayside";
         public bool BuyRestaurant() => BuyRestaurant(Game.Player);
         public bool BuyRestaurant(FirstPersonPlayer buyer) => BuyRestaurant(buyer, Data.SiteId);
         public bool BuyRestaurant(FirstPersonPlayer buyer, string siteId) {
             var chosen = RestaurantSites.Get(siteId);
-            if (Data.Owned) {
-                if (chosen.Id == Data.SiteId) { ShowPanel("Service"); return true; }
-                Feedback("You run " + RestaurantSites.Get(Data.SiteId).Title + ". Owning a second restaurant comes later, and " + chosen.Title + " will still be here."); return false;
-            }
+            if (Data.Owned && chosen.Id == Data.SiteId) { ShowPanel("Service"); return true; }
+            // The Bayside is the step up: show what it takes instead of buying it.
+            if (!chosen.Starter) { ListingSite = chosen.Id; ShowPanel("Listing"); return true; }
             bool result = Data.BuyRestaurant(Game.State, out string message);
             Feedback(message);
             if (!result) return false;
-            if (chosen.Id != Data.SiteId) {
-                // Rebuild the whole restaurant at the new property: save, then reload the scene around it.
-                Data.SiteId = chosen.Id; Game.Save(); ArriveAfterReload = true;
-                UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
-                return true;
-            }
             RebuildLayout(); PlayChime(true); Game.Save(); buyer.Teleport(W(-10, .15f, -10.7f)); buyer.LookAt(W(-10, 1.5f, -18)); ShowPanel("Service");
             return true;
         }
         public void ShowPanel(string panel) {
-            bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map";
+            bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map" || panel == "Listing";
             if (!Data.Owned && !phone) { Feedback("Earn $150 and buy the restaurant at its front sign."); return; }
             if (ServiceInProgress && panel != "Staff" && panel != "Service" && panel != "Map") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
             if (PlacementActive) CancelPlacement(false);

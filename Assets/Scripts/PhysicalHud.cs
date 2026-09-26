@@ -60,10 +60,13 @@ namespace RestaurantCity {
    if(!s.HasOrder)return (s.StandOpen?"Stand OPEN: a customer is on the way...":"Stand CLOSED: press E on the stand sign to open")+"\n"+goal;
    var lines=new List<string>();
    foreach(var o in s.StandQueue){
+    if(o.Stage==2){lines.Add("<color=#9FD8C8>Table "+(o.Table+1)+": eating</color>");continue;}
+    string where=o.Stage==1?"Table "+(o.Table+1)+": ":"In line: ";
     float ratio=Mathf.Clamp01(o.Patience/Mathf.Max(1,o.MaxPatience));string c=ratio>.55f?"#4FCB7A":ratio>.25f?"#E8C34A":"#E1543B";int f=Mathf.Max(1,Mathf.CeilToInt(ratio*8));
-    lines.Add((o.Dish=="midnight"?"Midnight burger [bun+patty+sauce]":"Burger [bun+patty]")+"  <color="+c+">"+new string('|',f)+"</color>"+new string('.',8-f)+" "+(int)o.Patience+"s");
+    lines.Add(where+(o.Dish=="midnight"?"Midnight burger [bun+patty+sauce]":"Burger [bun+patty]")+"  <color="+c+">"+new string('|',f)+"</color>"+new string('.',8-f)+" "+(int)o.Patience+"s");
    }
-   lines.Add("<size=12>Plates: "+s.StandClean+" clean, "+s.StandDirty+" dirty</size>");if(s.StandWorker!=null)lines.Add("<size=12><color=#9FD8C8>"+s.StandWorkerStatus+"  (+$"+s.StandWorkerEarned+")</color></size>");lines.Add(goal);
+   int dirtyTables=s.StandTableDirty==null?0:s.StandTableDirty.FindAll(d=>d).Count;
+   lines.Add("<size=12>Plates: "+s.StandClean+" clean, "+s.StandDirty+" in the sink pile"+(dirtyTables>0?", <color=#E8C34A>"+dirtyTables+" dirty on tables: clear them!</color>":"")+"</size>");if(s.StandWorker!=null)lines.Add("<size=12><color=#9FD8C8>"+s.StandWorkerStatus+"  (+$"+s.StandWorkerEarned+")</color></size>");lines.Add(goal);
    return string.Join("\n",lines);
   }
   // Ticket rail (A4): one card per waiting order with table, dish, its components, and a colored patience bar.

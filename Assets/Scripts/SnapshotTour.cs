@@ -48,6 +48,7 @@ namespace RestaurantCity {
             ("28_bayside_night", new Vector3(-182, 0, 5), 200, -8, 190),
             ("29_milo_front_day", new Vector3(-15.5f, 0, 8), 0, -4, 60),
             ("30_milo_inside_day", new Vector3(-15.5f, 0, 14.2f), 0, 6, 60),
+            ("31_bayside_listing", new Vector3(-186, 0, -6), 180, 4, 60),
         };
 
         IEnumerator Start() {
@@ -72,6 +73,7 @@ namespace RestaurantCity {
                 p.View.transform.localRotation = Quaternion.Euler(shot.pitch, 0, 0);
                 var rc = FindFirstObjectByType<RestaurantController>();
                 if (rc && shot.name.Contains("phone_map")) rc.ShowPanel("Map");
+                if (rc && shot.name.Contains("listing")) { Game.State.Cash = 95; rc.BuyRestaurant(Game.Player, "bayside"); }
                 for (int i = 0; i < 20; i++) yield return null;
                 ScreenCapture.CaptureScreenshot(Path.Combine(dir, shot.name + ".png"));
                 for (int i = 0; i < 5; i++) yield return null;

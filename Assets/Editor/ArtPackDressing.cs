@@ -70,8 +70,7 @@ public static class ArtPackDressing {
             Put(Generic + "Props/SM_Gen_Prop_Crate_Preset_01.prefab", new Vector3(-16.3f, 0, 8.8f), 15, root);
             Put(Generic + "Props/SM_Gen_Prop_Barrel_Wood_01.prefab", new Vector3(-15.4f, 0, 10.6f), 0, root);
         }
-        Put(Generic + "Props/SM_Gen_Prop_Sack_Stack_01.prefab", new Vector3(-8.3f, 0, 9.8f), -20, root);
-        Put(Generic + "Props/SM_Gen_Prop_Cardboard_Box_Preset_01.prefab", new Vector3(-4.9f, 0, 9.6f), 10, root);
+        // (The sack stack and cardboard box that sat by the sidewalk tables are gone: those tables are now for customers.)
         Put(Generic + "Props/SM_Gen_Prop_Barrel_Metal_01.prefab", new Vector3(9.4f, 0, 15.2f), 0, root);
         Put(Starter + "SM_Generic_Tree_01.prefab", new Vector3(-6.6f, 0, 12.2f), 0, root);
         Put(Starter + "SM_Generic_Tree_02.prefab", new Vector3(7.2f, 0, 12.2f), 90, root);

@@ -128,6 +128,10 @@ namespace RestaurantCity {
     if(hand!=null&&hand.Kind==KitchenItemKind.DirtyPlate&&!hand.StandPlate&&item!=null){var d=hand;return Tap("Stack the dirty plate by the sink ("+(SinkPile+1)+" waiting)",()=>{Items.Remove(d);SinkPile++;return "Stacked. Wash them one at a time.";});}
     if(hand==null&&item==null&&SinkPile>0)return Tap("Put a dirty plate in the sink ("+SinkPile+" waiting)",()=>{SinkPile--;Create(KitchenItemKind.DirtyPlate,"station:"+stationId);s.Progress=0;return "Hold E to wash it.";});
    }
+   if(stand&&s.CatalogId=="sink"&&hand!=null&&hand.Kind==KitchenItemKind.DirtyPlate&&hand.StandPlate&&item!=null){
+    // Sink busy: stack the plate on the dirty pile beside it.
+    var d=hand;return Tap("Stack the dirty plate by the sink ("+(game.StandDirty+1)+" waiting)",()=>{Items.Remove(d);game.StandDirty++;return "Stacked. Wash them one at a time.";});
+   }
    if(stand&&s.CatalogId=="sink"&&item==null&&hand==null){
     // Dirty plates pile up beside the stand sink; move them in one at a time, then hold to wash.
     if(game.StandDirty<=0)return Blocked("No dirty plates right now.");
@@ -194,24 +198,47 @@ namespace RestaurantCity {
    if(item.Disposable||item.StandPlate){if(item.StandPlate)game.StandDirty++;Items.Remove(item);return true;}
    item.Holder="table:"+orderId;item.TableInstanceId=order.SeatInstanceId;return true;
   }
-  // Serve the single street customer at the food stand.
-  public bool ServeStand(GameState game,string actor,out string message){
-   var item=Hold(actor);string dish=RecipeOf(item);
-   if(game.StandQueue.Count==0)return Fail("No one is waiting yet. Open the stand with the sign.",out message);
-   if(dish!="burger"&&dish!="midnight")return Fail("Build a burger first: plate + bun + cooked patty (+ midnight sauce for a midnight burger).",out message);
-   var order=game.StandQueue.Find(o=>o.Dish==dish);
-   if(order==null)return Fail(dish=="midnight"?"Nobody in line ordered a midnight burger.":"Everyone in line wants a MIDNIGHT burger: add sauce from the sauce shelf.",out message);
-   int price=StandPrice(game,dish);bool fast=order.Patience>order.MaxPatience*.6f;if(fast)price+=2;
-   game.Cash+=price;game.GainReputation(fast?Reputation.HappyCustomer:Reputation.OkCustomer);game.Served++;game.StandQueue.Remove(order);game.SyncStandFront();
-   if(item.StandPlate)game.StandDirty++;Items.Remove(item);
-   message="+$"+price+(fast?" (incl. $2 speed tip)":"")+"  +"+(fast?Reputation.HappyCustomer:Reputation.OkCustomer)+" rep  "+(dish=="midnight"?"A midnight burger! They'll tell their friends.":"Another happy customer!");return true;
+  // --- The street stand: guests sit at two sidewalk tables; you bring the food to them, then clear and wash. ---
+  static string DishName(string dish)=>dish=="midnight"?"midnight burger":"burger";
+  public StandOrder SeatedAt(GameState game,int table)=>game.StandQueue.Find(o=>o.Stage>0&&o.Table==table);
+  public string StandGuestPreview(GameState game,string actor,StandOrder o){
+   if(o==null)return "They've left.";
+   if(o.Stage==0)return "Waiting for a free table"+(game.StandTableDirty.Contains(true)?". Clear the dirty one!":".");
+   if(o.Stage==2)return "Eating. They'll leave the plate on the table.";
+   string dish=RecipeOf(Hold(actor));
+   if(dish==o.Dish)return "E / A  Serve the "+DishName(o.Dish)+"  /  $"+StandPrice(game,o.Dish);
+   if(dish=="burger"||dish=="midnight")return "They ordered a "+DishName(o.Dish)+", not a "+DishName(dish)+".";
+   return "Wants a "+DishName(o.Dish)+"\nBuild it: plate + bun + cooked patty"+(o.Dish=="midnight"?" + midnight sauce":"")+", then bring it here.";
   }
-  public string StandPreview(GameState game,string actor){
-   var item=Hold(actor);string dish=RecipeOf(item);
-   if(game.StandQueue.Count==0)return "Waiting for a customer";
-   if((dish=="burger"||dish=="midnight")&&game.StandQueue.Exists(o=>o.Dish==dish))return "E / A  Serve "+(dish=="midnight"?"midnight burger":"burger")+"  /  $"+StandPrice(game,dish);
-   int mid=game.StandQueue.Count(o=>o.Dish=="midnight"),plain=game.StandQueue.Count-mid;
-   return "In line: "+(plain>0?plain+" burger ":"")+(mid>0?mid+" midnight burger":"")+"\nBuild: plate + bun + cooked patty"+(mid>0?" (+ sauce shelf for midnight)":"");
+  public string StandTablePreview(GameState game,string actor,int table){
+   if(table<0||table>=game.StandTableDirty.Count)return "Table";
+   if(game.StandTableDirty[table])return Hold(actor)==null?"E / A  Clear the dirty plate":"Dirty plate. Free your hands to clear it.";
+   var o=SeatedAt(game,table);
+   return o!=null?StandGuestPreview(game,actor,o):"Free table";
+  }
+  public bool ServeStandGuest(GameState game,string actor,int orderId,out string message){
+   var item=Hold(actor);string dish=RecipeOf(item);var order=game.StandQueue.Find(o=>o.Id==orderId);
+   if(order==null)return Fail("That customer has left.",out message);
+   if(order.Stage==0)return Fail("They're still waiting for a free table. Clear a dirty one.",out message);
+   if(order.Stage==2)return Fail("They're already eating.",out message);
+   if(dish!=order.Dish)return Fail(dish==""?"Build a "+DishName(order.Dish)+" first: plate + bun + cooked patty"+(order.Dish=="midnight"?" + sauce.":"."):"They ordered a "+DishName(order.Dish)+".",out message);
+   int price=StandPrice(game,dish);bool fast=order.Patience>order.MaxPatience*.6f;if(fast)price+=2;
+   game.Cash+=price;if(fast)game.GainReputation(Reputation.StandFast,"Stand sales");game.Served++;
+   order.Stage=2;order.EatLeft=GameState.StandEatSeconds;Items.Remove(item);   // the plate stays on their table until they finish
+   message="+$"+price+(fast?" (incl. $2 speed tip)  +"+Reputation.StandFast+" rep":"")+"  Enjoy! Clear the plate when they're done.";return true;
+  }
+  // Serve whichever seated guest ordered what you're carrying (the table/guest target picks exactly; this is the fallback).
+  public bool ServeStand(GameState game,string actor,out string message){
+   string dish=RecipeOf(Hold(actor));
+   var o=game.StandQueue.Find(x=>x.Stage==1&&x.Dish==dish)??game.StandQueue.Find(x=>x.Stage==1);
+   if(o==null)return Fail(game.StandQueue.Count==0?"No one is waiting yet. Open the stand with the sign.":"Nobody is seated yet. Clear a dirty table.",out message);
+   return ServeStandGuest(game,actor,o.Id,out message);
+  }
+  public bool ClearStandTable(GameState game,string actor,int table,out string message){
+   if(Hold(actor)!=null)return Fail("Your hands are full.",out message);
+   if(table<0||table>=game.StandTableDirty.Count||!game.StandTableDirty[table])return Fail("Nothing to clear here.",out message);
+   game.StandTableDirty[table]=false;var d=Create(KitchenItemKind.DirtyPlate,actor);d.StandPlate=true;
+   message="Dirty plate. Wash it at the stand sink.";return true;
   }
   public static int StandPrice(GameState game,string dish)=>(dish=="midnight"?18:12)*(game.IsNight?3:2)/2;
   public int DirtyAtTable(int table)=>Items.Count(i=>i.Kind==KitchenItemKind.DirtyPlate&&i.TableInstanceId==table&&i.Holder.StartsWith("table:"));

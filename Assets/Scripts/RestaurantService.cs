@@ -20,6 +20,7 @@ namespace RestaurantCity {
             public TextMesh Bubble;
             public StaffJob Job;
             public int OrderId = -1, Phase;
+            public readonly Queue<Vector3> Commute = new Queue<Vector3>(); // walking between the street stand and the restaurant
             public float Work;
             public readonly Queue<Vector3> Path = new Queue<Vector3>();
         }

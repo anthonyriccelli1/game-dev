@@ -1,10 +1,11 @@
 using UnityEngine;
 
 namespace RestaurantCity {
-    public enum InteractionKind { Supplier, Stand, Prep, Grill, Serve, Bin, Recipe, FutureRestaurant, SupplyProtein, SupplyProduce, StandSign }
+    public enum InteractionKind { Supplier, Stand, Prep, Grill, Serve, Bin, Recipe, FutureRestaurant, SupplyProtein, SupplyProduce, StandSign, StandTable }
     public class Interactable : MonoBehaviour {
         public InteractionKind Kind;
         public string Site = "oddtable";   // which restaurant a FutureRestaurant lease sign belongs to
+        public int Index;                  // which sidewalk table a StandTable is
         public string Prompt(CityGame game) {
             var s = game.State;
             switch (Kind) {
@@ -19,10 +20,12 @@ namespace RestaurantCity {
                 case InteractionKind.Recipe: return s.LastStashDay == s.Day ? "Stash emptied tonight. The rival restocks tomorrow night" : !s.IsNight ? "Rival stash opens at night" : !game.Guard.Defeated ? "Defeat the rival before opening the stash" : s.RecipeUnlocked ? "Raid the stash  /  +2 Flux" : "Take the midnight recipe  /  +3 Flux";
                 case InteractionKind.SupplyProtein: return "Buy 6 patties  /  $10";
                 case InteractionKind.SupplyProduce: return "Buy 6 buns & greens  /  $6";
+                case InteractionKind.StandTable: return "Sidewalk table";
                 default: {
                     var site = RestaurantSites.Get(Site);
-                    if (s.Restaurant.Owned) return s.Restaurant.SiteId == Site ? "Manage your restaurant" : site.Title + "  /  a second restaurant comes later";
-                    return "Lease " + site.Title + "  /  $150";
+                    if (!site.Starter) return site.Title + "  /  for sale later  /  view listing";
+                    if (s.Restaurant.Owned) return "Manage your restaurant";
+                    return "Lease " + site.Title + "  /  $" + site.Price;
                 }
             }
         }

@@ -9,12 +9,16 @@ namespace RestaurantCity {
    var k=Game.State.Kitchen;
    foreach(var worker in Data.Workers){
     string actor="staff:"+worker.Id;
-    if(!employees.TryGetValue(worker.Id,out var view)){var root=RestaurantArt.CreateCharacter(RestaurantCatalog.Worker(worker.Id)?.ModelType??8,transform);root.transform.position=new Vector3(-9,.055f,-12);view=new EmployeeView{Root=root,Motion=root.GetComponent<CharacterMotion>(),Bubble=WorldCaption(root.transform,"",new Vector3(0,2.4f,0),.023f)};employees[worker.Id]=view;}
+    if(!employees.TryGetValue(worker.Id,out var view)){var root=RestaurantArt.CreateCharacter(RestaurantCatalog.Worker(worker.Id)?.ModelType??8,transform);root.transform.position=W(-9,.055f,-12);view=new EmployeeView{Root=root,Motion=root.GetComponent<CharacterMotion>(),Bubble=WorldCaption(root.transform,"",new Vector3(0,2.4f,0),.023f)};employees[worker.Id]=view;}
     if(!workerPlans.TryGetValue(worker.Id,out var plan)){plan=new Queue<KitchenTask>();workerPlans[worker.Id]=plan;}
-    if(view.Job!=worker.Job){view.Job=worker.Job;plan.Clear();view.Path.Clear();k.ReleaseWork(actor);}
+    if(view.Job!=worker.Job){
+     // Moving a worker off the stand: they visibly walk from the stand, across the street and in through the door.
+     if(view.Job==StaffJob.Stand&&worker.Job!=StaffJob.Stand){view.Root.transform.position=new Vector3(-1,.055f,9.35f);view.Commute.Clear();foreach(var p in new[]{new Vector3(-4.3f,0,9.35f),new Vector3(-4.3f,0,2),W(-10,0,-6.5f),W(-10,0,-10)})view.Commute.Enqueue(p);Feedback((RestaurantCatalog.Worker(worker.Id)?.Name??worker.Id)+" is walking over from the stand.");}
+     view.Job=worker.Job;plan.Clear();view.Path.Clear();k.ReleaseWork(actor);}
     view.Motion.Working=false;view.Motion.Walking=false;
     // Stand workers are drawn at the street stand (PhysicalStand), not in the restaurant.
-    view.Root.SetActive(worker.Job!=StaffJob.Stand);if(worker.Job==StaffJob.Stand){k.ReleaseWork(actor);continue;}
+    view.Root.SetActive(worker.Job!=StaffJob.Stand);if(worker.Job==StaffJob.Stand){view.Commute.Clear();k.ReleaseWork(actor);continue;}
+    if(view.Commute.Count>0){view.Motion.Walking=Follow(view.Root.transform,view.Commute,dt*2.7f);SetBubble(view.Bubble,worker.Id+" / heading to the restaurant");continue;}
     if(worker.Job==StaffJob.Off||worker.Energy<=2||!ServiceInProgress){SetBubble(view.Bubble,worker.Id+" / resting / "+(int)worker.Energy+" energy");continue;}
     // Zombie Cafe rule: each worker does exactly the one job you assign.
     var job=worker.Job;

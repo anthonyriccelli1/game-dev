@@ -1,15 +1,18 @@
 using UnityEngine;
 namespace RestaurantCity {
-    // The shabby restaurants you can choose between in a district (Schedule I-style "which house?" choice).
-    // Every site uses the same room layout, shifted by Offset; the choice is look, view and location.
-    public class RestaurantSite { public string Id, Title, Sign, Pitch; public Vector3 Offset; }
+    // Your restaurants, Schedule I-style: The Odd Table is the rough starter everyone leases first (the "motel");
+    // The Bayside is the step up, a little bigger and nicer, bought later and run alongside it.
+    // Every site uses the same room layout shifted by Offset.
+    public class RestaurantSite { public string Id, Title, Sign, Pitch; public Vector3 Offset; public int Price; public bool Starter; }
     public static class RestaurantSites {
         public static readonly RestaurantSite[] All = {
-            new RestaurantSite { Id = "oddtable", Title = "The Odd Table", Sign = "THE ODD TABLE", Offset = Vector3.zero,
-                Pitch = "17 Main Street. A busy corner next to Milo's and your stand, with apartments upstairs." },
-            new RestaurantSite { Id = "bayside", Title = "The Bayside", Sign = "THE BAYSIDE", Offset = new Vector3(-180, 0, 0),
-                Pitch = "West end of Main Street, right on the water. A long walk from Milo's, but guests love the view (+4 ambience)." },
+            new RestaurantSite { Id = "oddtable", Title = "The Odd Table", Sign = "THE ODD TABLE", Offset = Vector3.zero, Price = 150, Starter = true,
+                Pitch = "17 Main Street. Rough, cramped, and yours. Next door to Milo's and your stand." },
+            new RestaurantSite { Id = "bayside", Title = "The Bayside", Sign = "THE BAYSIDE", Offset = new Vector3(-180, 0, 0), Price = 1200,
+                Pitch = "West end of Main Street, on the water. A bigger dining room with a view: the step up from The Odd Table." },
         };
         public static RestaurantSite Get(string id) { foreach (var s in All) if (s.Id == id) return s; return All[0]; }
+        // What it takes to buy the second restaurant: your first one has to be able to run without you.
+        public const int SecondSiteStars = 2, SecondSiteCrew = 2;
     }
 }
