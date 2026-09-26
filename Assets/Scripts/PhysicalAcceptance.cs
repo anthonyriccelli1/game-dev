@@ -29,6 +29,8 @@ namespace RestaurantCity {
     while(st.Cash<500&&attempts++<150){st.Restaurant.Protein=Math.Max(st.Restaurant.Protein,4);st.Restaurant.Produce=Math.Max(st.Restaurant.Produce,4);for(int w=0;w<60&&!st.StandQueue.Exists(o=>o.Stage==1);w++){ClearStandTables();st.Tick(1);}var seated=st.StandQueue.Find(o=>o.Stage==1);Check(seated!=null,"stand guest seated at a sidewalk table");if(st.StandClean==0)WashStand();StandBurger(seated.Dish=="midnight");Check(st.Kitchen.ServeStandGuest(st,"player:0",seated.Id,out var sm),"stand sale at the table: "+sm);Check(seated.Stage==2,"guest eats at the table");}
     Check(st.StandClean+st.StandDirty+st.StandTableDirty.FindAll(d=>d).Count+st.StandQueue.FindAll(o=>o.Stage==2).Count+st.Kitchen.Items.FindAll(i=>i.StandPlate).Count==GameState.StandPlates,"stand plates conserved through table service");
     Check(st.Cash>=500,"earned restaurant lease from stand sales");
+    // Before owning anything, The Bayside's listing must actually appear on screen (not just be the selected panel).
+    Game.Restaurant.BuyRestaurant(Game.Player,"bayside");Game.Restaurant.UI.Refresh();Check(GameObject.Find("Listing checklist")!=null,"Bayside listing is visible before you own a restaurant");Game.Restaurant.ClosePanel();
     // Pacing: the stand pays cash, not reputation. Earning a lease-and-renovation budget there must stay far from Line Cook (400).
     Check(st.Xp<=60,"stand alone earns only token reputation ("+st.Xp+")");Check(st.RepSources.Exists(r=>r.Source=="Stand sales"),"reputation sources are tracked");Check(Game.Restaurant.BuyRestaurant(),"purchase integration");Game.Restaurant.ClosePanel();
     Check(Game.Restaurant.Data.SiteId=="oddtable","The Odd Table is the starter restaurant");

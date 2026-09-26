@@ -42,24 +42,28 @@ namespace RestaurantCity {
             BuildStandTables(world);
         }
 
-        // The two sidewalk tables beside the stand become real: guests sit, eat and leave dirty plates there.
+        // The stand's two sidewalk tables are the same cafe tables guests sit at in the restaurant (same chairs,
+        // same seat point, same sitting pose), so the stand already looks and plays like a tiny restaurant.
+        static readonly Vector3[] StandTablePositions = { new Vector3(-5.2f, 0, 10.6f), new Vector3(-8.2f, 0, 10.6f) };
+        readonly List<Transform> standSeats = new List<Transform>();
         readonly List<Vector3> standTableSpots = new List<Vector3>();
         readonly Dictionary<int, GameObject> tablePlates = new Dictionary<int, GameObject>();
         readonly Dictionary<int, int> tablePlateState = new Dictionary<int, int>();   // 0 none, 1 eating, 2 dirty
         readonly HashSet<int> guestsPastStand = new HashSet<int>();
-        static readonly Vector3 StandCorner = new Vector3(-4.8f, 0, 6.2f);  // guests walk round the stand's end, not through it
+        static readonly Vector3 StandCorner = new Vector3(-4.6f, 0, 6.2f);  // guests walk round the stand's end, not through it
         void BuildStandTables(Transform world) {
             if (standTableSpots.Count > 0 || !world) return;
-            var tops = new List<Transform>(); foreach (Transform child in world) if (child.name == "Outdoor table") tops.Add(child);
-            tops.Sort((a, b) => b.position.x.CompareTo(a.position.x));   // nearest the stand is table 0
-            for (int t = 0; t < tops.Count && t < GameState.StandTables; t++) {
-                var p = new Vector3(tops[t].position.x, 0, tops[t].position.z); standTableSpots.Add(p);
-                var target = new GameObject("Stand table " + t); target.transform.SetParent(world, false); target.transform.position = p + new Vector3(0, .55f, -.35f);
-                var box = target.AddComponent<BoxCollider>(); box.size = new Vector3(1.3f, 1.1f, 1.9f);
-                var it = target.AddComponent<Interactable>(); it.Kind = InteractionKind.StandTable; it.Index = t;
+            for (int t = 0; t < GameState.StandTables; t++) {
+                var table = CreateFurnishing("cafe_table", world); table.name = "Stand table " + t;
+                table.transform.SetPositionAndRotation(StandTablePositions[t], Quaternion.identity);
+                if (table.GetComponentsInChildren<Collider>().Length == 0) { var box = table.AddComponent<BoxCollider>(); box.center = new Vector3(0, .45f, 0); box.size = new Vector3(1.2f, .9f, 1.9f); }
+                var it = table.AddComponent<Interactable>(); it.Kind = InteractionKind.StandTable; it.Index = t;
+                standTableSpots.Add(StandTablePositions[t]);
+                standSeats.Add(table.transform.Find("Seat_0"));
             }
         }
-        Vector3 TableSeat(int t) => t >= 0 && t < standTableSpots.Count ? standTableSpots[t] + new Vector3(0, 0, -1.3f) : StandFront;
+        Transform SeatOf(int t) => t >= 0 && t < standSeats.Count ? standSeats[t] : null;
+        Vector3 TableSeat(int t) { var seat = SeatOf(t); return seat ? seat.position : StandFront; }
         void SyncTablePlate(int t, int state) {
             tablePlateState.TryGetValue(t, out int shown);
             if (shown == state && (state == 0 || tablePlates.ContainsKey(t) && tablePlates[t])) return;
@@ -67,7 +71,7 @@ namespace RestaurantCity {
             tablePlates.Remove(t); tablePlateState[t] = state;
             if (state == 0 || t >= standTableSpots.Count) return;
             var plate = state == 1 ? KitchenArt.CreateItem("Plate", new List<string> { "bun", "cooked_patty" }, transform) : KitchenArt.CreateItem("DirtyPlate", transform);
-            plate.transform.position = standTableSpots[t] + new Vector3(0, .9f, -.25f); plate.transform.localScale = Vector3.one * .8f;
+            plate.transform.position = standTableSpots[t] + new Vector3(0, .84f, -.28f); plate.transform.localScale = Vector3.one * .8f;
             tablePlates[t] = plate;
         }
 
@@ -170,8 +174,11 @@ namespace RestaurantCity {
                 var before = guest.transform.position;
                 guest.transform.position = Vector3.MoveTowards(before, spot, seconds * 2.4f);
                 var step = guest.transform.position - before; bool walking = step.sqrMagnitude > .000001f;
-                guest.transform.rotation = walking ? Quaternion.LookRotation(new Vector3(step.x, 0, step.z)) : Quaternion.identity;
+                var seat = order.Stage > 0 && guestsPastStand.Contains(order.Id) ? SeatOf(order.Table) : null;
+                bool seated = seat && !walking && (guest.transform.position - seat.position).sqrMagnitude < .01f;
+                guest.transform.rotation = walking ? Quaternion.LookRotation(new Vector3(step.x, 0, step.z)) : seated ? seat.rotation : Quaternion.identity;
                 var motion = guest.GetComponent<CharacterMotion>();
+                if (motion) motion.Seated = seated;
                 float ratio = order.Stage == 2 ? 1 : Mathf.Clamp01(order.Patience / Mathf.Max(1, order.MaxPatience));
                 if (motion) { motion.Walking = walking; motion.SetMood(ratio); }
                 int filled = Mathf.Max(1, Mathf.CeilToInt(ratio * 8)); string color = ratio > .55f ? "#4FCB7A" : ratio > .25f ? "#E8C34A" : "#E1543B";

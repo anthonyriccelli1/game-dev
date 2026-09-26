@@ -126,11 +126,7 @@ public static class PrototypeBuilder {
         ArtPackDressing.Dress(world);
         Tree(new Vector3(-20, 0, 7), world); Tree(new Vector3(20, 0, 7), world);
         Tree(new Vector3(6, 0, -8), world); Tree(new Vector3(-3, 0, -8), world);
-        for (int i = 0; i < 2; i++) {
-            var table = Cylinder("Outdoor table", new Vector3(-5.5f - i * 2, .85f, 11.5f), new Vector3(1.2f, .07f, 1.2f), cream, world);
-            Cylinder("Table leg", new Vector3(table.transform.position.x, .4f, 11.5f), new Vector3(.15f, .4f, .15f), dark, world);
-            Cylinder("Stool", new Vector3(table.transform.position.x, .35f, 10.6f), new Vector3(.6f, .35f, .6f), coral, world);
-        }
+        // The stand's two sidewalk tables are the restaurant's own cafe tables, placed at runtime by PhysicalStand.
         var sun = new GameObject("Afternoon sun").AddComponent<Light>(); sun.type = LightType.Directional;
         sun.transform.rotation = Quaternion.Euler(48, -35, 0); sun.intensity = 1.25f; sun.shadows = LightShadows.Soft;
         game.Sun = sun; game.Lamps = lamps.ToArray();

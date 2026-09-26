@@ -49,6 +49,7 @@ namespace RestaurantCity {
             ("29_milo_front_day", new Vector3(-15.5f, 0, 8), 0, -4, 60),
             ("30_milo_inside_day", new Vector3(-15.5f, 0, 14.2f), 0, 6, 60),
             ("31_bayside_listing", new Vector3(-186, 0, -6), 180, 4, 60),
+            ("32_stand_tables", new Vector3(-6.7f, 0, 5.2f), 0, 12, 60),
         };
 
         IEnumerator Start() {
@@ -74,6 +75,13 @@ namespace RestaurantCity {
                 var rc = FindFirstObjectByType<RestaurantController>();
                 if (rc && shot.name.Contains("phone_map")) rc.ShowPanel("Map");
                 if (rc && shot.name.Contains("listing")) { Game.State.Cash = 95; rc.BuyRestaurant(Game.Player, "bayside"); }
+                if (rc && shot.name.Contains("stand_tables")) {
+                    // Two seated stand guests (one served and eating) and a dirty plate: walk them in, then shoot.
+                    var st = Game.State; st.StandOpen = false; st.StandQueue.Clear();
+                    st.StandQueue.Add(new StandOrder { Id = 901, Type = 3, Stage = 1, Table = 0, Patience = 999, MaxPatience = 999 });
+                    st.StandQueue.Add(new StandOrder { Id = 902, Type = 6, Stage = 2, Table = 1, Patience = 999, MaxPatience = 999, EatLeft = 999 });
+                    for (int i = 0; i < 70; i++) { rc.Advance(.15f); p.transform.position = shot.pos; yield return null; }
+                }
                 for (int i = 0; i < 20; i++) yield return null;
                 ScreenCapture.CaptureScreenshot(Path.Combine(dir, shot.name + ".png"));
                 for (int i = 0; i < 5; i++) yield return null;
