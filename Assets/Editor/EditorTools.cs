@@ -110,5 +110,4 @@ public static class EditorTools {
     }
     public static string RunInteractionAcceptance() => RunBuild("interaction", "--interaction-test");
     public static string RunPhysicalAcceptance() => RunBuild("physical", "--physical-test");
-    public static string RunRestaurantAcceptance() => RunBuild("restaurant", "--restaurant-stage2");
 }

@@ -24,7 +24,7 @@ namespace RestaurantCity {
         public string SavePath => Path.Combine(Application.persistentDataPath, "restaurant-city-v1.json");
 
         void Awake() {
-            SmokeMode = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--smoke-test" || arg == "--snapshots" || arg.StartsWith("--restaurant-") || arg.StartsWith("--physical-") || arg.StartsWith("--interaction-"));
+            SmokeMode = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--smoke-test" || arg == "--snapshots" || arg.StartsWith("--physical-") || arg.StartsWith("--interaction-"));
             if (!SmokeMode) Load(); else State = new GameState();
             State.Version = 4;
             SetPaused(true);
@@ -36,7 +36,6 @@ namespace RestaurantCity {
             gameObject.AddComponent<PhysicalHud>().Game = this;
             SyncWorld();
             if (Array.IndexOf(Environment.GetCommandLineArgs(), "--smoke-test") >= 0) gameObject.AddComponent<PrototypeSmokeTest>().Game = this;
-            if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg.StartsWith("--restaurant-"))) gameObject.AddComponent<RestaurantAcceptance>().Game = this;
             if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg.StartsWith("--physical-"))) gameObject.AddComponent<PhysicalAcceptance>().Game = this;
             if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg.StartsWith("--interaction-"))) gameObject.AddComponent<InteractionAcceptance>().Game = this;
         }

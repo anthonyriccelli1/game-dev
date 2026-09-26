@@ -22,11 +22,14 @@ namespace RestaurantCity {
                 Game.State.Cash = 2000;
                 foreach (var (id, x, z) in new[] { ("pantry", 0, 0), ("plate_rack", 2, 0), ("prep_bench", 4, 0), ("assembly", 8, 0), ("grill", 0, 4), ("sink", 9, 4), ("cafe_table", 8, 7) })
                     if (!R.Data.Place(Game.State, id, x, z, 0, out _)) InstallFirstFree(id);
+                R.Data.Protein = 20; R.Data.Produce = 20; // a fresh lease has an empty pantry
                 Game.State.Kitchen.EnsureStations(R.Data);
                 R.RebuildLayout();
+                Physics.SyncTransforms(); // fresh furnishings report stale (origin) collider bounds until physics syncs
                 Game.SetPaused(false);
                 R.ClosePanel();
                 yield return null;
+                Physics.SyncTransforms();
                 var aim = Game.GetComponentsInChildren<Text>(true).FirstOrDefault(x => x.name == "Aim");
                 Check(aim != null && ((RectTransform)aim.transform).rect.height >= aim.preferredHeight + 2,
                     "center reticle has enough height for generated glyph");
@@ -42,10 +45,11 @@ namespace RestaurantCity {
                 var benchCenter = R.Furnishings[prep].GetComponentInChildren<Collider>().bounds.center;
                 P.Teleport(new Vector3(benchCenter.x, .15f, benchCenter.z + 2));
                 Physics.SyncTransforms();
-                P.LookAt(new Vector3(benchCenter.x, P.View.transform.position.y, benchCenter.z));
+                P.LookAt(benchCenter); // eye height clears a 1 m bench on a level ray; players look down at counters
                 bool stable = true;
                 for (int i = 0; i < 6; i++) stable &= P.TryResolveInteractionHit(out var repeat) && TargetId(repeat) == prep;
-                Check(stable, "level eye ray resolves the same kitchen bench on every consecutive query");
+                if (!stable) Debug.Log("INTERACTION_BENCH_MISS eye=" + P.InteractionRay.origin + " dir=" + P.InteractionRay.direction + " bench=" + benchCenter + " hit=" + (P.TryResolveInteractionHit(out var dbg) ? dbg.collider.name + "/" + (dbg.collider.transform.parent ? dbg.collider.transform.parent.name : "") + ":" + TargetId(dbg) + "@" + dbg.distance.ToString("0.00") : "none"));
+                Check(stable, "eye ray at the bench resolves the same bench on every consecutive query");
 
                 var blocker = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 blocker.name = "Interaction test obstruction";
@@ -160,11 +164,13 @@ namespace RestaurantCity {
         }
         int Station(string id) => R.Data.Layout.First(x => x.CatalogId == id).InstanceId;
         static int TargetId(RaycastHit hit) { var t = hit.collider ? hit.collider.GetComponentInParent<RestaurantTarget>() : null; return t ? t.InstanceId : -1; }
-        string PromptFor() => R.PromptFor(P.ActorId);
+        // The HUD prompt follows the focus a normal frame sets; refresh it without pressing anything.
+        string PromptFor() { P.ResolveAndInteract(false, false); return R.PromptFor(P.ActorId); }
         bool AimAt(int id) {
             if (!R.Furnishings.TryGetValue(id, out var furnishing)) return false;
             var collider = furnishing.GetComponentInChildren<Collider>();
             if (!collider) return false;
+            Physics.SyncTransforms();
             var center = collider.bounds.center;
             string misses = "";
             foreach (var offset in new[] { new Vector3(0, 0, 1.7f), new Vector3(-1.7f, 0, 0), new Vector3(1.7f, 0, 0), new Vector3(0, 0, -1.7f) }) {
@@ -186,6 +192,7 @@ namespace RestaurantCity {
             var shelf = furnishing.transform.Find("Pantry shelf " + subId);
             var collider = shelf ? shelf.GetComponent<Collider>() : null;
             if (!collider) return false;
+            Physics.SyncTransforms();
             var center = collider.bounds.center;
             foreach (var offset in new[] { new Vector3(0, 0, 1.7f), new Vector3(0, .3f, 1.6f) }) {
                 P.Teleport(new Vector3(center.x + offset.x, .15f + offset.y, center.z + offset.z));
