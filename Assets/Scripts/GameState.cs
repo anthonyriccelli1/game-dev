@@ -24,6 +24,10 @@ namespace RestaurantCity {
         // Xp is reputation. It never drops below the floor of the rank you already hold, and a rank needs its keystone goal too.
         public bool BeatAlleyRival; public List<string> Goals = new List<string>();
         public List<RepGain> RepSources = new List<RepGain>();
+        // Recipes you can cook. Burger and salad are known from the start; others are found, bought or taught.
+        public List<string> KnownRecipes = new List<string> { "burger", "salad" };
+        public bool Knows(string dish) => KnownRecipes != null && KnownRecipes.Contains(dish);
+        public void Learn(string dish) { KnownRecipes = KnownRecipes ?? new List<string>(); if (!KnownRecipes.Contains(dish)) KnownRecipes.Add(dish); }
         public void GainReputation(int amount, string source = "Other") {
             if (amount == 0) return;
             int before = Xp;
@@ -59,7 +63,7 @@ namespace RestaurantCity {
             bool washing = front == null || StandClean == 0;
             if (washing && StandDirty == 0 && dirtyTable < 0) { StandWorkerStatus = name + (StandOpen ? " is waiting for customers." : ": stand is closed."); standWorkTimer = 0; return; }
             bool midnight = front != null && front.Dish == "midnight";
-            if (!washing && (Restaurant.Protein < (midnight ? 2 : 1) || Restaurant.Produce < 1)) { StandWorkerStatus = name + " is out of ingredients! Restock at Milo's."; standWorkTimer = 0; return; }
+            if (!washing && !Restaurant.HasFor(front.Dish)) { StandWorkerStatus = name + " is out of ingredients! Restock at Milo's."; standWorkTimer = 0; return; }
             w.Energy = Math.Max(0, w.Energy - seconds * .5f);
             standWorkTimer += seconds;
             float need = washing ? 6 : def != null && def.Role == StaffJob.Cook ? 12 : 18;
@@ -68,7 +72,7 @@ namespace RestaurantCity {
             if (standWorkTimer < need) return;
             standWorkTimer = 0;
             if (washing) { if (dirtyTable >= 0) StandTableDirty[dirtyTable] = false; else StandDirty--; StandClean++; return; }
-            Restaurant.Protein -= midnight ? 2 : 1; Restaurant.Produce--;
+            Restaurant.UseFor(front.Dish);
             int earned = (int)Math.Round(KitchenState.StandPrice(this, front.Dish) * (1 - StandWorkerCut));
             Cash += earned; StandWorkerEarned += earned; Served++; w.TasksCompleted++;
             StandClean--; front.Stage = 2; front.EatLeft = StandEatSeconds; SyncStandFront();
@@ -118,7 +122,7 @@ namespace RestaurantCity {
             if (!StandBuilt || Food != FoodStage.Empty) return false;
             // The stand shares the restaurant pantry once you own it, so you are never stuck with stock in one place.
             if (Stock >= 1) Stock--;
-            else if (Restaurant != null && Restaurant.Owned && Restaurant.Protein > 0) Restaurant.Protein--;
+            else if (Restaurant != null && Restaurant.Owned && Restaurant.UseStock("patty")) { }
             else return false; Food = FoodStage.Prepared; CookSeconds = 0; SignatureDish = RecipeUnlocked; return true;
         }
         public bool UseGrill() {
@@ -134,11 +138,13 @@ namespace RestaurantCity {
             // The rival guards his stash every night. First win: the midnight recipe + 3 Flux. After that: +2 Flux per night.
             if (!IsNight || !guardDefeated || LastStashDay == Day) return false;
             GainReputation(RecipeUnlocked ? Reputation.NightlyStash : Reputation.HiddenRecipe, RecipeUnlocked ? "Rival stash raids" : "Midnight recipe");
-            LastStashDay = Day; Flux += RecipeUnlocked ? 2 : 3; RecipeUnlocked = true; FluxIntroduced = true; return true;
+            LastStashDay = Day; Flux += RecipeUnlocked ? 2 : 3; RecipeUnlocked = true; FluxIntroduced = true; Learn("midnight");
+            Restaurant?.AddStock("midnight_sauce", 3);   // the stash holds the sauce, not just the recipe
+            return true;
         }
         public bool RequestHelp() {
             if (!StandBuilt || Cash >= 6 || Stock != 0 || Food != FoodStage.Empty) return false;
-            if (Restaurant != null && Restaurant.Owned && Restaurant.Protein > 0) return false;
+            if (Restaurant != null && Restaurant.Owned && Restaurant.Stock("patty") > 0) return false;
             Stock = 3; return true;
         }
         public void Discard() { Food = FoodStage.Empty; CookSeconds = 0; }
@@ -149,11 +155,14 @@ namespace RestaurantCity {
             // Saves from before reputation existed get credit for what their restaurant already earned.
             // v5 briefly counted dollars as reputation; v6 counts customers, stars and discoveries, so cap the carried-over amount.
             if (Version == 5) Xp = Math.Min(Xp, Reputation.Thresholds[1] - 1);
+            bool preIngredients = Version < 7;
             Version = CurrentVersion; Restaurant = Restaurant ?? new RestaurantState(); Restaurant.SanitizeAfterLoad();
+            KnownRecipes = KnownRecipes ?? new List<string>(); Learn("burger"); Learn("salad"); if (RecipeUnlocked) Learn("midnight");
+            if (preIngredients && RecipeUnlocked) Restaurant.AddStock("midnight_sauce", 3);
             RepSources = RepSources ?? new List<RepGain>();
             Xp = Math.Max(0, Math.Min(999999, Xp)); RankUpTo = -1; Goals = Goals ?? new List<string>(); RankEarned = Math.Max(0, Math.Min(Reputation.Titles.Length - 1, RankEarned)); CheckRankUp(); Restaurant.PlayerRank = RankEarned;
             // Old saves kept stand "Stock" separately; it now lives in the one shared pantry.
-            if (Stock > 0) { Restaurant.Protein += Stock; Restaurant.Produce += Stock; Stock = 0; }
+            if (Stock > 0) { Restaurant.AddStock("patty", Stock); Restaurant.AddStock("bun", Stock); Stock = 0; }
             Kitchen = Kitchen ?? new KitchenState(); Kitchen.SanitizeAfterLoad(this); Flux = Math.Max(0, Flux);
             if(RecipeUnlocked&&!FluxIntroduced){Flux+=3;FluxIntroduced=true;}
             Cash = Math.Max(StandBuilt ? 0 : 10, Math.Min(999999, Cash)); Stock = Math.Max(0, Math.Min(99, Stock));
@@ -186,7 +195,7 @@ namespace RestaurantCity {
                 if (NextCustomer <= 0) {
                     int id = NextStandOrder++;
                     float patience = StandQueue.Count == 0 && Served == 0 ? StandFirstPatience : StandPatience;
-                    StandQueue.Add(new StandOrder { Id = id, Type = (id * 3) % 10, Dish = RecipeUnlocked && id % 3 == 0 ? "midnight" : "burger", Patience = patience, MaxPatience = patience });
+                    StandQueue.Add(new StandOrder { Id = id, Type = (id * 3) % 10, Dish = Knows("midnight") && id % 4 == 0 ? "midnight" : id % 3 == 1 ? "salad" : "burger", Patience = patience, MaxPatience = patience });
                     NextCustomer = StandArrivalSeconds + (id % 3) * 1.5f;
                 }
             }

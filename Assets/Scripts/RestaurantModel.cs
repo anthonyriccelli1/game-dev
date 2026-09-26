@@ -158,7 +158,8 @@ namespace RestaurantCity {
     [Serializable] public class WorkerState { public string Id; public StaffJob Job; public int TasksCompleted; public float Energy=100; }
     [Serializable] public class RestaurantState {
         public bool Owned,Open,PhysicalKitInstalled,CounterInstalled,TrashInstalled;
-        public int Produce,Protein,Served,Lost,Earnings,Rank=1,NextInstanceId=1,NextOrderId=1;[NonSerialized]public List<RepGain> PendingRep=new List<RepGain>();
+        public int Produce,Protein; // retired: migrated into Pantry on load
+        public int Served,Lost,Earnings,Rank=1,NextInstanceId=1,NextOrderId=1;[NonSerialized]public List<RepGain> PendingRep=new List<RepGain>();
         public void Rep(string source,int amount){if(amount==0)return;(PendingRep??(PendingRep=new List<RepGain>())).Add(new RepGain{Source=source,Amount=amount});}
         public float Cleanliness=42,Satisfaction=50,ServiceSeconds;
         public List<PlacedItem> Layout=new List<PlacedItem>();
@@ -174,6 +175,14 @@ namespace RestaurantCity {
         public int Ambience => Math.Min(40,SiteAmbience+Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.Ambience??0));
         public int CookSlots => Math.Max(1,Layout.Count(p=>p.CatalogId=="grill"||p.CatalogId=="stove"||p.CatalogId=="oven"));
         public int StockLimit => HasEquipment("fridge")?48:24;
+        // One shared pantry (stand and restaurant) with a count per ingredient; the limit applies to each ingredient.
+        public List<StockLine> Pantry=new List<StockLine>();
+        public int Stock(string id){var l=Pantry?.Find(x=>x.Id==id);return l==null?0:l.Count;}
+        public int Room(string id)=>Math.Max(0,StockLimit-Stock(id));
+        public int AddStock(string id,int n){Pantry=Pantry??new List<StockLine>();if(n<=0)return 0;var l=Pantry.Find(x=>x.Id==id);if(l==null)Pantry.Add(l=new StockLine{Id=id});int add=Math.Min(n,StockLimit-l.Count);if(add<=0)return 0;l.Count+=add;return add;}
+        public bool UseStock(string id,int n=1){var l=Pantry?.Find(x=>x.Id==id);if(l==null||l.Count<n)return false;l.Count-=n;return true;}
+        public bool HasFor(string dish){foreach(var g in Ingredients.For(dish).GroupBy(x=>x))if(Stock(g.Key)<g.Count())return false;return true;}
+        public bool UseFor(string dish){if(!HasFor(dish))return false;foreach(var i in Ingredients.For(dish))UseStock(i);return true;}
         public int WagesPerOrder => Workers.Count(w=>w.Job!=StaffJob.Off);
         public string WallId => Layout.FindLast(p=>p.CatalogId.StartsWith("wall_"))?.CatalogId??"wall_shabby";
         public string FloorId => Layout.FindLast(p=>p.CatalogId.StartsWith("floor_"))?.CatalogId??"floor_shabby";
@@ -267,29 +276,28 @@ namespace RestaurantCity {
             if(RestaurantCatalog.Find(p.CatalogId).Seats>0&&Seats<=RestaurantCatalog.Find(p.CatalogId).Seats)return Fail("Install replacement seating before selling your last table.",out message);
             int refund=p.Paid/2;Layout.Remove(p);wallet.Cash+=refund;message=$"Sold for ${refund}. Starter furnishings have no resale value.";return true;
         }
-        public bool IsDishAvailable(GameState wallet,string id) {var d=RestaurantCatalog.Dish(id);return d!=null&&Stars>=d.RequiredStars&&(!d.RequiresMidnight||wallet.RecipeUnlocked)&&HasEquipment(d.Equipment);}
+        // Only dishes with hands-on steps (RecipeBook) and a known recipe can go on the menu.
+        public bool IsDishAvailable(GameState wallet,string id) {var d=RestaurantCatalog.Dish(id);return d!=null&&Stars>=d.RequiredStars&&wallet.Knows(id)&&HasEquipment(d.Equipment)&&RecipeBook.Recipes.Any(r=>r.DishId==id);}
         public bool ToggleDish(GameState wallet,string id,out string message) {
             if(!Owned)return Fail("Buy the restaurant first.",out message);
             if(ActiveMenu.Contains(id)){if(ActiveMenu.Count<=1)return Fail("Keep at least one dish on the menu.",out message);ActiveMenu.Remove(id);message="Dish removed from tomorrow's orders.";return true;}
             if(!IsDishAvailable(wallet,id))return Fail("This dish needs its recipe, equipment, and star rank unlocked.",out message);
             ActiveMenu.Add(id);message="Dish added to the menu. New customers can order it.";return true;
         }
-        public bool Restock(GameState wallet,bool protein,out string message) {
-            if(!Owned&&!wallet.StandBuilt)return Fail("Set up your food stand first ($10).",out message);
-            int stock=protein?Protein:Produce,price=protein?10:6;
-            if(stock+6>StockLimit)return Fail($"Not enough storage; limit {StockLimit}. Buy a fridge for 48.",out message);
-            if(wallet.Cash<price)return Fail($"Six portions cost ${price}.",out message);
-            wallet.Cash-=price;if(protein)Protein+=6;else Produce+=6;message=$"Stocked 6 {(protein?"protein":"produce")} portions for ${price}.";return true;
+        // Can this ingredient be bought at Milo's right now? (Secret ones never are; recipe ones need the recipe.)
+        public string IngredientLock(GameState wallet,IngredientDef d){
+            if(d.Source!=Ingredients.Milo)return "Only in night stashes";
+            if(!string.IsNullOrEmpty(d.Recipe)&&!wallet.Knows(d.Recipe))return "Learn "+RestaurantCatalog.Dish(d.Recipe).Name+" first";
+            if(Stars<d.RequiredStars)return "Needs a "+d.RequiredStars+"-star restaurant";
+            return null;
         }
-        public bool RequestSupplyHelp(GameState wallet,out string message)=>RequestSupplyHelp(wallet,Produce<=Protein?false:true,out message);
-        // Anti-softlock: if you can't afford a crate and are nearly out of it, Milo fronts you 3 for free.
-        public bool RequestSupplyHelp(GameState wallet,bool protein,out string message) {
-            int price=protein?10:6,have=protein?Protein:Produce;
+        // Anti-softlock: broke and out of burger basics? Milo fronts you three patties and buns.
+        public bool RequestSupplyHelp(GameState wallet,out string message) {
             if(!Owned&&!wallet.StandBuilt)return Fail("Set up your food stand first ($10).",out message);
-            if(wallet.Cash>=price)return Fail($"Six portions cost ${price}.",out message);
-            if(have>=3)return Fail($"You still have {have} {(protein?"patties":"buns & greens")}. Cook and sell to afford more.",out message);
-            if(protein)Protein+=3;else Produce+=3;
-            message=$"Milo fronts you 3 free {(protein?"patties":"buns & greens")}. Pay it forward!";return true;
+            if(wallet.Cash>=14)return Fail("You can afford a pack of patties and buns.",out message);
+            if(Stock("patty")>=3&&Stock("bun")>=3)return Fail("You still have ingredients. Cook and sell to afford more.",out message);
+            AddStock("patty",3-Math.Min(3,Stock("patty")));AddStock("bun",3-Math.Min(3,Stock("bun")));
+            message="Milo fronts you 3 patties and 3 buns. Pay it forward!";return true;
         }
         public bool StartService(GameState wallet,out string message) {
             if(!Owned||Open)return Fail("Service is unavailable or already open.",out message);
@@ -316,8 +324,8 @@ namespace RestaurantCity {
             var o=Orders.Find(x=>x.Id==id);if(o==null||o.Stage!=RestaurantOrderStage.Waiting)return Fail("Choose a waiting order.",out message);
             var d=RestaurantCatalog.Dish(o.DishId);if(!HasEquipment(d.Equipment))return Fail("The dish's required equipment is missing.",out message);
             if(Orders.Count(x=>x.Stage==RestaurantOrderStage.Cooking)>=CookSlots)return Fail("All cooking slots are busy. Extra grills and stoves add capacity.",out message);
-            if(Protein<d.ProteinCost||Produce<d.ProduceCost)return Fail("Insufficient ingredients. Restock at the city supplier.",out message);
-            Protein-=d.ProteinCost;Produce-=d.ProduceCost;o.Stage=RestaurantOrderStage.Cooking;o.StageTime=0;o.CookProgress=0;message=$"Cooking {d.Name}.";return true;
+            if(!UseFor(d.Id))return Fail("Out of ingredients. Restock at Milo's.",out message);
+            o.Stage=RestaurantOrderStage.Cooking;o.StageTime=0;o.CookProgress=0;message=$"Cooking {d.Name}.";return true;
         }
         public bool CompleteServing(GameState wallet,int id,out string message) {
             var o=Orders.Find(x=>x.Id==id);if(o==null||o.Stage!=RestaurantOrderStage.Ready)return Fail("Choose a ready dish to serve.",out message);
@@ -395,7 +403,10 @@ namespace RestaurantCity {
             NextInstanceId=Math.Max(NextInstanceId,Layout.Count==0?1:Layout.Max(p=>p.InstanceId)+1);
             ActiveMenu=ActiveMenu.Where(id=>id=="burger"||id=="salad"||id=="midnight").Distinct().ToList();if(ActiveMenu.Count==0)ActiveMenu.Add("burger");
             // Unfinished service ends on load; durable restaurant layout, finances, menu, stock, reviews and workers survive.
-            Orders.Clear();Open=false;Produce=Math.Max(0,Math.Min(StockLimit,Produce));Protein=Math.Max(0,Math.Min(StockLimit,Protein));
+            Orders.Clear();Open=false;
+            // v7: the old protein/produce totals become real ingredients.
+            Pantry=Pantry??new List<StockLine>();if(Protein>0||Produce>0){AddStock("patty",Protein);AddStock("bun",Produce);AddStock("greens",Produce/2);Protein=0;Produce=0;}
+            Pantry.RemoveAll(l=>l==null||Ingredients.Get(l.Id)==null);foreach(var l in Pantry)l.Count=Math.Max(0,Math.Min(StockLimit,l.Count));
             if(SiteId!="oddtable"&&SiteId!="bayside")SiteId="oddtable";Cleanliness=Clamp(Cleanliness,0,100);Satisfaction=Clamp(Satisfaction,0,100);Rank=Math.Max(1,Math.Min(2,Rank));Served=Math.Max(0,Served);Lost=Math.Max(0,Lost);UpdateRank();
             foreach(var worker in Workers){worker.Energy=Clamp(worker.Energy,0,100);if(worker.Job==StaffJob.Any)worker.Job=RestaurantCatalog.Worker(worker.Id)?.Role??StaffJob.Cook;}
             EnsurePhysicalKit();

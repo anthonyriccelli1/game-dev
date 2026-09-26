@@ -42,7 +42,7 @@ namespace RestaurantCity {
    var r=Game.State.Restaurant;var k=Game.State.Kitchen;
    for(int i=0;i<views.Count;i++){var v=views[i];var p=Game.CoOp.Players[i];v.Canvas.enabled=Game.Started&&!Game.Paused&&!Game.Restaurant.PanelOpen&&!Game.Restaurant.PlacementActive;if(!v.Canvas.enabled)continue;
     string phase=r.Open?"<color=#4FCB7A>OPEN</color>":r.Orders.Count>0?"<color=#E8C34A>LAST GUESTS</color>":"CLOSED";
-    int xp=Game.State.Xp,rk=Game.State.RankEarned;v.Top.text="$"+Game.State.Cash+"   "+r.Stars+" star   "+phase+"   <color=#F2C27A>"+Reputation.Titles[rk]+(Reputation.IsMax(rk)?"":"  "+xp+"/"+Reputation.Thresholds[rk+1]+" rep")+"</color>\n<size=12>Plates "+k.CleanPlates+"/"+KitchenState.PlateCapacity(r)+(k.SinkPile>0?" ("+k.SinkPile+" dirty)":"")+"  |  Protein "+r.Protein+"  |  Produce "+r.Produce+(Game.State.FluxIntroduced?"  |  Flux "+Game.State.Flux:"")+(Game.State.StandBuilt?"  |  P phone  M map":"")+"</size>";
+    int xp=Game.State.Xp,rk=Game.State.RankEarned;v.Top.text="$"+Game.State.Cash+"   "+r.Stars+" star   "+phase+"   <color=#F2C27A>"+Reputation.Titles[rk]+(Reputation.IsMax(rk)?"":"  "+xp+"/"+Reputation.Thresholds[rk+1]+" rep")+"</color>\n<size=12>Plates "+k.CleanPlates+"/"+KitchenState.PlateCapacity(r)+(k.SinkPile>0?" ("+k.SinkPile+" dirty)":"")+"  |  Patties "+r.Stock("patty")+"  |  Buns "+r.Stock("bun")+"  |  Greens "+r.Stock("greens")+(r.Stock("midnight_sauce")>0||Game.State.Knows("midnight")?"  |  Sauce "+r.Stock("midnight_sauce"):"")+(Game.State.FluxIntroduced?"  |  Flux "+Game.State.Flux:"")+(Game.State.StandBuilt?"  |  P phone  M map":"")+"</size>";
     string tickets=!r.Owned?StandTicket(Game.State):TicketRail(r)+(Game.State.StandWorker!=null?(TicketRail(r)==""?"":"\n")+"<size=12><color=#9FD8C8>Stand: "+Game.State.StandWorkerStatus+" (+$"+Game.State.StandWorkerEarned+")</color></size>":"");
     v.Tickets.transform.parent.gameObject.SetActive(tickets!="");v.Tickets.text=tickets;
     // Size the ticket card to its text instead of a fixed half-screen box.
@@ -63,7 +63,7 @@ namespace RestaurantCity {
     if(o.Stage==2){lines.Add("<color=#9FD8C8>Table "+(o.Table+1)+": eating</color>");continue;}
     string where=o.Stage==1?"Table "+(o.Table+1)+": ":"In line: ";
     float ratio=Mathf.Clamp01(o.Patience/Mathf.Max(1,o.MaxPatience));string c=ratio>.55f?"#4FCB7A":ratio>.25f?"#E8C34A":"#E1543B";int f=Mathf.Max(1,Mathf.CeilToInt(ratio*8));
-    lines.Add(where+(o.Dish=="midnight"?"Midnight burger [bun+patty+sauce]":"Burger [bun+patty]")+"  <color="+c+">"+new string('|',f)+"</color>"+new string('.',8-f)+" "+(int)o.Patience+"s");
+    lines.Add(where+(o.Dish=="midnight"?"Midnight burger [bun+patty+sauce]":o.Dish=="salad"?"Salad [chopped greens]":"Burger [bun+patty]")+"  <color="+c+">"+new string('|',f)+"</color>"+new string('.',8-f)+" "+(int)o.Patience+"s");
    }
    int dirtyTables=s.StandTableDirty==null?0:s.StandTableDirty.FindAll(d=>d).Count;
    lines.Add("<size=12>Plates: "+s.StandClean+" clean, "+s.StandDirty+" in the sink pile"+(dirtyTables>0?", <color=#E8C34A>"+dirtyTables+" dirty on tables: clear them!</color>":"")+"</size>");if(s.StandWorker!=null)lines.Add("<size=12><color=#9FD8C8>"+s.StandWorkerStatus+"  (+$"+s.StandWorkerEarned+")</color></size>");lines.Add(goal);

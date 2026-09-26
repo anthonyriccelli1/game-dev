@@ -130,9 +130,9 @@ namespace RestaurantCity {
             return true;
         }
         public void ShowPanel(string panel) {
-            bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map" || panel == "Listing";
+            bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map" || panel == "Listing" || panel == "Supplies" && Game.State.StandBuilt;
             if (!Data.Owned && !phone) { Feedback("Earn $150 and buy the restaurant at its front sign."); return; }
-            if (ServiceInProgress && panel != "Staff" && panel != "Service" && panel != "Map") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
+            if (ServiceInProgress && panel != "Staff" && panel != "Service" && panel != "Map" && panel != "Supplies") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
             if (PlacementActive) CancelPlacement(false);
             Panel = panel; PanelOpen = true;
             if (Game.CoOp) Game.CoOp.RefreshViews();
@@ -329,14 +329,13 @@ namespace RestaurantCity {
             Feedback(message); if (result) Game.Save(); UI.Rebuild();
         }
         public void TryCook(int id) { Feedback("Cooking happens at the stations: pantry, prep, grill, then assemble on a plate. Follow your order card."); }
-        public void Restock(bool protein) {
-            if (!AtSupplier) { Feedback("Visit Milo's green supplier counter across the street to stock up."); return; }
-            if (!Data.Restock(Game.State, protein, out string message) && Game.State.Cash < 6 && Data.Produce == 0) Data.RequestSupplyHelp(Game.State, out message);
-            Feedback(message); Game.Save(); UI.Rebuild();
-        }
-        public void RestockStand() {
-            if (!AtSupplier) return;
-            Feedback(Game.State.BuyIngredients() ? "Packed 3 stand ingredients for $6." : "Stand ingredients cost $6."); Game.Save(); UI.Refresh();
+        // Milo's shop: pay at the counter and carry the groceries home in a bag.
+        public bool BuyGroceries(List<StockLine> cart) {
+            if (!AtSupplier) { Feedback("Talk to Milo in his shop to buy."); return false; }
+            bool ok = Game.State.Kitchen.BuyGroceries(Game.State, Game.Player.ActorId, cart, out string message);
+            if (!ok && Game.State.Cash < 14 && Data.RequestSupplyHelp(Game.State, out string help)) message = help;
+            Feedback(message); if (ok) { Game.Save(); ClosePanel(); } else UI.Rebuild();
+            return ok;
         }
         public void Clean() { BeginCleaning(); }
         public void Hire(string id) { bool hired = Data.Hire(Game.State, id, out string message); Feedback(message); if (hired) PlayChime(true); Game.Save(); UI.Rebuild(); }

@@ -22,7 +22,7 @@ namespace RestaurantCity {
                 Game.State.Cash = 2000;
                 foreach (var (id, x, z) in new[] { ("pantry", 0, 0), ("plate_rack", 2, 0), ("prep_bench", 4, 0), ("assembly", 8, 0), ("grill", 0, 4), ("sink", 9, 4), ("cafe_table", 8, 7) })
                     if (!R.Data.Place(Game.State, id, x, z, 0, out _)) InstallFirstFree(id);
-                R.Data.Protein = 20; R.Data.Produce = 20; // a fresh lease has an empty pantry
+                foreach (var i in new[] { "patty", "bun", "greens" }) R.Data.AddStock(i, 20); // a fresh lease has an empty pantry
                 Game.State.Kitchen.EnsureStations(R.Data);
                 R.RebuildLayout();
                 Physics.SyncTransforms(); // fresh furnishings report stale (origin) collider bounds until physics syncs

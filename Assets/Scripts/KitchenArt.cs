@@ -59,28 +59,26 @@ namespace RestaurantCity {
             for(int x=-1;x<=1;x+=2)for(int z=-1;z<=1;z+=2)Box("Rubber cabinet foot",p,new Vector3(x*(width*.5f-.16f),.06f,z*.3f),new Vector3(.12f,.12f,.12f),"233B46");
         }
         public static GameObject CreateStation(string id,Transform parent) {
-            var root=G("Kitchen_"+id,parent); var p=root.transform;float width=id=="plate_rack"? .9f:id=="counter"||id=="trash"? .95f:1.9f;
+            var root=G("Kitchen_"+id,parent); var p=root.transform;float width=id=="plate_rack"? .9f:id=="counter"||id=="trash"||id=="cutting_board"? .95f:1.9f;
             if(id=="pantry") {
                 for(int x=-1;x<=1;x+=2)for(int z=-1;z<=1;z+=2)Box("Shelf upright",p,new Vector3(x*.87f,.87f,z*.35f),new Vector3(.085f,1.74f,.085f),"317E79");
                 for(int n=0;n<3;n++)Box("Oak supply shelf",p,new Vector3(0,.22f+n*.54f,0),new Vector3(1.9f,.085f,.85f),"895343");
-                Crate(p,new Vector3(-.48f,.27f,0),"protein"); Crate(p,new Vector3(.48f,.27f,0),"greens");
-                for(int n=0;n<3;n++){var item=CreateItem("Bun",p);item.transform.localPosition=new Vector3(-.67f+n*.22f,.79f,0);}
-                for(int n=0;n<4;n++){var item=CreateItem("RawSauce",p);item.transform.localPosition=new Vector3(.25f+n*.16f,.8f,0);}
-                Crate(p,new Vector3(-.48f,1.35f,0),"greens"); Crate(p,new Vector3(.48f,1.35f,0),"protein");
+                // The food on the shelves is live stock, drawn by RestaurantController.TickPantryDisplays.
                 Box("Cream shelf canopy",p,new Vector3(0,1.85f,0),new Vector3(1.95f,.12f,.9f),"F5DBAA");
                 // One aimable hitbox per ingredient shelf (Stage A / A2): the sub-id lets Preview/Act
                 // resolve exactly which ingredient the player is looking at, replacing the hidden Q cycle.
                 PantryShelf(p,"protein",-.48f,0,.62f); PantryShelf(p,"greens",.48f,0,.62f);
                 PantryShelf(p,"bun",-.48f,.62f,1.12f); PantryShelf(p,"sauce",.48f,.62f,1.12f);
-                PantryShelf(p,"greens",-.48f,1.12f,1.8f); PantryShelf(p,"protein",.48f,1.12f,1.8f);
             } else if(id=="plate_rack") {
                 Bench(p,width,"317E79");
                 for(int stack=0;stack<2;stack++)for(int n=0;n<5;n++)Plate(p,new Vector3(stack==0?-.21f:.21f,1+n*.04f,0),.8f);
                 Box("Rack back",p,new Vector3(0,1.39f,-.36f),new Vector3(.86f,.72f,.08f),"895343");
                 for(int n=0;n<7;n++)Bar("Plate divider",p,new Vector3(-.32f+n*.105f,1.42f,-.28f),new Vector3(-.32f+n*.105f,1.68f,-.09f),.025f,"CA9B53");
                 for(int n=0;n<4;n++){var plate=Plate(p,new Vector3(-.26f+n*.15f,1.5f,-.2f),.7f);plate.transform.localRotation=Quaternion.Euler(76,0,0);}
-            } else if(id=="counter") {
+            } else if(id=="counter"||id=="cutting_board") {
                 // Plain one-tile square counter: a place to set plates and ingredients down.
+                // The stand's cutting board is the same counter with a chopping board and knife on top.
+                if(id=="cutting_board"){Box("Chopping board",p,new Vector3(0,1.045f,0),new Vector3(.62f,.04f,.44f),"E2B878");Box("Knife blade",p,new Vector3(.22f,1.075f,-.12f),new Vector3(.2f,.01f,.04f),"D8DEE0");Box("Knife handle",p,new Vector3(.36f,1.078f,-.12f),new Vector3(.09f,.02f,.035f),"302824");}
                 Box("Counter top",p,new Vector3(0,.99f,0),new Vector3(.92f,.07f,.92f),"CA9B53");
                 Box("Counter apron",p,new Vector3(0,.91f,0),new Vector3(.86f,.1f,.86f),"317E79");
                 for(int x=-1;x<=1;x+=2)for(int z=-1;z<=1;z+=2)Box("Counter leg",p,new Vector3(x*.38f,.45f,z*.38f),new Vector3(.08f,.9f,.08f),"317E79");
@@ -162,6 +160,10 @@ namespace RestaurantCity {
             else if(kind=="RawSauce"||kind=="MidnightSauce") {
                 S("Faceted sauce bottle",p,Profile("bottle",new[]{0f,.02f,.2f,.24f,.29f,.3f},new[]{0f,.065f,.065f,.025f,.025f,0f},8),Vector3.zero,Vector3.one,M(kind=="MidnightSauce"?"824DA1":"D96555"));
                 Disk("Bottle cap",p,new Vector3(0,.28f,0),new Vector3(.067f,.037f,.067f),"CA9B53");Box("Cream bottle band",p,new Vector3(0,.12f,.062f),new Vector3(.082f,.079f,.005f),"F5DBAA");
+            } else if(kind=="GroceryBag") {
+                // Milo's paper grocery bag: kraft paper, a folded rim, and a bun and greens peeking out.
+                Box("Kraft bag",p,new Vector3(0,.17f,0),new Vector3(.3f,.34f,.2f),"C9A26B");Box("Folded rim",p,new Vector3(0,.345f,0),new Vector3(.31f,.03f,.21f),"B08A55");
+                Box("Milo stamp",p,new Vector3(0,.2f,.101f),new Vector3(.14f,.09f,.003f),"317E79");Greens(p,new Vector3(-.06f,.33f,0),false);Bun(p,new Vector3(.07f,.35f,0));
             } else if(kind=="Bun")Bun(p,Vector3.zero);
             else if(kind=="RawProtein") {var meat=Box("Raw cut of protein",p,new Vector3(0,.045f,0),new Vector3(.24f,.085f,.18f),"C96C64");meat.transform.localRotation=Quaternion.Euler(0,15,0);for(int i=0;i<3;i++){var fat=Box("Raw marbling",p,new Vector3((i-1)*.057f,.09f,0),new Vector3(.014f,.004f,.13f),"F0BC9D");fat.transform.localRotation=Quaternion.Euler(0,-22,0);}}
             else Patty(p,Vector3.zero,kind);

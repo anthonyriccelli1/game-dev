@@ -42,7 +42,7 @@ namespace RestaurantCity {
             Text(960, 38, 180, 24, "DAY " + s.Day + (s.IsNight ? "  /  NIGHT" : "  /  AFTERNOON"), small);
             Text(960, 62, 180, 25, s.IsNight ? "Orders pay 50% more" : "Nightfall brings opportunity", small);
             Text(1170, 44, 110, 42, "$" + s.Cash, heading);
-            Text(1280, 42, 160, 24, "PANTRY  " + s.Restaurant.Protein + "/" + s.Restaurant.Produce, small);
+            Text(1280, 42, 160, 24, "PANTRY  " + s.Restaurant.Stock("patty") + " patties / " + s.Restaurant.Stock("bun") + " buns", small);
             Text(1280, 67, 120, 24, "HEALTH  " + s.Health, small);
             Meter(new Rect(960, 91, 430, 3), s.Clock / 240, s.IsNight ? coral : teal);
 

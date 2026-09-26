@@ -13,7 +13,6 @@ public static class ArtPackDressing {
     static readonly (string cat, string id, string src, float size)[] Slots = {
         ("Items", "RawProtein", Generic + "Props/SM_Gen_Prop_Food_Meat_01.prefab", .24f),
         ("Items", "Bun", Generic + "Props/SM_Gen_Prop_Food_Bread_01.prefab", .2f),
-        ("Items", "RawGreens", Generic + "Props/SM_Gen_Prop_Food_Vegetable_01.prefab", .22f),
         ("Furniture", "potted_palm", City + "Props/SM_Prop_PotPlant_02.prefab", 1.6f),
         ("Furniture", "flower_pot", City + "Props/SM_Prop_PotPlant_01.prefab", .8f),
         ("Furniture", "planter_box", City + "Props/SM_Prop_Planter_02.prefab", 1.4f),

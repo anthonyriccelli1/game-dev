@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 namespace RestaurantCity {
- public enum KitchenItemKind { RawProtein,PreparedPatty,CookedPatty,BurntPatty,RawGreens,ChoppedGreens,RawSauce,MidnightSauce,Bun,Plate,DirtyPlate }
+ public enum KitchenItemKind { RawProtein,PreparedPatty,CookedPatty,BurntPatty,RawGreens,ChoppedGreens,RawSauce,MidnightSauce,Bun,Plate,DirtyPlate,GroceryBag }
  public enum KitchenActionKind { None,Tap,Hold }
  // Preview describes exactly what a single interact press will do; Act performs it by calling Preview and
  // invoking the very same Apply callback it returned, so the on-screen prompt and the executed action can
@@ -26,7 +26,7 @@ namespace RestaurantCity {
   void BalancePlates(RestaurantState r){if(!r.Owned)return;int missing=PlateCapacity(r)-(CleanPlates+SinkPile+PlatesInPlay);if(missing>0)CleanPlates+=missing;else if(missing<0)CleanPlates=Math.Max(0,CleanPlates+missing);}
   // The street food stand is a small fixed kitchen that uses the same stations and rules as the restaurant.
   public const int StandBase=90000;
-  public static readonly string[] StandKit={"pantry","grill","counter","stand_plates","sink","trash"};
+  public static readonly string[] StandKit={"pantry","grill","counter","stand_plates","sink","trash","prep_bench"};   // prep_bench = the stand's cutting board (StandBase+7)
   public static bool IsStandStation(int id)=>id>StandBase&&id<=StandBase+StandKit.Length;
   public void EnsureStandStations(){
    for(int i=0;i<StandKit.Length;i++){int id=StandBase+1+i;var st=Stations.Find(s=>s.InstanceId==id);if(st==null)Stations.Add(new KitchenStation{InstanceId=id,CatalogId=StandKit[i]});else if(st.CatalogId!=StandKit[i]){var stray=At(id);if(stray!=null)Items.Remove(stray);st.CatalogId=StandKit[i];st.Progress=0;}}
@@ -66,35 +66,56 @@ namespace RestaurantCity {
    string name=building!=null?RestaurantCatalog.Dish(building.DishId).Name:"This plate";
    return Fail(name+" doesn't use "+ComponentLabel(component)+".",out message);
   }
+  // Each pantry shelf holds one real ingredient; stock is counted and runs out per ingredient.
+  static KitchenItemKind ShelfKind(string shelf)=>shelf=="protein"?KitchenItemKind.RawProtein:shelf=="greens"?KitchenItemKind.RawGreens:shelf=="bun"?KitchenItemKind.Bun:KitchenItemKind.RawSauce;
+  static string OutOf(IngredientDef ing)=>ing.Source==Ingredients.Stash?"Out of "+ing.Name.ToLower()+". Find a night stash.":"Out of "+ing.Name.ToLower()+". Buy more at Milo's.";
   KitchenAction PreviewPantry(GameState game,string actor,KitchenItem hand,string subId){
+   var r=game.Restaurant;
+   // Groceries from Milo's are unpacked into the pantry with one press, whichever shelf you look at.
+   if(hand!=null&&hand.Kind==KitchenItemKind.GroceryBag){
+    var bag=hand;int fits=bag.Components.Count(id=>r.Room(id)>0);
+    if(fits==0)return Blocked("The pantry is full for what's in this bag. Cook some of it first.");
+    return Tap("Unpack groceries ("+bag.Components.Count+" items)",()=>{var left=new List<string>();foreach(var id in bag.Components)if(r.AddStock(id,1)==0)left.Add(id);bag.Components=left;if(left.Count==0)Items.Remove(bag);return left.Count==0?"Groceries unpacked.":"Unpacked what fits; "+left.Count+" items stay in the bag.";});
+   }
    string choice=string.IsNullOrEmpty(subId)?"protein":subId;
-   if(!new[]{"protein","greens","bun","sauce"}.Contains(choice))return Blocked("Choose protein, greens, bun or sauce.");
-   if(choice=="sauce"&&!game.RecipeUnlocked)return Blocked("Needs the midnight recipe.");
+   var ing=Ingredients.ForShelf(choice);
+   if(ing==null)return Blocked("Look at a shelf: patties, greens, buns or sauce.");
+   if(choice=="sauce"&&!game.Knows("midnight"))return Blocked("Needs the midnight recipe.");
    if(hand!=null&&hand.Kind==KitchenItemKind.Plate&&choice=="bun"){
     // Fewer-press shortcut: a bun needs no prep, so it can go straight onto a plate you are already carrying.
     if(!CanAddComponent(hand,"bun",out string reason))return Blocked(reason);
-    if(game.Restaurant.Produce<1)return Blocked("Out of buns. Visit the city supplier.");
+    if(r.Stock("bun")<1)return Blocked(OutOf(ing));
     var plate=hand;
-    return Tap("Add bun to plate",()=>{game.Restaurant.Produce--;ShiftCosts+=1;plate.Components.Add("bun");return "Added a bun to the plate.";});
+    return Tap("Add bun to plate",()=>{r.UseStock("bun");ShiftCosts+=ing.UnitCost;plate.Components.Add("bun");return "Added a bun to the plate.";});
    }
    if(hand!=null&&hand.Kind==KitchenItemKind.Plate&&choice=="sauce"){
     // Midnight sauce is squeezed straight onto a held burger plate (works at the stand, which has no prep bench).
     if(!CanAddComponent(hand,"midnight_sauce",out string reason))return Blocked(reason);
-    if(game.Restaurant.Protein<1)return Blocked("Out of sauce ingredients. Buy patties at Milo's.");
+    if(r.Stock("midnight_sauce")<1)return Blocked(OutOf(ing));
     var plate=hand;
-    return Tap("Add midnight sauce to plate",()=>{game.Restaurant.Protein--;ShiftCosts+=10f/6;plate.Components.Add("midnight_sauce");return "Midnight sauce added. That's a midnight burger if it has a bun and patty!";});
+    return Tap("Add midnight sauce to plate",()=>{r.UseStock("midnight_sauce");plate.Components.Add("midnight_sauce");return "Midnight sauce added. That's a midnight burger if it has a bun and patty!";});
    }
-   // Changed your mind? Put an untouched ingredient back on its own shelf for a full refund.
+   // Changed your mind? Put an untouched ingredient back on its own shelf.
    if(hand!=null){
-    var shelfKind=choice=="protein"?KitchenItemKind.RawProtein:choice=="greens"?KitchenItemKind.RawGreens:choice=="bun"?KitchenItemKind.Bun:KitchenItemKind.RawSauce;
-    if(hand.Kind!=shelfKind)return Blocked("Your hands are full. Put it on a counter or its own shelf.");
-    var back=hand;int bp=choice=="protein"||choice=="sauce"?1:0,bq=choice=="greens"?2:choice=="bun"?1:0;
-    return Tap("Put "+Label(hand).ToLower()+" back",()=>{game.Restaurant.Protein+=bp;game.Restaurant.Produce+=bq;ShiftCosts=Math.Max(0,ShiftCosts-(bp*10f/6+bq));Items.Remove(back);return "Put it back.";});
+    if(hand.Kind!=ShelfKind(choice))return Blocked("Your hands are full. Put it on a counter or its own shelf.");
+    var back=hand;
+    return Tap("Put "+Label(hand).ToLower()+" back",()=>{r.AddStock(ing.Id,1);ShiftCosts=Math.Max(0,ShiftCosts-ing.UnitCost);Items.Remove(back);return "Put it back.";});
    }
-   int protein=choice=="protein"||choice=="sauce"?1:0,produce=choice=="greens"?2:choice=="bun"?1:0;
-   if(game.Restaurant.Protein<protein||game.Restaurant.Produce<produce)return Blocked("Out of ingredients. Visit the city supplier.");
-   var kind=choice=="protein"?KitchenItemKind.RawProtein:choice=="greens"?KitchenItemKind.RawGreens:choice=="bun"?KitchenItemKind.Bun:KitchenItemKind.RawSauce;
-   return Tap("Take "+PantryLabel(choice),()=>{game.Restaurant.Protein-=protein;game.Restaurant.Produce-=produce;ShiftCosts+=protein*10f/6+produce;var created=Create(kind,actor);return "Picked up "+Label(created);});
+   if(r.Stock(ing.Id)<1)return Blocked(OutOf(ing));
+   return Tap("Take "+PantryLabel(choice)+"  ("+r.Stock(ing.Id)+" left)",()=>{r.UseStock(ing.Id);ShiftCosts+=ing.UnitCost;var created=Create(ShelfKind(choice),actor);return "Picked up "+Label(created);});
+  }
+  // Milo's shop: pay for the cart and carry it home in a grocery bag (merges with a bag you're already holding).
+  public bool BuyGroceries(GameState game,string actor,List<StockLine> cart,out string message){
+   var r=game.Restaurant;var hand=Hold(actor);
+   if(!r.Owned&&!game.StandBuilt)return Fail("Set up your food stand first ($10).",out message);
+   if(cart==null||cart.All(c=>c.Count<=0))return Fail("Your cart is empty.",out message);
+   if(hand!=null&&hand.Kind!=KitchenItemKind.GroceryBag)return Fail("Your hands are full. Put down what you're carrying first.",out message);
+   int total=0;
+   foreach(var line in cart){if(line.Count<=0)continue;var d=Ingredients.Get(line.Id);if(d==null)return Fail("Unknown item.",out message);string why=r.IngredientLock(game,d);if(why!=null)return Fail(d.Name+": "+why+".",out message);total+=d.PackPrice*line.Count;}
+   if(game.Cash<total)return Fail("That's $"+total+". You have $"+game.Cash+".",out message);
+   game.Cash-=total;var bag=hand??Create(KitchenItemKind.GroceryBag,actor);int units=0;
+   foreach(var line in cart){var d=Ingredients.Get(line.Id);for(int i=0;i<line.Count*d.PackSize;i++){bag.Components.Add(d.Id);units++;}}
+   message="Paid $"+total+". "+units+" items in your grocery bag: unpack them at your pantry.";return true;
   }
   public KitchenAction Preview(GameState game,string actor,int stationId,string subId){
    bool stand=IsStandStation(stationId);
@@ -199,7 +220,8 @@ namespace RestaurantCity {
    item.Holder="table:"+orderId;item.TableInstanceId=order.SeatInstanceId;return true;
   }
   // --- The street stand: guests sit at two sidewalk tables; you bring the food to them, then clear and wash. ---
-  static string DishName(string dish)=>dish=="midnight"?"midnight burger":"burger";
+  static string DishName(string dish)=>dish=="midnight"?"midnight burger":dish=="salad"?"salad":"burger";
+  static string HowTo(string dish)=>dish=="salad"?"chop greens on the board, then put them on a plate":"plate + bun + cooked patty"+(dish=="midnight"?" + midnight sauce":"");
   public StandOrder SeatedAt(GameState game,int table)=>game.StandQueue.Find(o=>o.Stage>0&&o.Table==table);
   public string StandGuestPreview(GameState game,string actor,StandOrder o){
    if(o==null)return "They've left.";
@@ -207,8 +229,8 @@ namespace RestaurantCity {
    if(o.Stage==2)return "Eating. They'll leave the plate on the table.";
    string dish=RecipeOf(Hold(actor));
    if(dish==o.Dish)return "E / A  Serve the "+DishName(o.Dish)+"  /  $"+StandPrice(game,o.Dish);
-   if(dish=="burger"||dish=="midnight")return "They ordered a "+DishName(o.Dish)+", not a "+DishName(dish)+".";
-   return "Wants a "+DishName(o.Dish)+"\nBuild it: plate + bun + cooked patty"+(o.Dish=="midnight"?" + midnight sauce":"")+", then bring it here.";
+   if(dish!="")return "They ordered a "+DishName(o.Dish)+", not a "+DishName(dish)+".";
+   return "Wants a "+DishName(o.Dish)+"\nBuild it: "+HowTo(o.Dish)+", then bring it here.";
   }
   public string StandTablePreview(GameState game,string actor,int table){
    if(table<0||table>=game.StandTableDirty.Count)return "Table";
@@ -221,7 +243,7 @@ namespace RestaurantCity {
    if(order==null)return Fail("That customer has left.",out message);
    if(order.Stage==0)return Fail("They're still waiting for a free table. Clear a dirty one.",out message);
    if(order.Stage==2)return Fail("They're already eating.",out message);
-   if(dish!=order.Dish)return Fail(dish==""?"Build a "+DishName(order.Dish)+" first: plate + bun + cooked patty"+(order.Dish=="midnight"?" + sauce.":"."):"They ordered a "+DishName(order.Dish)+".",out message);
+   if(dish!=order.Dish)return Fail(dish==""?"Make a "+DishName(order.Dish)+" first: "+HowTo(order.Dish)+".":"They ordered a "+DishName(order.Dish)+".",out message);
    int price=StandPrice(game,dish);bool fast=order.Patience>order.MaxPatience*.6f;if(fast)price+=2;
    game.Cash+=price;if(fast)game.GainReputation(Reputation.StandFast,"Stand sales");game.Served++;
    order.Stage=2;order.EatLeft=GameState.StandEatSeconds;Items.Remove(item);   // the plate stays on their table until they finish
@@ -240,7 +262,7 @@ namespace RestaurantCity {
    game.StandTableDirty[table]=false;var d=Create(KitchenItemKind.DirtyPlate,actor);d.StandPlate=true;
    message="Dirty plate. Wash it at the stand sink.";return true;
   }
-  public static int StandPrice(GameState game,string dish)=>(dish=="midnight"?18:12)*(game.IsNight?3:2)/2;
+  public static int StandPrice(GameState game,string dish)=>(dish=="midnight"?18:dish=="salad"?10:12)*(game.IsNight?3:2)/2;
   public int DirtyAtTable(int table)=>Items.Count(i=>i.Kind==KitchenItemKind.DirtyPlate&&i.TableInstanceId==table&&i.Holder.StartsWith("table:"));
   public bool ClearTable(GameState game,string actor,int table,out string message){
    if(Hold(actor)!=null)return Fail("Your hands are full.",out message);var item=Items.Find(i=>i.Kind==KitchenItemKind.DirtyPlate&&i.TableInstanceId==table&&i.Holder.StartsWith("table:"));
@@ -248,6 +270,7 @@ namespace RestaurantCity {
   }
   public bool Discard(GameState game,string actor,out string message){
    var item=Hold(actor);if(item==null)return Fail("Your hands are empty.",out message);
+   if(item.Kind==KitchenItemKind.GroceryBag)return Fail("Unpack your groceries at the pantry.",out message);
    if(item.Kind==KitchenItemKind.DirtyPlate)return Fail("Wash the dirty plate at the sink.",out message);
    if(item.Kind==KitchenItemKind.Plate&&item.StandPlate){Items.Remove(item);if(item.Components.Count>0)game.StandDirty++;else game.StandClean++;message=item.Components.Count>0?"Food tossed. The plate goes to the stand sink.":"Plate returned to the stand stack.";return true;}
    if(item.Kind==KitchenItemKind.Plate&&item.Disposable){Items.Remove(item);message=item.Components.Count>0?"Food and paper plate tossed.":"Paper plate tossed.";return true;}
@@ -255,7 +278,7 @@ namespace RestaurantCity {
    if(item.Kind==KitchenItemKind.Plate)CleanPlates++;Items.Remove(item);message="Item discarded; clean plates return to the rack.";return true;
   }
   public string RecipeOf(KitchenItem item)=>item==null||item.Kind!=KitchenItemKind.Plate?"":RecipeBook.Match(item.Components);
-  public string Label(KitchenItem item){if(item==null)return "Empty hands";string dish=RecipeOf(item);if(dish!="")return RestaurantCatalog.Dish(dish).Name;switch(item.Kind){case KitchenItemKind.RawProtein:return "Raw patty";case KitchenItemKind.PreparedPatty:return "Prepared patty";case KitchenItemKind.CookedPatty:return "Cooked patty";case KitchenItemKind.BurntPatty:return "Burnt patty";case KitchenItemKind.RawGreens:return "Uncut greens";case KitchenItemKind.ChoppedGreens:return "Chopped greens";case KitchenItemKind.RawSauce:return "Midnight ingredients";case KitchenItemKind.MidnightSauce:return "Midnight sauce";case KitchenItemKind.DirtyPlate:return "Dirty plate";case KitchenItemKind.Plate:return item.Components.Count==0?(item.Disposable?"Paper plate":"Clean plate"):"Partly assembled dish";default:return "Bun";}}
+  public string Label(KitchenItem item){if(item==null)return "Empty hands";string dish=RecipeOf(item);if(dish!="")return RestaurantCatalog.Dish(dish).Name;switch(item.Kind){case KitchenItemKind.GroceryBag:return "Grocery bag ("+item.Components.Count+" items)";case KitchenItemKind.RawProtein:return "Raw patty";case KitchenItemKind.PreparedPatty:return "Prepared patty";case KitchenItemKind.CookedPatty:return "Cooked patty";case KitchenItemKind.BurntPatty:return "Burnt patty";case KitchenItemKind.RawGreens:return "Uncut greens";case KitchenItemKind.ChoppedGreens:return "Chopped greens";case KitchenItemKind.RawSauce:return "Midnight ingredients";case KitchenItemKind.MidnightSauce:return "Midnight sauce";case KitchenItemKind.DirtyPlate:return "Dirty plate";case KitchenItemKind.Plate:return item.Components.Count==0?(item.Disposable?"Paper plate":"Clean plate"):"Partly assembled dish";default:return "Bun";}}
   public void Tick(GameState game,float seconds){
    if(seconds<=0||float.IsNaN(seconds)||float.IsInfinity(seconds))return;
    BalancePlates(game.Restaurant);

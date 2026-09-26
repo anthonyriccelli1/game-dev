@@ -127,7 +127,7 @@ namespace RestaurantCity {
                 if (State.Restaurant.Owned && State.Restaurant.Layout.Count < 5) return "Furnish your kitchen\nKeep the stand running. Inside, press B to buy a pantry, grill, plate rack, assembly station, sink and a table.";
                 if (State.Restaurant.Owned) return "Your restaurant, your rules\nB to decorate inside. Tab to manage service, menu and staff.";
                 if (!State.StandBuilt) return "Make it yours\nSet up the coral food stand for $10.";
-                if (State.Restaurant.Protein == 0 || State.Restaurant.Produce == 0) return "Stock the kitchen\nBuy patties and buns from Milo's crates across the street.";
+                if (State.Restaurant.Stock("patty") == 0 || State.Restaurant.Stock("bun") == 0) return "Stock the kitchen\nTalk to Milo across the street and buy patties and buns.";
                 if (!State.StandOpen && State.Served == 0) return "Open for business\nPress E on the sign by your stand to start serving.";
                 if (State.Served == 0) return "Your first customer\nPatty on the grill > paper plate > bun > cooked patty > serve.";
                 if (!State.RecipeUnlocked) return State.IsNight ? "A recipe after dark\nExplore the marked rival alley. You can retreat." : "Build your reputation\nKeep serving. The alley stash opens at night.";

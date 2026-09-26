@@ -5,7 +5,7 @@ namespace RestaurantCity {
     // The street food stand and Milo's market, built from the same stations and art as the restaurant.
     public partial class RestaurantController {
         readonly Dictionary<int, GameObject> standObjects = new Dictionary<int, GameObject>();
-        static readonly float[] StandX = { -2.6f, -1.0f, .6f, 1.6f, 2.6f, 3.9f };
+        static readonly float[] StandX = { -2.6f, -1.0f, .6f, 1.6f, 2.6f, 3.9f, -3.9f };   // the cutting board sits at the left end, behind the sign
         const float StandZ = 8.3f;
 
         public GameObject StationObject(int id) {
@@ -26,7 +26,7 @@ namespace RestaurantCity {
             for (int i = 0; i < KitchenState.StandKit.Length; i++) {
                 int id = KitchenState.StandBase + 1 + i; string kind = KitchenState.StandKit[i];
                 if (standObjects.TryGetValue(id, out var existing) && existing) continue;
-                var obj = kind == "stand_plates" ? KitchenArt.CreateStation("plate_rack", Game.Stand.transform) : CreateFurnishing(kind, Game.Stand.transform);
+                var obj = kind == "stand_plates" ? KitchenArt.CreateStation("plate_rack", Game.Stand.transform) : kind == "prep_bench" ? KitchenArt.CreateStation("cutting_board", Game.Stand.transform) : CreateFurnishing(kind, Game.Stand.transform);
                 // The rack's decorative plates are replaced by a live stack showing the real count.
                 if (kind == "stand_plates") foreach (Transform part in obj.GetComponentsInChildren<Transform>(true)) if (part.name == "Glazed cream plate") part.gameObject.SetActive(false);
                 obj.name = "Stand " + kind;
@@ -144,6 +144,7 @@ namespace RestaurantCity {
 
         void TickStreet(float seconds) {
             var s = Game.State;
+            TickPantryDisplays();
             s.Players = Game.CoOp ? Mathf.Max(1, Game.CoOp.PlayerCount) : 1;
             if (standSignText) standSignText.text = s.StandOpen ? "<color=#4FCB7A>OPEN</color>\nBurgers" : "<color=#E1543B>CLOSED</color>";
             if (!standPlatesText && standObjects.TryGetValue(KitchenState.StandBase + 4, out var rack) && rack) { standPlatesText = WorldCaption(rack.transform, "", new Vector3(0, 2.1f, 0), .014f); }
@@ -183,7 +184,7 @@ namespace RestaurantCity {
                 if (motion) { motion.Walking = walking; motion.SetMood(ratio); }
                 int filled = Mathf.Max(1, Mathf.CeilToInt(ratio * 8)); string color = ratio > .55f ? "#4FCB7A" : ratio > .25f ? "#E8C34A" : "#E1543B";
                 var name = RestaurantCatalog.Customers[Mathf.Clamp(order.Type, 0, RestaurantCatalog.Customers.Length - 1)].Name;
-                string want = order.Dish == "midnight" ? "Midnight burger!" : "Burger, please!";
+                string want = order.Dish == "midnight" ? "Midnight burger!" : order.Dish == "salad" ? "Salad, please!" : "Burger, please!";
                 SetBubble(standBubbles[order.Id], name + "\n" + (order.Stage == 2 ? "<color=#4FCB7A>Mmm!</color>" : (order.Stage == 0 ? "Waiting for a table\n" : "") + want + "\n<color=" + color + ">" + new string('|', filled) + "</color>"));
             }
             foreach (var id in new List<int>(standGuests.Keys)) if (!live.Contains(id)) { if (standGuests[id]) Destroy(standGuests[id]); standGuests.Remove(id); standBubbles.Remove(id); guestsPastStand.Remove(id); }
@@ -207,17 +208,18 @@ namespace RestaurantCity {
             var milo = RestaurantArt.CreateCharacter(5, world); milo.name = "Milo shopkeeper";
             milo.transform.position = walkIn ? new Vector3(-15.5f, .06f, 18) : new Vector3(-12, 0, 10.3f); milo.transform.rotation = Quaternion.Euler(0, 180, 0);
             var motion = milo.GetComponent<CharacterMotion>(); if (motion) motion.SetMood(.9f);
+            var talk = milo.AddComponent<CapsuleCollider>(); talk.radius = .45f; talk.height = 1.8f; talk.center = Vector3.up * .9f;
+            milo.AddComponent<Interactable>().Kind = InteractionKind.Supplier;
             var caption = WorldCaption(milo.transform, "MILO\nFresh every morning", new Vector3(0, 2.35f, 0), .02f);
             caption.transform.rotation = Quaternion.Euler(0, 0, 0);
-            MakeCrate(world, "protein", walkIn ? new Vector3(-17.15f, .06f, 15.4f) : new Vector3(-13.3f, 0, 7.6f), "MEAT\n6 patties / $10");
-            MakeCrate(world, "produce", walkIn ? new Vector3(-13.85f, .06f, 15.4f) : new Vector3(-10.7f, 0, 7.6f), "PRODUCE\n6 buns & greens / $6");
+            MakeCrate(world, "protein", walkIn ? new Vector3(-17.15f, .06f, 15.4f) : new Vector3(-13.3f, 0, 7.6f), "FRESH MEAT");
+            MakeCrate(world, "produce", walkIn ? new Vector3(-13.85f, .06f, 15.4f) : new Vector3(-10.7f, 0, 7.6f), "PRODUCE");
         }
 
         void MakeCrate(Transform world, string contents, Vector3 position, string label) {
             var crate = KitchenArt.SupplyCrate(world, contents);
             crate.transform.position = position;
             var box = crate.AddComponent<BoxCollider>(); box.center = new Vector3(0, .75f, 0); box.size = new Vector3(1.2f, 1.5f, 1f);
-            crate.AddComponent<Interactable>().Kind = contents == "protein" ? InteractionKind.SupplyProtein : InteractionKind.SupplyProduce;
             bool indoor = GameObject.Find("Milo's walk-in"); var text = WorldCaption(crate.transform, label, new Vector3(0, indoor ? 1.55f : 1.95f, 0), indoor ? .011f : .018f);
             text.transform.rotation = Quaternion.Euler(0, 0, 0);
         }
@@ -225,16 +227,10 @@ namespace RestaurantCity {
         // Prompt + action for Milo's crates and the stand customer. Returns true when handled.
         bool InspectStreet(FirstPersonPlayer p, Interactable city, bool pressed) {
             var k = Game.State.Kitchen; string actor = p.ActorId;
-            if (city.Kind == InteractionKind.SupplyProtein || city.Kind == InteractionKind.SupplyProduce) {
-                bool protein = city.Kind == InteractionKind.SupplyProtein;
-                int have = protein ? Data.Protein : Data.Produce;
-                prompts[actor] = (protein ? "Milo's meat crate" : "Milo's produce crate") + "  (you have " + have + ")\n" +
-                    (!Game.State.StandBuilt && !Data.Owned ? "Set up your food stand first" : "E / A  Buy 6 " + (protein ? "patties  /  $10" : "buns & greens  /  $6"));
-                if (pressed) {
-                    string m;
-                    if (!Data.Restock(Game.State, protein, out m) && Game.State.Cash < (protein ? 10 : 6)) Data.RequestSupplyHelp(Game.State, protein, out m);
-                    Feedback(m); Game.Save();
-                }
+            if (city.Kind == InteractionKind.Supplier && city.name == "Milo shopkeeper") {
+                var held = k.Hold(actor);
+                prompts[actor] = "Milo\n" + (!Game.State.StandBuilt && !Data.Owned ? "Set up your food stand first" : held != null && held.Kind != KitchenItemKind.GroceryBag ? "Free your hands to shop" : "E / A  Shop");
+                if (pressed && (Game.State.StandBuilt || Data.Owned)) ShowPanel("Supplies");
                 return true;
             }
             if (city.Kind == InteractionKind.StandSign) {

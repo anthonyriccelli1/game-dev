@@ -81,7 +81,7 @@ namespace RestaurantCity {
             serviceBadge.gameObject.SetActive(visible && Owner.Inside && !Owner.PanelOpen && !Owner.PlacementActive);
             rank.text = s.Stars >= 2 ? "Two stars / neighborhood favorite" : "One star / a new beginning";
             status.text = "Satisfaction " + s.Satisfaction.ToString("0") + "%    |    " + (s.Open ? "Open for service" : "Closed for arrivals") + "\n" + s.Served + " served    |    Ambience " + s.Ambience + "    |    Cleanliness " + s.Cleanliness.ToString("0") + "%";
-            stock.text = "Pantry: " + s.Produce + " produce / " + s.Protein + " protein\n" + s.Seats + " seats    |    " + s.CookSlots + " cooking stations";
+            stock.text = "Pantry: " + string.Join(", ", s.Pantry.Where(l => l.Count > 0).Select(l => l.Count + " " + Ingredients.Name(l.Id))) + "\n" + s.Seats + " seats    |    " + s.CookSlots + " cooking stations";
             cash.text = "$" + Owner.Game.State.Cash;
             hints.text = Owner.PlacementActive ? "Place with left click    /    R Rotate " + (Owner.PreviewRotation * 90) + " degrees    /    Esc Cancel    /    B Return to catalog" : "B  Catalog     /     Tab  Manage restaurant     /     E  Interact     /     Esc  Pause";
             notice.text = Owner.PlacementActive ? Owner.Hint : !string.IsNullOrEmpty(Owner.FocusPrompt) ? Owner.FocusPrompt : Owner.Game.Notice;
@@ -91,7 +91,7 @@ namespace RestaurantCity {
             summary.Append(waiting).Append(" waiting  /  ").Append(cooking).Append(" cooking  /  ").Append(ready).Append(" ready\nTab to manage orders");
             orderSummary.text = summary.ToString();
             // The crew "phone" (Staff tab) works before you own the restaurant, as soon as the stand is up.
-            bool panelVisible = visible || ((Owner.Panel == "Map" || Owner.Panel == "Listing" || (Owner.Panel == "Staff" && Owner.Game.State.StandBuilt)) && Owner.Game.Started && !Owner.Game.Paused);
+            bool panelVisible = visible || ((Owner.Panel == "Map" || Owner.Panel == "Listing" || Owner.Panel == "Supplies" || (Owner.Panel == "Staff" && Owner.Game.State.StandBuilt)) && Owner.Game.Started && !Owner.Game.Paused);
             if (!Owner.PanelOpen || !panelVisible) {
                 if (modal) { modal.gameObject.SetActive(false); Destroy(modal.gameObject); modal = null; }
                 tickLabels.Clear(); signature = ""; return;
@@ -103,7 +103,7 @@ namespace RestaurantCity {
 
         string Signature() {
             var s = Owner.Data;
-            var key = new StringBuilder(Owner.Panel).Append('|').Append(category).Append('|').Append(Owner.Game.State.Cash).Append('|').Append(s.Stars).Append('|').Append(s.Open).Append('|').Append(s.Produce).Append('|').Append(s.Protein).Append('|').Append(s.Layout.Count).Append('|').Append(s.Reviews.Count).Append('|').Append(s.Served).Append('|').Append(Owner.SelectedInstanceId).Append('|').Append(Owner.Game.State.RecipeUnlocked).Append('|').Append(Owner.Game.State.Xp).Append('|').Append(s.CanCustomize).Append(Owner.AtSupplier);
+            var key = new StringBuilder(Owner.Panel).Append('|').Append(category).Append('|').Append(Owner.Game.State.Cash).Append('|').Append(s.Stars).Append('|').Append(s.Open).Append('|').Append(string.Join(",", s.Pantry.Select(l => l.Id + l.Count))).Append(shopCategory).Append(string.Join(",", cart.Select(c => c.Id + c.Count))).Append('|').Append(s.Layout.Count).Append('|').Append(s.Reviews.Count).Append('|').Append(s.Served).Append('|').Append(Owner.SelectedInstanceId).Append('|').Append(Owner.Game.State.RecipeUnlocked).Append('|').Append(Owner.Game.State.Xp).Append('|').Append(s.CanCustomize).Append(Owner.AtSupplier);
             foreach (var dish in s.ActiveMenu) key.Append(dish);
             key.Append('|').Append(Owner.Game.State.Stock);
             foreach (var order in s.Orders) key.Append('|').Append(order.Id).Append(':').Append(order.Stage);
@@ -119,10 +119,12 @@ namespace RestaurantCity {
             modal = Block(canvas.transform, "Restaurant management", 0, 105, 1440, 735, new Color(ink.r, ink.g, ink.b, .60f));
             var sheet = Block(modal, "Order pad", 110, 12, 1220, 710, paper);
             Block(sheet, "Top accent", 0, 0, 1220, 7, teal);
-            Label(sheet, Owner.Panel == "Listing" ? "For sale later." : Owner.Panel == "Supplies" ? "Milo's market pantry." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "How every dish is built." : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
+            Label(sheet, Owner.Panel == "Listing" ? "For sale later." : Owner.Panel == "Supplies" ? "Milo's Market." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "How every dish is built." : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
             Button(sheet, "Close  x", 1060, 24, 130, 36, () => Owner.ClosePanel(), ink, paper);
             Label(sheet, "Time pauses while management is open.", 823, 62, 365, 19, 12, muted, false, TextAnchor.MiddleRight);
             string[] panels = { "Catalog", "Service", "Menu", "Cookbook", "Staff", "Map", "Reviews", "Furniture" };
+            // Milo's shop and property listings are places in the city, not restaurant management: no tabs.
+            if (Owner.Panel == "Supplies" || Owner.Panel == "Listing") panels = new string[0];
             for (int i = 0; i < panels.Length; i++) {
                 string tab = panels[i]; bool active = Owner.Panel == tab;
                 Button(sheet, tab == "Catalog" ? "Shop" : tab == "Furniture" ? "Arrange" : tab, 30 + i * 114, 78, 108, 35, () => { Owner.ShowPanel(tab); signature = ""; Refresh(); }, active ? teal : pale, active ? white : ink);
@@ -182,22 +184,19 @@ namespace RestaurantCity {
             foreach (var dish in RestaurantCatalog.Dishes) {
                 if (dish.Id != "burger" && dish.Id != "salad" && dish.Id != "midnight") continue; var entry = dish; int col = index % 2, row = index / 2; index++;
                 var card = Block(content, entry.Name, col * 580, row * 155, 562, 142, white);
-                bool midnight = entry.RequiresMidnight && !Owner.Game.State.RecipeUnlocked;
-                bool locked = midnight || entry.RequiredStars > Owner.Data.Stars || (!string.IsNullOrEmpty(entry.Equipment) && !Owner.Data.HasEquipment(entry.Equipment));
+                bool midnight = !Owner.Game.State.Knows(entry.Id);
+                bool locked = !Owner.Data.IsDishAvailable(Owner.Game.State, entry.Id);
                 bool active = Owner.Data.ActiveMenu.Contains(entry.Id);
                 Label(card, entry.Name, 18, 13, 364, 30, 23, ink, true);
                 Label(card, "$" + entry.Price, 441, 13, 101, 30, 23, teal, true, TextAnchor.MiddleRight);
-                Label(card, entry.ProduceCost + " produce  +  " + entry.ProteinCost + " protein   /   " + entry.CookSeconds.ToString("0") + "s to cook", 18, 50, 521, 25, 15, muted);
+                Label(card, "Uses " + string.Join(" + ", Ingredients.For(entry.Id).Select(Ingredients.Name)) + "   /   " + entry.CookSeconds.ToString("0") + "s to cook", 18, 50, 521, 25, 15, muted);
                 string help = midnight ? "Find the midnight recipe in the rival alley after dark." : entry.RequiredStars > Owner.Data.Stars ? "Reach " + entry.RequiredStars + " stars to unlock this recipe." : locked ? "Needs " + EquipmentName(entry.Equipment) + " from the shop." : active ? "Guests can order this dish." : "Add this dish to offer it to arriving guests.";
                 Label(card, help, 18, 85, 335, 43, 14, ink);
                 Button(card, locked ? "Locked" : active ? "On menu" : "Add to menu", 372, 87, 171, 35, () => Owner.ToggleDish(entry.Id), active ? teal : pale, active ? white : ink, !locked);
             }
             var pantry = Block(sheet, "Pantry", 30, 589, 1160, 61, ink);
-            Label(pantry, "Pantry: " + Owner.Data.Produce + " produce / " + Owner.Data.Protein + " protein", 16, 16, 470, 33, 18, paper, true);
-            if (Owner.AtSupplier) {
-                Button(pantry, "6 produce / $6", 585, 13, 253, 35, () => Owner.Restock(false), teal, white);
-                Button(pantry, "6 protein / $10", 856, 13, 287, 35, () => Owner.Restock(true), teal, white);
-            } else Label(pantry, "Restock at Milo's green market across the street.", 524, 16, 620, 35, 17, paper, true);
+            Label(pantry, "Pantry: " + string.Join("   ", Ingredients.All.Where(i => Owner.Data.Stock(i.Id) > 0 || i.Source == Ingredients.Milo && i.Recipe == null).Select(i => Ingredients.Name(i.Id) + " " + Owner.Data.Stock(i.Id))), 16, 16, 760, 33, 17, paper, true);
+            Label(pantry, "Restock by talking to Milo.", 800, 16, 344, 35, 16, paper, false, TextAnchor.MiddleRight);
         }
 
         void BuildCookbook(RectTransform sheet) {
@@ -234,21 +233,42 @@ namespace RestaurantCity {
             Label(soon, "Buying a second restaurant arrives once workers can keep The Odd Table running while you're across town. Everything on the checklist still counts toward it.", 24, 66, 382, 200, 17, paper);
         }
 
+        // Milo's shop: picture cards by category, a cart, and one Purchase at the counter. Groceries go home in a bag.
+        string shopCategory = "All";
+        readonly List<StockLine> cart = new List<StockLine>();
+        int CartCount(string id) { var l = cart.Find(c => c.Id == id); return l == null ? 0 : l.Count; }
+        void AddToCart(string id, int delta) { var l = cart.Find(c => c.Id == id); if (l == null) cart.Add(l = new StockLine { Id = id }); l.Count = Mathf.Max(0, l.Count + delta); cart.RemoveAll(c => c.Count <= 0); signature = ""; }
         void BuildSupplies(RectTransform sheet) {
-            Label(sheet, "Bring something good back to your kitchen.", 35, 146, 1120, 45, 25, ink, true);
-            Label(sheet, "Buy six portions at a time. A refrigerator doubles pantry storage from 24 to 48 of each ingredient.", 35, 200, 1120, 40, 18, muted);
-            var produce = Block(sheet, "Market produce", 35, 272, 553, 237, white);
-            Label(produce, "Fresh produce", 24, 23, 495, 42, 31, teal, true);
-            Label(produce, "Salads, soups, burger toppings and moonberry tarts.\nIn your pantry: " + Owner.Data.Produce + " / " + Owner.Data.StockLimit, 24, 80, 495, 69, 19, ink);
-            Button(produce, "6 portions / $6", 24, 171, 503, 44, () => Owner.Restock(false), teal, white, Owner.AtSupplier);
-            var protein = Block(sheet, "Market protein", 608, 272, 577, 237, white);
-            Label(protein, "Kitchen protein", 24, 23, 524, 42, 31, coral, true);
-            Label(protein, "Hearty burgers, comforting soup and rare midnight buns.\nIn your pantry: " + Owner.Data.Protein + " / " + Owner.Data.StockLimit, 24, 80, 524, 69, 19, ink);
-            Button(protein, "6 portions / $10", 24, 171, 527, 44, () => Owner.Restock(true), teal, white, Owner.AtSupplier);
-            var stand = Block(sheet, "Street stand supplies", 35, 531, 1150, 109, ink);
-            Label(stand, "Keep the street stand cooking", 21, 15, 765, 32, 23, paper, true);
-            Label(stand, "Stand ingredients: " + Owner.Game.State.Stock + " / 99   |   Separate from your restaurant pantry.", 21, 58, 767, 34, 16, paper);
-            Button(stand, "3 stand ingredients / $6", 816, 34, 313, 43, () => Owner.RestockStand(), teal, white, Owner.AtSupplier);
+            var st = Owner.Game.State; var d = Owner.Data;
+            Label(sheet, "\"Fresh every morning. What'll it be?\"  - Milo", 35, 136, 780, 28, 17, muted);
+            var cats = new List<string> { "All" }; cats.AddRange(Ingredients.Categories);
+            for (int i = 0; i < cats.Count; i++) { string c = cats[i]; bool on = shopCategory == c; Button(sheet, c, 35 + i * 128, 170, 120, 32, () => { shopCategory = c; signature = ""; }, on ? teal : pale, on ? white : ink); }
+            var items = Ingredients.All.Where(x => shopCategory == "All" || x.Category == shopCategory).ToList();
+            var grid = Scroller(sheet, 35, 212, 790, 445, Mathf.CeilToInt(items.Count / 4f) * 234);
+            for (int i = 0; i < items.Count; i++) {
+                var ing = items[i]; string id = ing.Id; string why = d.IngredientLock(st, ing);
+                var card = Block(grid, "Shop " + ing.Name, (i % 4) * 196, (i / 4) * 234, 186, 224, why == null ? white : new Color(.92f, .91f, .86f));
+                var icon = Box(card, "Picture", 38, 8, 110, 110); var raw = icon.gameObject.AddComponent<RawImage>(); raw.texture = FoodIcons.Get(id, white); raw.raycastTarget = false; if (why != null) raw.color = new Color(.55f, .55f, .55f);
+                Label(card, ing.Name, 8, 120, 170, 24, 16, ink, true, TextAnchor.MiddleCenter);
+                Label(card, (ing.PackPrice > 0 ? ing.PackSize + " for $" + ing.PackPrice : "Not for sale") + "   /   have " + d.Stock(id), 8, 144, 170, 20, 13, muted, false, TextAnchor.MiddleCenter);
+                if (why != null) Label(card, "LOCKED\n" + why, 8, 168, 170, 50, 13, coral, true, TextAnchor.MiddleCenter);
+                else Button(card, CartCount(id) > 0 ? "+ Add  (" + CartCount(id) + " in cart)" : "+ Add to cart", 8, 182, 170, 32, () => AddToCart(id, 1), teal, white);
+            }
+            var box = Block(sheet, "Cart", 845, 170, 345, 487, ink);
+            Label(box, "Cart", 18, 12, 300, 32, 24, paper, true);
+            int total = 0; float y = 56;
+            foreach (var line in cart.ToList()) {
+                var ing = Ingredients.Get(line.Id); if (ing == null) continue; string id = line.Id; int cost = ing.PackPrice * line.Count; total += cost;
+                Label(box, line.Count + " x " + ing.Name, 18, y, 190, 30, 16, paper);
+                Label(box, "$" + cost, 206, y, 60, 30, 16, paper, true, TextAnchor.MiddleRight);
+                Button(box, "-", 280, y, 44, 30, () => AddToCart(id, -1), pale, ink);
+                y += 38;
+            }
+            if (cart.Count == 0) Label(box, "Add something from the shelves.", 18, 60, 300, 30, 15, new Color(.75f, .8f, .8f));
+            Label(box, "Total  $" + total, 18, 340, 305, 32, 22, paper, true, TextAnchor.MiddleRight);
+            bool can = Owner.AtSupplier && total > 0 && total <= st.Cash;
+            Button(box, "Purchase", 18, 384, 305, 46, () => { if (Owner.BuyGroceries(cart)) { cart.Clear(); signature = ""; } }, can ? teal : pale, can ? white : muted, can);
+            Label(box, !Owner.AtSupplier ? "Talk to Milo in person to buy." : total > st.Cash ? "Not enough cash." : "Groceries go in a bag you carry home. Unpack at your pantry.", 18, 436, 305, 44, 13, new Color(.75f, .8f, .8f));
         }
 
         void BuildService(RectTransform sheet) {
