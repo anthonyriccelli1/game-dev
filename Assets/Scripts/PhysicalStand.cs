@@ -5,7 +5,7 @@ namespace RestaurantCity {
     // The street food stand and Milo's market, built from the same stations and art as the restaurant.
     public partial class RestaurantController {
         readonly Dictionary<int, GameObject> standObjects = new Dictionary<int, GameObject>();
-        static readonly float[] StandX = { -2.6f, -1.0f, .6f, 1.6f, 2.6f, 3.9f, -3.9f };   // the cutting board sits at the left end, behind the sign
+        static readonly float[] StandX = { -2.45f, -.95f, .6f, 1.68f, 2.78f, 3.75f, -3.55f };   // pantry, grill, counter, plates, sink, trash, cutting board (left end): all under the awning
         const float StandZ = 8.3f;
 
         public GameObject StationObject(int id) {
@@ -50,7 +50,7 @@ namespace RestaurantCity {
         readonly Dictionary<int, GameObject> tablePlates = new Dictionary<int, GameObject>();
         readonly Dictionary<int, int> tablePlateState = new Dictionary<int, int>();   // 0 none, 1 eating, 2 dirty
         readonly HashSet<int> guestsPastStand = new HashSet<int>();
-        static readonly Vector3 StandCorner = new Vector3(-4.6f, 0, 6.2f);  // guests walk round the stand's end, not through it
+        static readonly Vector3 StandCorner = new Vector3(-4.9f, 0, 6.2f);  // guests walk round the stand's end, not through it
         void BuildStandTables(Transform world) {
             if (standTableSpots.Count > 0 || !world) return;
             for (int t = 0; t < GameState.StandTables; t++) {

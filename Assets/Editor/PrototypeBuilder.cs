@@ -92,9 +92,10 @@ public static class PrototypeBuilder {
         Label("01  PREP", new Vector3(-2.2f, .92f, 7.17f), .15f, cream.color, stand);
         Label("02  GRILL", new Vector3(0, .92f, 7.17f), .15f, cream.color, stand);
         Label("03  SERVE", new Vector3(2.2f, .92f, 7.17f), .15f, cream.color, stand);
-        Awning(new Vector3(0, 3.5f, 8), 7, coral, stand);
-        Sign("LITTLE FLAME", new Vector3(0, 3.03f, 7.22f), 6.6f, coral, stand, .27f);
-        for (int i = -1; i <= 1; i += 2) Cube("Canopy post", new Vector3(i * 3.35f, 1.65f, 8.6f), new Vector3(.12f, 3.3f, .12f), wood, stand);
+        // Wide enough for all seven stand stations (cutting board through trash) under the awning.
+        Awning(new Vector3(0, 3.5f, 8), 9, coral, stand);
+        Sign("LITTLE FLAME", new Vector3(0, 3.03f, 7.22f), 8.2f, coral, stand, .27f);
+        for (int i = -1; i <= 1; i += 2) Cube("Canopy post", new Vector3(i * 4.3f, 1.65f, 8.6f), new Vector3(.12f, 3.3f, .12f), wood, stand);
         var bin = Cube("Discard bin", new Vector3(4.1f, .55f, 8), new Vector3(.8f, 1.1f, .8f), dark, world);
         bin.AddComponent<Interactable>().Kind = InteractionKind.Bin;
         Label("BIN", new Vector3(4.1f, .9f, 7.59f), .12f, cream.color, world);

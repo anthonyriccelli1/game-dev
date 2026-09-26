@@ -26,6 +26,7 @@ namespace RestaurantCity {
         public List<RepGain> RepSources = new List<RepGain>();
         // Recipes you can cook. Burger and salad are known from the start; others are found, bought or taught.
         public List<string> KnownRecipes = new List<string> { "burger", "salad" };
+        public int LastMiloHelpDay;
         public bool Knows(string dish) => KnownRecipes != null && KnownRecipes.Contains(dish);
         public void Learn(string dish) { KnownRecipes = KnownRecipes ?? new List<string>(); if (!KnownRecipes.Contains(dish)) KnownRecipes.Add(dish); }
         public void GainReputation(int amount, string source = "Other") {

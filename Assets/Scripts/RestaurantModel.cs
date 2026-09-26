@@ -291,13 +291,14 @@ namespace RestaurantCity {
             if(Stars<d.RequiredStars)return "Needs a "+d.RequiredStars+"-star restaurant";
             return null;
         }
-        // Anti-softlock: broke and out of burger basics? Milo fronts you three patties and buns.
+        // Anti-softlock: broke and can't cook? Once a day Milo fronts you three of each basic, enough to earn your way back.
+        public static bool NeedsMiloHelp(GameState wallet,RestaurantState r)=>wallet.Cash<14&&(r.Stock("patty")<1||r.Stock("bun")<1)&&r.Stock("greens")<1;
         public bool RequestSupplyHelp(GameState wallet,out string message) {
             if(!Owned&&!wallet.StandBuilt)return Fail("Set up your food stand first ($10).",out message);
-            if(wallet.Cash>=14)return Fail("You can afford a pack of patties and buns.",out message);
-            if(Stock("patty")>=3&&Stock("bun")>=3)return Fail("You still have ingredients. Cook and sell to afford more.",out message);
-            AddStock("patty",3-Math.Min(3,Stock("patty")));AddStock("bun",3-Math.Min(3,Stock("bun")));
-            message="Milo fronts you 3 patties and 3 buns. Pay it forward!";return true;
+            if(!NeedsMiloHelp(wallet,this))return Fail("You can still cook or afford a pack. Sell what you have first.",out message);
+            if(wallet.LastMiloHelpDay==wallet.Day)return Fail("\"I already helped you today, friend. Sell something and come back.\"",out message);
+            foreach(var id in new[]{"patty","bun","greens"})AddStock(id,3-Math.Min(3,Stock(id)));wallet.LastMiloHelpDay=wallet.Day;
+            message="\"On the house. Pay it forward.\" Milo fronts you 3 patties, 3 buns and 3 greens.";return true;
         }
         public bool StartService(GameState wallet,out string message) {
             if(!Owned||Open)return Fail("Service is unavailable or already open.",out message);

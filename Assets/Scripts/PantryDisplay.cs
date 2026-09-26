@@ -4,7 +4,7 @@ namespace RestaurantCity {
     // Every pantry shows what it really holds: one shelf spot per ingredient, food that thins out as you
     // cook, and a count label that turns red at zero. You can read your stock at a glance, no prompt needed.
     public partial class RestaurantController {
-        sealed class ShelfView { public int Shown = -1, Count = -1; public readonly List<GameObject> Items = new List<GameObject>(); public TextMesh Label, Back; }   // labels on both faces: the stand pantry is worked from behind
+        sealed class ShelfView { public int Shown = -1, Count = -1; public readonly List<GameObject> Items = new List<GameObject>(); public TextMesh Label; }
         static readonly (string shelf, string ingredient, string kind, float x, float y, string title)[] PantrySpots = {
             ("protein", "patty", "RawProtein", -.48f, .265f, "Patties"), ("greens", "greens", "RawGreens", .48f, .265f, "Greens"),
             ("bun", "bun", "Bun", -.48f, .805f, "Buns"), ("sauce", "midnight_sauce", "RawSauce", .48f, .805f, "Midnight sauce"),
@@ -35,11 +35,17 @@ namespace RestaurantCity {
                         v.Shown = show;
                     }
                     if (!v.Label) {
-                        var ps = pantry.transform.localScale; var inverse = new Vector3(1 / Mathf.Max(.01f, ps.x), 1 / Mathf.Max(.01f, ps.y), 1 / Mathf.Max(.01f, ps.z));
-                        v.Label = WorldCaption(pantry.transform, "", new Vector3(spot.x, spot.y + .36f, .47f), .011f); v.Label.transform.localRotation = Quaternion.Euler(0, 180, 0); v.Label.transform.localScale = inverse;
-                        v.Back = WorldCaption(pantry.transform, "", new Vector3(spot.x, spot.y + .36f, -.47f), .011f); v.Back.transform.localRotation = Quaternion.identity; v.Back.transform.localScale = inverse;
+                        var ps = pantry.transform.localScale;
+                        v.Label = WorldCaption(pantry.transform, "", new Vector3(spot.x, spot.y + .33f, 0), .011f); v.Label.transform.localScale = new Vector3(1 / Mathf.Max(.01f, ps.x), 1 / Mathf.Max(.01f, ps.y), 1 / Mathf.Max(.01f, ps.z));
                     }
-                    if (count != v.Count) { v.Count = count; v.Label.text = v.Back.text = count == 0 ? "<color=#E1543B>" + spot.title + ": OUT</color>" : spot.title + ": " + count; }
+                    if (count != v.Count) { v.Count = count; v.Label.text = count == 0 ? "<color=#E1543B>" + spot.title + ": OUT</color>" : spot.title + ": " + count; }
+                    // One label per shelf that turns to face you, readable from the stand's back or the kitchen's front.
+                    // It sits on the shelf's edge nearest you, so the shelf above never hides it.
+                    if (Game.Player && Game.Player.View) {
+                        var eye = Game.Player.View.transform.position; var toEye = pantry.transform.InverseTransformPoint(eye);
+                        v.Label.transform.localPosition = new Vector3(spot.x, spot.y + .2f, toEye.z >= 0 ? .5f : -.5f);
+                        v.Label.transform.rotation = Quaternion.LookRotation(v.Label.transform.position - eye);
+                    }
                 }
             }
         }

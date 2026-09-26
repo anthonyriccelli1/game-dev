@@ -268,6 +268,7 @@ namespace RestaurantCity {
             Label(box, "Total  $" + total, 18, 340, 305, 32, 22, paper, true, TextAnchor.MiddleRight);
             bool can = Owner.AtSupplier && total > 0 && total <= st.Cash;
             Button(box, "Purchase", 18, 384, 305, 46, () => { if (Owner.BuyGroceries(cart)) { cart.Clear(); signature = ""; } }, can ? teal : pale, can ? white : muted, can);
+            if (RestaurantState.NeedsMiloHelp(st, d)) Button(box, st.LastMiloHelpDay == st.Day ? "Milo already helped today" : "\"Milo, I'm broke...\"  (free basics)", 18, 290, 305, 38, () => Owner.AskMiloForHelp(), coral, white, Owner.AtSupplier && st.LastMiloHelpDay != st.Day);
             Label(box, !Owner.AtSupplier ? "Talk to Milo in person to buy." : total > st.Cash ? "Not enough cash." : "Groceries go in a bag you carry home. Unpack at your pantry.", 18, 436, 305, 44, 13, new Color(.75f, .8f, .8f));
         }
 

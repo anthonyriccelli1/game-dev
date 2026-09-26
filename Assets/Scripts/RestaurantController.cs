@@ -330,10 +330,13 @@ namespace RestaurantCity {
         }
         public void TryCook(int id) { Feedback("Cooking happens at the stations: pantry, prep, grill, then assemble on a plate. Follow your order card."); }
         // Milo's shop: pay at the counter and carry the groceries home in a bag.
+        public void AskMiloForHelp() {
+            if (!AtSupplier) { Feedback("Talk to Milo in his shop."); return; }
+            Data.RequestSupplyHelp(Game.State, out string message); Feedback(message); Game.Save(); UI.Rebuild();
+        }
         public bool BuyGroceries(List<StockLine> cart) {
             if (!AtSupplier) { Feedback("Talk to Milo in his shop to buy."); return false; }
             bool ok = Game.State.Kitchen.BuyGroceries(Game.State, Game.Player.ActorId, cart, out string message);
-            if (!ok && Game.State.Cash < 14 && Data.RequestSupplyHelp(Game.State, out string help)) message = help;
             Feedback(message); if (ok) { Game.Save(); ClosePanel(); } else UI.Rebuild();
             return ok;
         }

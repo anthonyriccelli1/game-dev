@@ -52,6 +52,7 @@ namespace RestaurantCity {
             ("32_stand_tables", new Vector3(-6.7f, 0, 5.2f), 0, 12, 60),
             ("33_milo_shop", new Vector3(-15.5f, 0, 14.2f), 0, 6, 60),
             ("34_stand_pantry", new Vector3(-2.4f, 0, 10.4f), 180, 14, 60),
+            ("35_stand_front", new Vector3(0, 0, 1.6f), 0, 2, 60),
         };
 
         IEnumerator Start() {
