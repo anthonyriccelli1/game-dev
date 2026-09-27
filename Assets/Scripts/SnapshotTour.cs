@@ -52,7 +52,8 @@ namespace RestaurantCity {
             ("32_stand_tables", new Vector3(-6.7f, 0, 5.2f), 0, 12, 60),
             ("33_milo_shop", new Vector3(-15.5f, 0, 14.2f), 0, 6, 60),
             ("34_stand_pantry", new Vector3(-2.4f, 0, 10.4f), 180, 14, 60),
-            ("35_stand_front", new Vector3(0, 0, 1.6f), 0, 2, 60),
+            ("35_stand_front", new Vector3(0, 0, 3.4f), 0, 4, 60),
+            ("36_pantry_from_street", new Vector3(-2.2f, 0, 6.0f), 0, 16, 60),
         };
 
         IEnumerator Start() {
@@ -77,7 +78,7 @@ namespace RestaurantCity {
                 p.View.transform.localRotation = Quaternion.Euler(shot.pitch, 0, 0);
                 var rc = FindFirstObjectByType<RestaurantController>();
                 if (rc && shot.name.Contains("phone_map")) rc.ShowPanel("Map");
-                if (rc && shot.name.Contains("stand_pantry")) { foreach (var i in new[] { "patty", "bun" }) rc.Data.AddStock(i, 14); rc.Advance(.05f); }
+                if (rc && (shot.name.Contains("stand_pantry") || shot.name.Contains("pantry_from_street"))) { foreach (var i in new[] { "patty", "bun" }) rc.Data.AddStock(i, 14); rc.Advance(.05f); }
                 if (rc && shot.name.Contains("milo_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); }
                 if (rc && shot.name.Contains("listing")) { Game.State.Cash = 95; rc.BuyRestaurant(Game.Player, "bayside"); }
                 if (rc && shot.name.Contains("stand_tables")) {

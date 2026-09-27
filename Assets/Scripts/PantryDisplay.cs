@@ -7,7 +7,7 @@ namespace RestaurantCity {
         sealed class ShelfView { public int Shown = -1, Count = -1; public readonly List<GameObject> Items = new List<GameObject>(); public TextMesh Label; }
         static readonly (string shelf, string ingredient, string kind, float x, float y, string title)[] PantrySpots = {
             ("protein", "patty", "RawProtein", -.48f, .265f, "Patties"), ("greens", "greens", "RawGreens", .48f, .265f, "Greens"),
-            ("bun", "bun", "Bun", -.48f, .805f, "Buns"), ("sauce", "midnight_sauce", "RawSauce", .48f, .805f, "Midnight sauce"),
+            ("bun", "bun", "Bun", -.48f, .805f, "Buns"), ("sauce", "midnight_sauce", "RawSauce", .48f, .805f, "Sauce"),
         };
         readonly Dictionary<GameObject, Dictionary<string, ShelfView>> pantryViews = new Dictionary<GameObject, Dictionary<string, ShelfView>>();
         IEnumerable<GameObject> PantryObjects() {
@@ -34,17 +34,16 @@ namespace RestaurantCity {
                         }
                         v.Shown = show;
                     }
-                    if (!v.Label) {
-                        var ps = pantry.transform.localScale;
-                        v.Label = WorldCaption(pantry.transform, "", new Vector3(spot.x, spot.y + .33f, 0), .011f); v.Label.transform.localScale = new Vector3(1 / Mathf.Max(.01f, ps.x), 1 / Mathf.Max(.01f, ps.y), 1 / Mathf.Max(.01f, ps.z));
-                    }
+                    // Labels live outside the (possibly squashed) pantry so they never shear; they are sized to the shelf,
+                    // sit on the shelf edge nearest you, face you, and only show within a few metres.
+                    if (!v.Label) v.Label = WorldCaption(transform, "", Vector3.zero, .011f);
                     if (count != v.Count) { v.Count = count; v.Label.text = count == 0 ? "<color=#E1543B>" + spot.title + ": OUT</color>" : spot.title + ": " + count; }
-                    // One label per shelf that turns to face you, readable from the stand's back or the kitchen's front.
-                    // It sits on the shelf's edge nearest you, so the shelf above never hides it.
                     if (Game.Player && Game.Player.View) {
                         var eye = Game.Player.View.transform.position; var toEye = pantry.transform.InverseTransformPoint(eye);
-                        v.Label.transform.localPosition = new Vector3(spot.x, spot.y + .2f, toEye.z >= 0 ? .5f : -.5f);
-                        v.Label.transform.rotation = Quaternion.LookRotation(v.Label.transform.position - eye);
+                        var at = pantry.transform.TransformPoint(new Vector3(spot.x, spot.y + .2f, toEye.z >= 0 ? .5f : -.5f));
+                        v.Label.transform.position = at; v.Label.transform.rotation = Quaternion.LookRotation(at - eye);
+                        float width = pantry.transform.lossyScale.x; v.Label.transform.localScale = Vector3.one * Mathf.Clamp(width, .45f, 1f);
+                        v.Label.gameObject.SetActive((at - eye).sqrMagnitude < 5.5f * 5.5f);
                     }
                 }
             }

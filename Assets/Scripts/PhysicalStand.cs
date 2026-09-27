@@ -80,7 +80,7 @@ namespace RestaurantCity {
         void BuildStandSign() {
             if (standSignText) return;
             var sign = new GameObject("Stand open sign"); sign.transform.SetParent(Game.Stand.transform, false);
-            sign.transform.position = new Vector3(-3.9f, 0, 7.4f);
+            sign.transform.position = new Vector3(4.95f, 0, 7.1f);   // outside the right post, beside the customer line; never in front of a station
             var body = GameObject.CreatePrimitive(PrimitiveType.Cube); body.name = "Chalkboard"; body.transform.SetParent(sign.transform, false);
             body.transform.localPosition = new Vector3(0, .75f, 0); body.transform.localScale = new Vector3(.9f, 1.1f, .08f);
             body.GetComponent<Renderer>().sharedMaterial = KitchenArt.Material("1B2A30");
