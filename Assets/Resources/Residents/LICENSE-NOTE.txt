@@ -1,0 +1,6 @@
+100 Avatars R1 + R2 by Polygonal Mind
+Downloaded 2026-09-28 from https://github.com/PolygonalMind/100Avatars/releases/tag/v24.02.1
+License: CC0 1.0 (public domain) per https://github.com/PolygonalMind/initiative-opensource-release
+("free to use, modify, and distribute ... even for commercial purposes, and without having to attribute").
+The 100Avatars README also asks that the models not be resold as-is; we only use them inside the game.
+Credits line to include in the game anyway: "Characters based on 100 Avatars by Polygonal Mind (CC0)".
