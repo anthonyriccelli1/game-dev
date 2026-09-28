@@ -66,6 +66,9 @@ namespace RestaurantCity {
             ("46_style_kit_closeup", new Vector3(-8.2f, 0, 1.5f), 180, 10, 70),
             ("47_style_residents_pm", new Vector3(-9.5f, 0, 4.6f), 180, 6, 70),
             ("48_style_residents_closeup", new Vector3(-10.6f, 0, 1.6f), 180, 10, 70),
+            ("49_cast_oldmarket_a", new Vector3(-9.5f, 0, 5.2f), 180, 6, 70),
+            ("50_cast_oldmarket_b", new Vector3(-9.5f, 0, 5.2f), 180, 6, 70),
+            ("51_cast_closeup_anim", new Vector3(-12.6f, 0, 1.4f), 180, 10, 70),
         };
 
         IEnumerator Start() {
@@ -106,6 +109,21 @@ namespace RestaurantCity {
                     for (int i = 0; i < ids.Length; i++) { var c = ResidentModels.Spawn(ids[i], line); if (c) { c.transform.position = new Vector3(-14.4f + i * 1.4f, 0, -1.2f); c.transform.rotation = Quaternion.identity; } }
                     Game.State.StandOpen = false;
                 }
+                if (shot.name.Contains("cast_")) {
+                    // The Old Market cast, animated, at their real heights. Half of them walk in place, half idle.
+                    var old = GameObject.Find("Style lineup"); if (old) Destroy(old);
+                    var line = new GameObject("Style lineup").transform;
+                    var cast = ResidentCast.OldMarket; bool b = shot.name.Contains("_b");
+                    int start = b ? 13 : 0, end = b ? cast.Length : 13;
+                    for (int i = start; i < end; i++) {
+                        var c = ResidentModels.Create(cast[i], line);
+                        c.transform.position = new Vector3(-15f + (i - start) * .85f, 0, -1.2f); c.transform.rotation = Quaternion.identity;
+                        var m = c.GetComponent<CharacterMotion>(); if (m) m.Walking = shot.name.Contains("closeup") && i % 2 == 1;
+                        Debug.LogWarning("CAST " + cast[i].Name + " anim=" + (c.GetComponentInChildren<ResidentAnimator>() != null));
+                    }
+                    Game.State.StandOpen = false;
+                    for (int i = 0; i < 40; i++) yield return null;
+                }
                 if (shot.name.Contains("style_kit")) {
                     // Character style test: the new kit cast vs. today's hand-coded characters, lined up on Main Street.
                     var old = GameObject.Find("Style lineup"); if (old) Destroy(old);
@@ -126,6 +144,8 @@ namespace RestaurantCity {
                     st.StandQueue.Add(new StandOrder { Id = 901, Type = 3, Stage = 1, Table = 1, Patience = 999, MaxPatience = 999 });
                     st.StandQueue.Add(new StandOrder { Id = 903, Type = 1, Stage = 2, Table = 0, Dish = "midnight", Patience = 999, MaxPatience = 999, EatLeft = 999 });
                     st.StandQueue.Add(new StandOrder { Id = 902, Type = 6, Stage = 2, Table = 3, Dish = "salad", Patience = 999, MaxPatience = 999, EatLeft = 999 });
+                    st.StandQueue.Add(new StandOrder { Id = 904, Type = 2, Stage = 0, Dish = "burger", Patience = 999, MaxPatience = 999 });
+                    st.StandQueue.Add(new StandOrder { Id = 905, Type = 4, Stage = 0, Dish = "salad", Patience = 999, MaxPatience = 999 });
                     for (int i = 0; i < 70; i++) { rc.Advance(.15f); p.transform.position = shot.pos; yield return null; }
                 }
                 for (int i = 0; i < 20; i++) yield return null;

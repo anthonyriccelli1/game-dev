@@ -115,7 +115,7 @@ namespace RestaurantCity {
             if (w == null || !s.StandBuilt) { if (standWorkerView) standWorkerView.SetActive(false); return; }
             if (!standWorkerView || standWorkerViewId != w.Id) {
                 if (standWorkerView) Destroy(standWorkerView);
-                standWorkerView = RestaurantArt.CreateCharacter(RestaurantCatalog.Worker(w.Id)?.ModelType ?? 8, Game.Stand.transform);
+                standWorkerView = People.Worker(w.Id, RestaurantCatalog.Worker(w.Id)?.ModelType ?? 8, Game.Stand.transform);
                 standWorkerView.name = "Stand worker"; standWorkerViewId = w.Id;
                 standWorkerView.transform.SetPositionAndRotation(new Vector3(-1.0f, 0, 9.35f), Quaternion.Euler(0, 180, 0));
                 standWorkerBubble = WorldCaption(standWorkerView.transform, "", new Vector3(0, 2.4f, 0), .016f);
@@ -172,7 +172,7 @@ namespace RestaurantCity {
             for (int i = 0; i < s.StandQueue.Count; i++) {
                 var order = s.StandQueue[i]; live.Add(order.Id);
                 if (!standGuests.TryGetValue(order.Id, out var guest) || !guest) {
-                    guest = RestaurantArt.CreateCharacter(order.Type, world); guest.name = "Stand guest " + order.Id;
+                    guest = People.Visitor(order.Id, order.Type, world, Game.State.IsNight); guest.name = "Stand guest " + order.Id;
                     guest.transform.position = new Vector3(11, 0, 4.5f);
                     var capsule = guest.AddComponent<CapsuleCollider>(); capsule.radius = .3f; capsule.height = 1.6f; capsule.center = Vector3.up * .83f;
                     guest.AddComponent<Interactable>().Kind = InteractionKind.Serve;
@@ -193,11 +193,11 @@ namespace RestaurantCity {
                 bool seated = seat && !walking && (guest.transform.position - seat.position).sqrMagnitude < .01f;
                 guest.transform.rotation = walking ? Quaternion.LookRotation(new Vector3(step.x, 0, step.z)) : seated ? seat.rotation : Quaternion.identity;
                 var motion = guest.GetComponent<CharacterMotion>();
-                if (motion) motion.Seated = seated;
+                if (motion) { motion.Seated = seated; motion.Eating = seated && order.Stage == 2; }
                 float ratio = order.Stage == 2 ? 1 : Mathf.Clamp01(order.Patience / Mathf.Max(1, order.MaxPatience));
                 if (motion) { motion.Walking = walking; motion.SetMood(ratio); }
                 int filled = Mathf.Max(1, Mathf.CeilToInt(ratio * 8)); string color = ratio > .55f ? "#4FCB7A" : ratio > .25f ? "#E8C34A" : "#E1543B";
-                var name = RestaurantCatalog.Customers[Mathf.Clamp(order.Type, 0, RestaurantCatalog.Customers.Length - 1)].Name;
+                var name = People.NameOf(guest, RestaurantCatalog.Customers[Mathf.Clamp(order.Type, 0, RestaurantCatalog.Customers.Length - 1)].Name);
                 string want = order.Dish == "midnight" ? "Midnight burger!" : order.Dish == "salad" ? "Salad, please!" : "Burger, please!";
                 SetBubble(standBubbles[order.Id], name + "\n" + (order.Stage == 2 ? "<color=#4FCB7A>Mmm!</color>" : (order.Stage == 0 ? "Waiting for a table\n" : "") + want + "\n<color=" + color + ">" + new string('|', filled) + "</color>"));
             }
@@ -219,7 +219,7 @@ namespace RestaurantCity {
             var counter = world.Find("Supplier counter");
             if (counter && walkIn) { var legacy = counter.GetComponent<Interactable>(); if (legacy) Destroy(legacy); counter.position = new Vector3(-15.5f, .45f, 17.25f); counter.localScale = new Vector3(2.4f, .9f, 1.2f); counter.GetComponent<Renderer>().enabled = false; counter = null; }
             if (counter) { var legacy = counter.GetComponent<Interactable>(); if (legacy) Destroy(legacy); counter.localScale = new Vector3(counter.localScale.x, .8f, counter.localScale.z); counter.position = new Vector3(counter.position.x, .4f, counter.position.z); }
-            var milo = RestaurantArt.CreateCharacter(5, world); milo.name = "Milo shopkeeper";
+            var milo = People.Story(ResidentCast.Milo, 5, world); milo.name = "Milo shopkeeper";
             milo.transform.position = walkIn ? new Vector3(-15.5f, .06f, 18) : new Vector3(-12, 0, 10.3f); milo.transform.rotation = Quaternion.Euler(0, 180, 0);
             var motion = milo.GetComponent<CharacterMotion>(); if (motion) motion.SetMood(.9f);
             var talk = milo.AddComponent<CapsuleCollider>(); talk.radius = .45f; talk.height = 1.8f; talk.center = Vector3.up * .9f;

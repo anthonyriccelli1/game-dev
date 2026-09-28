@@ -139,7 +139,7 @@ namespace RestaurantCity {
             if(heldPlate)Destroy(heldPlate); CarriedOrderId = -1; arrival = 3; nextType = 0; actorState = Data; lastRank = Data.Stars;
         }
         GuestView NewGuest(int type) {
-            var root = RestaurantArt.CreateCharacter(type, transform);
+            var root = People.NextVisitor(type, transform, Game.State.IsNight);
             var collider = root.AddComponent<CapsuleCollider>(); collider.radius = .29f; collider.height = 1.6f; collider.center = Vector3.up * .83f;
             root.AddComponent<RestaurantTarget>().Kind = "Customer";
             return new GuestView { Root = root, Type = type, Motion = root.GetComponent<CharacterMotion>(), Bubble = WorldCaption(root.transform, "", new Vector3(0, 2.4f, 0), .025f) };
@@ -152,7 +152,7 @@ namespace RestaurantCity {
         void UpdateEmployees(float dt) {
             foreach (var worker in Data.Workers) {
                 if (!employees.TryGetValue(worker.Id, out var view)) {
-                    var root = RestaurantArt.CreateCharacter(RestaurantCatalog.Worker(worker.Id)?.ModelType??8,transform); root.transform.position = W(-9, .055f, -12);
+                    var root = People.Worker(worker.Id,RestaurantCatalog.Worker(worker.Id)?.ModelType??8,transform); root.transform.position = W(-9, .055f, -12);
                     view = new EmployeeView { Root=root, Motion=root.GetComponent<CharacterMotion>(), Bubble=WorldCaption(root.transform,"",new Vector3(0,2.4f,0),.023f) }; employees[worker.Id]=view;
                 }
                 if (view.Job != worker.Job) { view.Job=worker.Job; view.OrderId=-1; view.Phase=0;view.Path.Clear();view.Work=0;if(view.Plate)Destroy(view.Plate); }

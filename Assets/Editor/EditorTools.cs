@@ -28,6 +28,24 @@ public static class EditorTools {
     }
 
     // Launches the built game in snapshot mode; it photographs a tour of the city into Snapshots/ and quits.
+    // Re-imports residents and Mixamo clips through ResidentImport (needed when files arrive before the script compiles).
+    public static string ReimportCharacters() {
+        var sb = new StringBuilder(); int n = 0;
+        foreach (var dir in new[] { "Assets/Resources/Residents", "Assets/Resources/Mixamo" }) {
+            if (!AssetDatabase.IsValidFolder(dir)) continue;
+            foreach (var guid in AssetDatabase.FindAssets("t:Model", new[] { dir })) {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+                var imp = (ModelImporter)AssetImporter.GetAtPath(path);
+                var avatar = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Avatar>().FirstOrDefault();
+                sb.Append(path).Append(" type=").Append(imp.animationType).Append(" human=").Append(avatar && avatar.isHuman).Append(" valid=").Append(avatar && avatar.isValid);
+                foreach (var c in AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>()) if (!c.name.StartsWith("__preview__")) sb.Append(" clip=").Append(c.name).Append(" loop=").Append(c.isLooping).Append(" human=").Append(c.isHumanMotion);
+                sb.Append('\n'); n++;
+            }
+        }
+        Directory.CreateDirectory("EditorOutput"); File.WriteAllText("EditorOutput/characters.txt", sb.ToString());
+        return n + " character assets reimported";
+    }
     public static string RunSnapshots() {
         var exe = Path.GetFullPath("Builds/Windows/RestaurantCity.exe");
         if (!File.Exists(exe)) return "no build";

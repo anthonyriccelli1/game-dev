@@ -28,3 +28,7 @@ SaveBackups/
 /Snapshots/
 /editor-command.*
 /Acceptance/
+
+# Mixamo animations: free to use in the game, but the raw files may not be redistributed
+/Assets/Resources/Mixamo/
+/Assets/Resources/Mixamo.meta

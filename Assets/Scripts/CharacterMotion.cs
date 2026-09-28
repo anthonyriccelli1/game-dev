@@ -3,7 +3,8 @@ using UnityEngine;
 namespace RestaurantCity {
     /// <summary>Presentation only: movement/state are supplied by the restaurant simulation.</summary>
     public class CharacterMotion : MonoBehaviour {
-        public bool Walking, Seated, Working;
+        public bool Walking, Seated, Working, Eating;
+        ResidentAnimator resident;
         Transform body, head, leftArm, rightArm, leftLeg, rightLeg, leftKnee, rightKnee, mouth;
         Vector3 bodyOrigin, headOrigin;
         float mood = .7f, phase;
@@ -11,7 +12,7 @@ namespace RestaurantCity {
         static int nextPhase;
         void Awake() {
             body = transform.Find("BodyRig");
-            if (!body) return;
+            if (!body) { resident = GetComponentInChildren<ResidentAnimator>(); return; }
             head = body.Find("HeadRig"); leftArm = body.Find("ArmL"); rightArm = body.Find("ArmR");
             leftLeg = body.Find("LegL"); rightLeg = body.Find("LegR");
             if (leftLeg) leftKnee = leftLeg.Find("Knee");
@@ -23,9 +24,13 @@ namespace RestaurantCity {
         public void SetMood(float score) { mood = Mathf.Clamp01(score > 1 ? score / 100f : score); }
         // One-off reactions: a happy hop with arms up, or an angry stomp.
         float cheerUntil, stompUntil;
-        public void Cheer() { cheerUntil = Time.time + 1.3f; mood = 1; }
-        public void Stomp() { stompUntil = Time.time + 1.1f; mood = .1f; }
+        public void Cheer() { cheerUntil = Time.time + 1.3f; mood = 1; if (resident) resident.React(true); }
+        public void Stomp() { stompUntil = Time.time + 1.1f; mood = .1f; if (resident) resident.React(false); }
         void Update() {
+            if (resident) {
+                resident.Current = Seated ? (Eating ? ResidentAnimator.State.Eat : ResidentAnimator.State.Sit) : Walking ? ResidentAnimator.State.Walk : Working ? ResidentAnimator.State.Work : ResidentAnimator.State.Idle;
+                return;
+            }
             if (!body) return;
             float t = Time.time * (Walking ? 8f : Working ? 5f : 1.9f) + phase;
             float swing = Walking ? Mathf.Sin(t) * 26 : Working ? Mathf.Sin(t) * 18 : Mathf.Sin(t) * 3;
