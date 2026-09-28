@@ -89,6 +89,24 @@ namespace RestaurantCity {
    try{Game.Restaurant.ClosePanel();foreach(var w in Game.State.Restaurant.Workers)w.Job=StaffJob.Off;Stock(12);Game.Restaurant.ToggleService();}catch(Exception e){Fail(e);yield break;}
    for(int t=0;t<1600;t++){Game.Restaurant.Advance(.25f);if(t%60==0)yield return null;}
    try{Check(Game.State.Kitchen.LastReport.Lost>0,"failed shift reports lost guests");Check(Game.State.Restaurant.Owned&&Game.State.Restaurant.Workers.Count==2,"bad shift preserves restaurant and workers");Game.Restaurant.ClosePanel();Game.State.Restaurant.Orders.Clear();Stock(12);Game.Restaurant.ToggleService();Check(Game.State.Restaurant.Open,"can reopen after failed shift");Game.State.Restaurant.EndService(out _);Game.Restaurant.Advance(.1f);Game.Restaurant.ClosePanel();Game.Player.Teleport(new Vector3(-10,.15f,-12));Game.CoOp.SetElevated(Game.Player,true);Check(Game.State.Kitchen.SpendFlux(Game.State,"research",out var m),m);string layout=JsonUtility.ToJson(Game.State.Restaurant.Layout.ToArray());File.WriteAllText(Path.Combine(output,"expected-layout.txt"),Fingerprint());Check(Game.SaveTo(Path.Combine(output,"physical-save.json")),"disk save written");Check(Game.LoadFrom(Path.Combine(output,"physical-save.json")),"disk save reloaded");Check(Fingerprint()==File.ReadAllText(Path.Combine(output,"expected-layout.txt")),"exact layout cash staff menu Flux restored");Game.Restaurant.RebuildLayout();}catch(Exception e){Fail(e);yield break;}
+   // Night inspectors: rules first, then a live patrol that spots a player carrying Zeeb's sauce and searches them.
+   try{var g=Game.State;const string me="player:0";var held=g.Kitchen.Hold(me);if(held!=null)g.Kitchen.Items.Remove(held);
+    g.DropBottles=3;g.DropPlaced=true;g.StashSpot=0;Check(g.Kitchen.CollectStash(g,me,out _)&&Inspections.Carried(g,me)==3,"carrying three bottles of Zeeb's sauce");
+    g.Cash=100;int fine=Inspections.Search(g,me,false,out var im);Check(fine==Inspections.StopFine+3*Inspections.PerBottle&&g.Cash==100-fine&&Inspections.Carried(g,me)==0,"stop and search confiscates and fines: "+im);
+    Check(Inspections.Search(g,me,false,out var clear)==0&&g.Cash==100-fine,"a clean player is let go: "+clear);
+    g.Cash=10;Inspections.Search(g,me,true,out _);Check(g.Cash==0,"a fine never takes you below $0");
+    g.Cash=100;g.DropBottles=2;g.DropPlaced=true;g.StashSpot=0;Check(g.Kitchen.CollectStash(g,me,out _),"carrying sauce again for the live patrol");
+    g.Clock=160;Game.Restaurant.Advance(.05f);Check(Game.Restaurant.Inspectors.Count==3,"three inspectors patrol at night");}catch(Exception e){Fail(e);yield break;}
+   {var insp=Game.Restaurant.Inspectors[0];var at=insp.Root.transform;Game.Player.Teleport(at.position+at.forward*6f);Physics.SyncTransforms();bool stopped=false;
+    for(int t=0;t<200&&Inspections.Carried(Game.State,"player:0")>0;t++){Game.State.Clock=160;Game.Restaurant.Advance(.05f);if(insp.Mode==RestaurantController.InspectorMode.Stop)stopped=true;if(t%20==0)yield return null;}
+    try{Check(stopped,"inspector spots the sauce and calls STOP");Check(Inspections.Carried(Game.State,"player:0")==0,"standing still gets you searched and the sauce confiscated");}catch(Exception e){Fail(e);yield break;}}
+   {var g=Game.State;g.DropBottles=2;g.DropPlaced=true;g.StashSpot=0;g.Kitchen.CollectStash(g,"player:0",out _);var insp=Game.Restaurant.Inspectors[1];insp.Mode=RestaurantController.InspectorMode.Patrol;insp.CooldownLeft=0;
+    var at=insp.Root.transform;Game.Player.Teleport(at.position+at.forward*6f);Physics.SyncTransforms();bool chased=false,escaped=false;
+    for(int t=0;t<300&&!escaped;t++){g.Clock=160;Game.Restaurant.Advance(.05f);
+     if(insp.Mode==RestaurantController.InspectorMode.Stop&&!chased){Game.Player.Teleport(Game.Player.transform.position+(Game.Player.transform.position-at.position).normalized*12);Physics.SyncTransforms();}
+     if(insp.Mode==RestaurantController.InspectorMode.Chase&&!chased){chased=true;Game.Player.Teleport(at.position+Vector3.up*0+new Vector3(0,0,60));Physics.SyncTransforms();}
+     if(chased&&insp.Mode==RestaurantController.InspectorMode.Cooldown)escaped=true;if(t%20==0)yield return null;}
+    try{Check(chased,"running from a STOP starts a chase");Check(escaped&&Inspections.Carried(g,"player:0")==2,"getting away keeps your sauce");}catch(Exception e){Fail(e);yield break;}}
    yield return new WaitForSecondsRealtime(.5f);Capture("06-upgraded-restaurant.png");Debug.Log("PHYSICAL_RUNTIME_PASS "+checks);Application.Quit(0);
   }
   string Fingerprint()=>Game.State.Cash+"|"+Game.State.Flux+"|"+Game.State.FluxResearch+"|"+string.Join(";",Game.State.Restaurant.Layout.Select(p=>p.InstanceId+":"+p.CatalogId+":"+p.X+":"+p.Z+":"+p.Rotation))+"|"+string.Join(",",Game.State.Restaurant.ActiveMenu)+"|"+string.Join(",",Game.State.Restaurant.Workers.Select(w=>w.Id+":"+w.Job));

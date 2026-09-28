@@ -69,6 +69,8 @@ namespace RestaurantCity {
             ("49_cast_oldmarket_a", new Vector3(-9.5f, 0, 5.2f), 180, 6, 70),
             ("50_cast_oldmarket_b", new Vector3(-9.5f, 0, 5.2f), 180, 6, 70),
             ("51_cast_closeup_anim", new Vector3(-12.6f, 0, 1.4f), 180, 10, 70),
+            ("54_inspector_candidates", new Vector3(-10.8f, 0, 3.2f), 180, 6, 70),
+            ("55_night_inspector", new Vector3(-30, 0, -1.5f), 90, 4, 190),
             ("52_people_book", new Vector3(0, 0, 3), 0, 0, 60),
             ("53_people_book_top", new Vector3(0, 0, 3), 0, 0, 60),
         };
@@ -110,6 +112,23 @@ namespace RestaurantCity {
                     string[] ids = { "003_Jimmy", "043_Dracula", "044_Zombie", "002_CoolAlien", "051_Polybot", "049_CaptainLobster", "087_HotDog", "033_Franky" };
                     for (int i = 0; i < ids.Length; i++) { var c = ResidentModels.Spawn(ids[i], line); if (c) { c.transform.position = new Vector3(-14.4f + i * 1.4f, 0, -1.2f); c.transform.rotation = Quaternion.identity; } }
                     Game.State.StandOpen = false;
+                }
+                if (rc && shot.name.Contains("night_inspector")) {
+                    // An inspector on Main Street at night, flashlight on, calling STOP on a player carrying Zeeb's sauce.
+                    var g = Game.State; g.Clock = 160; g.DropBottles = 2; g.DropPlaced = true; g.StashSpot = 0; var h = g.Kitchen.Hold(p.ActorId); if (h != null) g.Kitchen.Items.Remove(h); g.Kitchen.CollectStash(g, p.ActorId, out _);
+                    rc.Advance(.05f); var insp = rc.Inspectors[0]; insp.Root.transform.position = new Vector3(-22, 0, -1.5f); insp.Root.transform.rotation = Quaternion.Euler(0, 270, 0);
+                    for (int i = 0; i < 40; i++) { g.Clock = 160; p.transform.position = shot.pos; rc.Advance(.05f); if (insp.Mode == RestaurantController.InspectorMode.Stop) break; yield return null; }
+                }
+                if (shot.name.Contains("inspector_candidates")) {
+                    var old = GameObject.Find("Style lineup"); if (old) Destroy(old);
+                    var line = new GameObject("Style lineup").transform;
+                    string[] ids = { "007_Observer", "068_AlwaysWatching", "075_Expol", "167_Mister_Contract", "047_David", "119_CaptainLantern" };
+                    for (int i = 0; i < ids.Length; i++) {
+                        var c = ResidentModels.Create(new ResidentDef(ids[i], ids[i], 1.8f, 0, StaffJob.Any, ""), line);
+                        c.transform.position = new Vector3(-14f + i * 1.25f, 0, -1.2f); c.transform.rotation = Quaternion.identity;
+                    }
+                    Game.State.StandOpen = false;
+                    for (int i = 0; i < 30; i++) yield return null;
                 }
                 if (shot.name.Contains("cast_")) {
                     // The Old Market cast, animated, at their real heights. Half of them walk in place, half idle.
