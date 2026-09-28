@@ -33,6 +33,14 @@ namespace RestaurantCity {
     while(st.Cash<500&&attempts++<150){Stock(4);for(int w=0;w<60&&!st.StandQueue.Exists(o=>o.Stage==1);w++){ClearStandTables();st.Tick(1);}var seated=st.StandQueue.Find(o=>o.Stage==1);Check(seated!=null,"stand guest seated at a sidewalk table");if(st.StandClean==0)WashStand();if(seated.Dish=="salad")StandSalad();else StandBurger(seated.Dish=="midnight");Check(st.Kitchen.ServeStandGuest(st,"player:0",seated.Id,out var sm),"stand sale at the table: "+sm);Check(seated.Stage==2,"guest eats at the table");}
     Check(st.StandClean+st.StandDirty+st.StandTableDirty.FindAll(d=>d).Count+st.StandQueue.FindAll(o=>o.Stage==2).Count+st.Kitchen.Items.FindAll(i=>i.StandPlate).Count==GameState.StandPlates,"stand plates conserved through table service");
     Check(st.Cash>=500,"earned restaurant lease from stand sales");
+    // People book: every fed resident is recorded; only met residents can be recruited, and recruiting spends Flux.
+    Check(st.MetResidents.Count>=3,"feeding stand guests fills the People book ("+st.MetResidents.Count+" met)");
+    Check(st.MetResidents.TrueForAll(ResidentCast.IsRecruitable),"only real residents enter the People book");
+    {var unmet=Array.Find(ResidentCast.OldMarket,r=>!st.HasMet(r.Id));int flux0=st.Flux;st.Flux+=10;
+     if(unmet!=null)Check(!st.Restaurant.Hire(st,unmet.Id,out _),"cannot recruit a resident you haven't fed");
+     var metId=st.MetResidents[0];var metDef=ResidentCast.Get(metId);Check(st.Restaurant.Hire(st,metId,out var hm),"recruit a met resident: "+hm);
+     Check(st.Flux==flux0+10-metDef.FluxCost,"recruiting costs the resident's Flux price");
+     st.Restaurant.Workers.RemoveAll(w=>w.Id==metId);st.Flux=flux0;}
     // Before owning anything, The Bayside's listing must actually appear on screen (not just be the selected panel).
     Game.Restaurant.BuyRestaurant(Game.Player,"bayside");Game.Restaurant.UI.Refresh();Check(GameObject.Find("Listing checklist")!=null,"Bayside listing is visible before you own a restaurant");Game.Restaurant.ClosePanel();
     // Pacing: the stand pays cash, not reputation. Earning a lease-and-renovation budget there must stay far from Line Cook (400).

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 namespace RestaurantCity {
     // Stand guests: Stage 0 = in line for a table, 1 = seated and waiting for food, 2 = eating. Patience only runs before they eat.
-    [Serializable] public class StandOrder { public int Id, Type, Stage, Table = -1; public string Dish = "burger"; public float Patience, MaxPatience, EatLeft; }
+    [Serializable] public class StandOrder { public int Id, Type, Stage, Table = -1; public string Dish = "burger", ResidentId = ""; public float Patience, MaxPatience, EatLeft; }
     public static class EncounterRules {
         // Keep pursuit inside the clear corridor, away from the warehouse and stash.
         public static bool InTerritory(float x, float z) => x > 9.35f && x < 13.85f && z > 14 && z < 24;
@@ -26,6 +26,16 @@ namespace RestaurantCity {
         public List<RepGain> RepSources = new List<RepGain>();
         // Recipes you can cook. Burger and salad are known from the start; others are found, bought or taught.
         public List<string> KnownRecipes = new List<string> { "burger", "salad" };
+        // The People book: residents you've fed at least once. Only they can be recruited (with Flux).
+        public List<string> MetResidents = new List<string>();
+        public int StarRating => Restaurant != null ? Math.Max(1, Restaurant.Stars) : 1;
+        public string PickVisitor(int seed) => ResidentCast.Visitor(seed, IsNight, StarRating, MetResidents).Id;
+        public bool HasMet(string id) => MetResidents.Contains(id);
+        // Reputation only for first meals in a real restaurant: the stand stays a token-reputation tutorial.
+        public bool MeetResident(string id, int reputation = 0) {
+            if (!ResidentCast.IsRecruitable(id) || MetResidents.Contains(id)) return false;
+            MetResidents.Add(id); if (reputation > 0) GainReputation(reputation, "New residents"); Emit("met:" + id); return true;
+        }
         public int LastMiloHelpDay;
         // Moments the presentation layer turns into sound and pop-ups ("served:12:88:4", "walkout:12", "chop:5"...). Never saved.
         [NonSerialized] public List<string> Events = new List<string>();
@@ -206,7 +216,7 @@ namespace RestaurantCity {
             Xp = Math.Max(0, Math.Min(999999, Xp)); RankUpTo = -1; Goals = Goals ?? new List<string>(); RankEarned = Math.Max(0, Math.Min(Reputation.Titles.Length - 1, RankEarned)); CheckRankUp(); Restaurant.PlayerRank = RankEarned;
             // Old saves kept stand "Stock" separately; it now lives in the one shared pantry.
             if (Stock > 0) { Restaurant.AddStock("patty", Stock); Restaurant.AddStock("bun", Stock); Stock = 0; }
-            Kitchen = Kitchen ?? new KitchenState(); Kitchen.SanitizeAfterLoad(this); Flux = Math.Max(0, Flux);
+            Kitchen = Kitchen ?? new KitchenState(); Kitchen.SanitizeAfterLoad(this); Flux = Math.Max(0, Flux); MetResidents = MetResidents ?? new List<string>();
             if(RecipeUnlocked&&!FluxIntroduced){Flux+=3;FluxIntroduced=true;}
             Cash = Math.Max(StandBuilt ? 0 : 10, Math.Min(999999, Cash)); Stock = Math.Max(0, Math.Min(99, Stock));
             Served = Math.Max(0, Served); Missed = Math.Max(0, Missed); Day = Math.Max(1, Day);
@@ -238,7 +248,7 @@ namespace RestaurantCity {
                 if (NextCustomer <= 0) {
                     int id = NextStandOrder++;
                     float patience = StandQueue.Count == 0 && Served == 0 ? StandFirstPatience : StandPatience;
-                    StandQueue.Add(new StandOrder { Id = id, Type = (id * 3) % 10, Dish = Knows("midnight") && id % 4 == 0 ? "midnight" : id % 3 == 1 ? "salad" : "burger", Patience = patience, MaxPatience = patience });
+                    StandQueue.Add(new StandOrder { Id = id, Type = (id * 3) % 10, ResidentId = PickVisitor(id * 7 + Day * 131), Dish = Knows("midnight") && id % 4 == 0 ? "midnight" : id % 3 == 1 ? "salad" : "burger", Patience = patience, MaxPatience = patience });
                     NextCustomer = StandArrivalSeconds + (id % 3) * 1.5f;
                 }
             }

@@ -46,8 +46,12 @@ namespace RestaurantCity {
         public static bool UseResidents => ResidentAnimator.Available;
         static int guestSeed;
         public static GameObject Visitor(int seed, int legacyType, Transform parent, bool night) =>
-            UseResidents ? ResidentModels.Create(ResidentCast.Visitor(seed, night), parent) : RestaurantArt.CreateCharacter(legacyType, parent);
+            UseResidents ? ResidentModels.Create(ResidentCast.Visitor(seed, night, 1, null), parent) : RestaurantArt.CreateCharacter(legacyType, parent);
         public static GameObject NextVisitor(int legacyType, Transform parent, bool night) => Visitor(++guestSeed * 7 + legacyType, legacyType, parent, night);
+        public static GameObject Resident(string residentId, int legacyType, Transform parent) {
+            var def = ResidentCast.Get(residentId);
+            return UseResidents && def != null ? ResidentModels.Create(def, parent) : RestaurantArt.CreateCharacter(legacyType, parent);
+        }
         public static GameObject Worker(string workerId, int legacyType, Transform parent) =>
             UseResidents ? ResidentModels.Create(ResidentCast.ForWorker(workerId), parent) : RestaurantArt.CreateCharacter(legacyType, parent);
         public static GameObject Story(ResidentDef def, int legacyType, Transform parent) =>

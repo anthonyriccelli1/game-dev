@@ -119,7 +119,7 @@ namespace RestaurantCity {
             modal = Block(canvas.transform, "Restaurant management", 0, 105, 1440, 735, new Color(ink.r, ink.g, ink.b, .60f));
             var sheet = Block(modal, "Order pad", 110, 12, 1220, 710, paper);
             Block(sheet, "Top accent", 0, 0, 1220, 7, teal);
-            Label(sheet, Owner.Panel == "Phone" ? "Your phone." : Owner.Panel == "Listing" ? "For sale later." : Owner.Panel == "Supplies" ? "Milo's Market." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "Recipes." : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
+            Label(sheet, Owner.Panel == "Phone" ? "Your phone." : Owner.Panel == "Listing" ? "For sale later." : Owner.Panel == "Supplies" ? "Milo's Market." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "Recipes." : Owner.Panel == "Staff" ? "Crew and People book." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
             Button(sheet, "Close  x", 1060, 24, 130, 36, () => Owner.ClosePanel(), ink, paper);
             Label(sheet, "Time pauses while management is open.", 823, 62, 365, 19, 12, muted, false, TextAnchor.MiddleRight);
             string[] panels = { "Catalog", "Service", "Menu", "Cookbook", "Staff", "Map", "Reviews", "Furniture" };
@@ -347,24 +347,44 @@ namespace RestaurantCity {
         }
 
         void BuildStaff(RectTransform sheet) {
-            var gs = Owner.Game.State;
-            Label(sheet, "Recruit with Flux (your Flux: " + gs.Flux + "). Anyone can do any job. \"Run stand\" = passive income from your food stand." + (gs.StandWorker != null ? "   Stand: " + gs.StandWorkerStatus + "  Earned $" + gs.StandWorkerEarned : ""), 30, 140, 1144, 35, 15, ink);
+            var gs = Owner.Game.State; bool people = People.UseResidents;
+            Label(sheet, "Your Flux: " + gs.Flux + ".  Feed a resident once and they join your People book; then recruit them with Flux. Anyone can do any job." + (gs.StandWorker != null ? "   Stand: " + gs.StandWorkerStatus + "  Earned $" + gs.StandWorkerEarned : ""), 30, 140, 1144, 35, 15, ink);
             string[] rivals = { "Maestro Vey|Head chef. Gold toque, glowing eyes. Runs a kitchen like an orchestra.", "Nyx|Sommelier with a crystal halo. Guests tip double when she pours.", "K-9|Chrome line cook with four arms and a neon visor. Never tires.", "Aurora|Maitre d'. Her monocle sees every empty seat before you do.", "Seraphine|Winged pastry chef. Desserts so good customers float out.", "Obsidian Titan|Doorman. Nobody makes a scene with him at the door.", "Lumen|Mixologist with a neon crest. Every drink glows." };
-            int rows = Mathf.CeilToInt(RestaurantCatalog.Staff.Length / 2f) + Mathf.CeilToInt(rivals.Length / 2f) + 1;
-            var content = Scroller(sheet, 30, 189, 1160, 462, rows * 320 + 20);
+            // Crew cards: cash hires, plus anyone already recruited. Legacy special recruits only show once hired.
+            var crew = new List<StaffDefinition>();
+            foreach (var w in RestaurantCatalog.Staff) if (!w.Special || !people || Owner.Data.Workers.Exists(x => x.Id == w.Id)) crew.Add(w);
+            foreach (var w in Owner.Data.Workers) { var d = ResidentCast.Staff(w.Id); if (d != null) crew.Add(d); }
+            var cast = ResidentCast.OldMarket; var book = new List<ResidentDef>();
+            if (people) foreach (var r in cast) if (!Owner.Data.Workers.Exists(x => x.Id == r.Id)) book.Add(r);
+            int met = 0; foreach (var r in cast) if (gs.HasMet(r.Id)) met++;
+            float crewH = Mathf.CeilToInt(crew.Count / 2f) * 320, bookTop = crewH + 10, bookH = people ? 60 + Mathf.CeilToInt(book.Count / 4f) * 300 : 0, rivalTop = bookTop + bookH;
+            var content = Scroller(sheet, 30, 189, 1160, 462, rivalTop + 60 + Mathf.CeilToInt(rivals.Length / 2f) * 320 + 20);
             int index = 0;
-            foreach (var worker in RestaurantCatalog.Staff) {
+            foreach (var worker in crew) {
                 var entry = worker;
                 var card = Block(content, entry.Name, (index % 2) * 580, (index / 2) * 320, 562, 303, entry.Special ? new Color(1f, .96f, .86f) : white); index++;
-                Label(card, entry.Name, 25, 24, 495, 45, 26, ink, true);
-                Label(card, entry.Description, 25, 78, 507, 70, 17, muted);
-                string price = entry.Special ? "Recruit for " + entry.FluxCost + " Flux" : "Hire for $" + entry.Cost;
-                string trust = "";
-                Label(card, "Specialty: " + entry.Role + "    /    " + price + trust, 25, 172, 520, 28, 16, ink, true);
+                var def = ResidentCast.Get(entry.Id); float textX = 25;
+                if (def != null && people) { var pic = Box(card, "Portrait", 20, 20, 130, 130).gameObject.AddComponent<RawImage>(); pic.texture = ResidentIcons.Get(def, false); pic.raycastTarget = false; textX = 165; }
+                Label(card, entry.Name, textX, 24, 520 - textX, 45, 26, ink, true);
+                Label(card, entry.Description, textX, 78, 532 - textX, 90, 17, muted);
+                string price = def != null ? def.Rarity + " resident" : entry.Special ? "Recruit for " + entry.FluxCost + " Flux" : "Hire for $" + entry.Cost;
+                Label(card, "Specialty: " + entry.Role + "    /    " + price, 25, 172, 520, 28, 16, ink, true);
                 BuildWorkerActions(card, entry);
             }
+            if (people) {
+                Label(content, "PEOPLE BOOK  /  Old Market  /  " + met + " of " + cast.Length + " met", 22, bookTop + 8, 1110, 40, 24, ink, true);
+                for (int i = 0; i < book.Count; i++) {
+                    var r = book[i]; bool known = gs.HasMet(r.Id);
+                    var card = Block(content, r.Name, (i % 4) * 285, bookTop + 60 + (i / 4) * 300, 270, 285, known ? new Color(1f, .96f, .86f) : pale);
+                    var pic = Box(card, "Portrait", 65, 12, 140, 140).gameObject.AddComponent<RawImage>(); pic.texture = ResidentIcons.Get(r, !known); pic.raycastTarget = false;
+                    Label(card, known ? r.Name : "???", 10, 158, 250, 30, 21, ink, true, TextAnchor.MiddleCenter);
+                    Label(card, known ? r.Rarity + "  /  " + r.Job : r.Rarity + (r.NightOnly ? "  /  comes out at night" : ""), 10, 188, 250, 24, 14, muted, false, TextAnchor.MiddleCenter);
+                    string id = r.Id;
+                    if (known) Button(card, "Recruit  /  " + r.FluxCost + " Flux", 15, 222, 240, 46, () => Owner.Hire(id), teal, white, gs.Flux >= r.FluxCost);
+                    else Label(card, "Serve them a meal to meet them", 10, 225, 250, 40, 14, muted, false, TextAnchor.MiddleCenter);
+                }
+            }
             // The Gilded Orbit's elite crew: visible, desirable, and not available yet.
-            int rivalTop = Mathf.CeilToInt(RestaurantCatalog.Staff.Length / 2f) * 320;
             Label(content, "THE GILDED ORBIT'S CREW  /  Rival exclusives", 22, rivalTop + 10, 1110, 40, 24, ink, true);
             for (int i = 0; i < rivals.Length; i++) {
                 var parts = rivals[i].Split('|');

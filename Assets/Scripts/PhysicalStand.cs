@@ -172,7 +172,7 @@ namespace RestaurantCity {
             for (int i = 0; i < s.StandQueue.Count; i++) {
                 var order = s.StandQueue[i]; live.Add(order.Id);
                 if (!standGuests.TryGetValue(order.Id, out var guest) || !guest) {
-                    guest = People.Visitor(order.Id, order.Type, world, Game.State.IsNight); guest.name = "Stand guest " + order.Id;
+                    guest = string.IsNullOrEmpty(order.ResidentId) ? People.Visitor(order.Id, order.Type, world, Game.State.IsNight) : People.Resident(order.ResidentId, order.Type, world); guest.name = "Stand guest " + order.Id;
                     guest.transform.position = new Vector3(11, 0, 4.5f);
                     var capsule = guest.AddComponent<CapsuleCollider>(); capsule.radius = .3f; capsule.height = 1.6f; capsule.center = Vector3.up * .83f;
                     guest.AddComponent<Interactable>().Kind = InteractionKind.Serve;
@@ -199,7 +199,7 @@ namespace RestaurantCity {
                 int filled = Mathf.Max(1, Mathf.CeilToInt(ratio * 8)); string color = ratio > .55f ? "#4FCB7A" : ratio > .25f ? "#E8C34A" : "#E1543B";
                 var name = People.NameOf(guest, RestaurantCatalog.Customers[Mathf.Clamp(order.Type, 0, RestaurantCatalog.Customers.Length - 1)].Name);
                 string want = order.Dish == "midnight" ? "Midnight burger!" : order.Dish == "salad" ? "Salad, please!" : "Burger, please!";
-                SetBubble(standBubbles[order.Id], name + "\n" + (order.Stage == 2 ? "<color=#4FCB7A>Mmm!</color>" : (order.Stage == 0 ? "Waiting for a table\n" : "") + want + "\n<color=" + color + ">" + new string('|', filled) + "</color>"));
+                SetBubble(standBubbles[order.Id], name + (ResidentCast.Get(order.ResidentId) != null && !Game.State.HasMet(order.ResidentId) ? "  <color=#E8C34A>NEW!</color>" : "") + "\n" + (order.Stage == 2 ? "<color=#4FCB7A>Mmm!</color>" : (order.Stage == 0 ? "Waiting for a table\n" : "") + want + "\n<color=" + color + ">" + new string('|', filled) + "</color>"));
             }
             foreach (var id in new List<int>(standGuests.Keys)) if (!live.Contains(id)) { if (standGuests[id]) Destroy(standGuests[id]); standGuests.Remove(id); standBubbles.Remove(id); guestLeg.Remove(id); }
         }

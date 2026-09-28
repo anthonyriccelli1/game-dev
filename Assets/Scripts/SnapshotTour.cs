@@ -69,6 +69,8 @@ namespace RestaurantCity {
             ("49_cast_oldmarket_a", new Vector3(-9.5f, 0, 5.2f), 180, 6, 70),
             ("50_cast_oldmarket_b", new Vector3(-9.5f, 0, 5.2f), 180, 6, 70),
             ("51_cast_closeup_anim", new Vector3(-12.6f, 0, 1.4f), 180, 10, 70),
+            ("52_people_book", new Vector3(0, 0, 3), 0, 0, 60),
+            ("53_people_book_top", new Vector3(0, 0, 3), 0, 0, 60),
         };
 
         IEnumerator Start() {
@@ -135,6 +137,15 @@ namespace RestaurantCity {
                         var m = c.GetComponent<CharacterMotion>(); if (m) m.SetMood(.9f);
                     }
                     Game.State.StandOpen = false;
+                }
+                if (rc && shot.name.Contains("people_book")) {
+                    var gs = Game.State; gs.StandBuilt = true; gs.Flux = 4; gs.MetResidents.Clear();
+                    foreach (var id in new[] { "003_Jimmy", "038_Kate", "008_Hugo", "091_BigBro_a", "012_Chill", "046_Mafiossini" }) gs.MetResidents.Add(id);
+                    if (!gs.Restaurant.Workers.Exists(w => w.Id == "038_Kate")) gs.Restaurant.Workers.Add(new WorkerState { Id = "038_Kate", Job = StaffJob.Cook });
+                    rc.ShowPanel("Staff");
+                    for (int i = 0; i < 3; i++) yield return null;
+                    var sr = FindAnyObjectByType<UnityEngine.UI.ScrollRect>(); if (sr) sr.verticalNormalizedPosition = shot.name.Contains("top") ? 1f : .45f;
+                    Debug.LogWarning("PEOPLE_BOOK scroll=" + (sr ? sr.verticalNormalizedPosition : -1));
                 }
                 if (rc && shot.name.Contains("milo_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); }
                 if (rc && shot.name.Contains("listing")) { Game.State.Cash = 95; rc.BuyRestaurant(Game.Player, "bayside"); }

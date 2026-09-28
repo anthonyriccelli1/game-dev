@@ -3,64 +3,81 @@ namespace RestaurantCity {
     public enum Gait { Standard, Light, Zombie }
     // One resident of Saffron Bay. Adding a resident = one line here plus its FBX/PNG in Resources/Residents.
     public class ResidentDef {
-        public string Id, Name; public float Height; public int Tier; public bool NightOnly; public Gait Gait;
-        public ResidentDef(string id, string name, float height, int tier = 0, Gait gait = Gait.Standard, bool night = false) { Id = id; Name = name; Height = height; Tier = tier; Gait = gait; NightOnly = night; }
+        public string Id, Name, Blurb; public float Height; public int Tier; public bool NightOnly; public Gait Gait; public StaffJob Job;
+        public ResidentDef(string id, string name, float height, int tier, StaffJob job, string blurb, Gait gait = Gait.Standard, bool night = false) {
+            Id = id; Name = name; Height = height; Tier = tier; Job = job; Blurb = blurb; Gait = gait; NightOnly = night;
+        }
+        public int FluxCost => Tier == 0 ? 2 : Tier == 1 ? 3 : 5;
+        public string Rarity => Tier == 0 ? "Common" : Tier == 1 ? "Uncommon" : "Rare";
     }
+    // Residents show up on their own (weighted by rarity and your stars). Feed one once and they join your People book;
+    // from then on you can recruit them with Flux.
     public static class ResidentCast {
         // Story characters: never recruitable, never in the visitor pool.
-        public static readonly ResidentDef Milo = new ResidentDef("004_OldMoustache", "Milo", 1.68f);
+        public static readonly ResidentDef Milo = new ResidentDef("004_OldMoustache", "Milo", 1.68f, 0, StaffJob.Any, "Runs the market.");
 
-        // Old Market: the everyday street crowd (tier 0 common, 1 uncommon, 2 rare). Night-only residents come out after dark.
         public static readonly ResidentDef[] OldMarket = {
-            new ResidentDef("003_Jimmy", "Jimmy", 1.55f),
-            new ResidentDef("006_Cappy", "Cappy", 1.7f),
-            new ResidentDef("008_Hugo", "Hugo", 1.78f),
-            new ResidentDef("069_Kyle", "Kyle", 1.72f),
-            new ResidentDef("070_Robert", "Robert", 1.8f),
-            new ResidentDef("012_Chill", "Chill", 1.7f),
-            new ResidentDef("128_RandomBoi", "Random Boi", 1.62f),
-            new ResidentDef("038_Kate", "Kate", 1.64f, 0, Gait.Light),
-            new ResidentDef("053_Erika", "Erika", 1.66f, 0, Gait.Light),
-            new ResidentDef("056_Olivia", "Olivia", 1.6f, 0, Gait.Light),
-            new ResidentDef("052_Jennifer", "Jennifer", 1.68f, 0, Gait.Light),
-            new ResidentDef("071_LilBro", "Lil Bro", 1.38f, 1),
-            new ResidentDef("091_BigBro_a", "Big Bro", 2.05f, 1),
-            new ResidentDef("074_Baldman", "Baldman", 1.82f, 1),
-            new ResidentDef("102_BizDude", "Biz Dude", 1.8f, 1),
-            new ResidentDef("057_Rose", "Rose", 1.66f, 1, Gait.Light),
-            new ResidentDef("054_Lydia", "Lydia", 1.62f, 1, Gait.Light),
-            new ResidentDef("136_SlugPerson", "Slug", 1.45f, 1),
-            new ResidentDef("046_Mafiossini", "Mafiossini", 1.8f, 2),
-            new ResidentDef("139_CoolHydrant", "Hydrant", 1.3f, 2),
-            new ResidentDef("146_CoolTrash", "Trash Can", 1.4f, 2),
-            new ResidentDef("044_Zombie", "Zombie", 1.76f, 1, Gait.Zombie, true),
-            new ResidentDef("033_Franky", "Franky", 2.0f, 2, Gait.Zombie, true),
-            new ResidentDef("043_Dracula", "Dracula", 1.86f, 2, Gait.Standard, true),
-            new ResidentDef("035_Wolfman", "Wolfman", 1.9f, 2, Gait.Standard, true),
+            new ResidentDef("003_Jimmy", "Jimmy", 1.55f, 0, StaffJob.Serve, "Knows every shortcut on the block."),
+            new ResidentDef("006_Cappy", "Cappy", 1.7f, 0, StaffJob.Clean, "Never takes the cap off. Scrubs like he means it."),
+            new ResidentDef("008_Hugo", "Hugo", 1.78f, 0, StaffJob.Cook, "Big hands, big appetite, surprisingly gentle with a spatula."),
+            new ResidentDef("069_Kyle", "Kyle", 1.72f, 0, StaffJob.Serve, "Talks fast, walks faster."),
+            new ResidentDef("070_Robert", "Robert", 1.8f, 0, StaffJob.Cook, "Grill-side philosopher."),
+            new ResidentDef("012_Chill", "Chill", 1.7f, 0, StaffJob.Clean, "Nothing rattles Chill. Not even a sink full of plates."),
+            new ResidentDef("128_RandomBoi", "Random Boi", 1.62f, 0, StaffJob.Serve, "Rolls with whatever the night brings."),
+            new ResidentDef("038_Kate", "Kate", 1.64f, 0, StaffJob.Cook, "Night-school chef. Plates like it's an exam.", Gait.Light),
+            new ResidentDef("053_Erika", "Erika", 1.66f, 0, StaffJob.Serve, "Remembers every order without writing it down.", Gait.Light),
+            new ResidentDef("056_Olivia", "Olivia", 1.6f, 0, StaffJob.Clean, "Hood up, headphones in, dishes gone.", Gait.Light),
+            new ResidentDef("052_Jennifer", "Jennifer", 1.68f, 0, StaffJob.Serve, "Street-smart and quick on her feet.", Gait.Light),
+            new ResidentDef("071_LilBro", "Lil Bro", 1.38f, 1, StaffJob.Clean, "Small bottle, big attitude."),
+            new ResidentDef("091_BigBro_a", "Big Bro", 2.05f, 1, StaffJob.Cook, "Lil Bro's big brother. Carries four plates at once."),
+            new ResidentDef("074_Baldman", "Baldman", 1.82f, 1, StaffJob.Serve, "Caped, confident, and weirdly good at refills."),
+            new ResidentDef("102_BizDude", "Biz Dude", 1.8f, 1, StaffJob.Serve, "Always networking. Customers love him."),
+            new ResidentDef("054_Lydia", "Lydia", 1.62f, 1, StaffJob.Cook, "Came for one burger. Stayed for the kitchen.", Gait.Light),
+            new ResidentDef("136_SlugPerson", "Slug", 1.45f, 1, StaffJob.Clean, "Slow walker. Leaves every floor shining."),
+            new ResidentDef("046_Mafiossini", "Mafiossini", 1.8f, 2, StaffJob.Serve, "Owns half the block, or says he does. Great tipper."),
+            new ResidentDef("139_CoolHydrant", "Hydrant", 1.3f, 2, StaffJob.Clean, "Built-in water pressure. The ultimate dishwasher."),
+            new ResidentDef("146_CoolTrash", "Trash Can", 1.4f, 2, StaffJob.Clean, "One man's trash is this can's whole personality."),
+            new ResidentDef("044_Zombie", "Zombie", 1.76f, 1, StaffJob.Cook, "Only comes out at night. Doesn't mind the heat.", Gait.Zombie, true),
+            new ResidentDef("033_Franky", "Franky", 2.0f, 2, StaffJob.Cook, "Stitched together, never tired. Comes out at night.", Gait.Zombie, true),
+            new ResidentDef("043_Dracula", "Dracula", 1.86f, 2, StaffJob.Serve, "Charming night-shift host. Hates garlic orders.", Gait.Standard, true),
+            new ResidentDef("035_Wolfman", "Wolfman", 1.9f, 2, StaffJob.Clean, "Fur everywhere, dishes nowhere. Comes out at night.", Gait.Standard, true),
         };
 
         static readonly Dictionary<string, ResidentDef> byId = new Dictionary<string, ResidentDef>();
         public static ResidentDef Get(string id) {
+            if (string.IsNullOrEmpty(id)) return null;
             if (byId.Count == 0) { byId[Milo.Id] = Milo; foreach (var r in OldMarket) byId[r.Id] = r; }
             return byId.TryGetValue(id, out var d) ? d : null;
         }
-        // A visitor for a given guest seed. Commons come most often, rares seldom; the night crowd only after dark.
-        public static ResidentDef Visitor(int seed, bool night) {
+        public static bool IsRecruitable(string id) { var d = Get(id); return d != null && d != Milo; }
+
+        // Who walks in next. Commons are most likely; uncommons and rares get likelier as your stars rise; night brings
+        // out the night crowd. People you haven't fed yet get a small boost so the book fills steadily.
+        public static ResidentDef Visitor(int seed, bool night, int stars, ICollection<string> met) {
             var pool = new List<ResidentDef>();
             foreach (var r in OldMarket) {
                 if (r.NightOnly && !night) continue;
-                int weight = r.Tier == 0 ? 6 : r.Tier == 1 ? 3 : 1;
-                if (r.NightOnly) weight += 3;   // after dark the spooky crowd is the point
+                int weight = r.Tier == 0 ? 6 : r.Tier == 1 ? 2 + stars : stars >= 2 ? 2 : 1;
+                if (r.NightOnly) weight += 3;
+                if (met != null && !met.Contains(r.Id)) weight += 2;
                 for (int i = 0; i < weight; i++) pool.Add(r);
             }
-            uint h = (uint)seed * 2654435761u; h ^= h >> 13;
+            uint h = (uint)seed * 2654435761u; h ^= h >> 13; h *= 2246822519u; h ^= h >> 16;
             return pool[(int)(h % (uint)pool.Count)];
         }
-        // Staff look: a stable resident per worker id, so the same worker always looks the same.
+        // Default look for staff that aren't residents (basic hires, legacy saves): a stable resident per worker id.
         public static ResidentDef ForWorker(string workerId) {
+            var direct = Get(workerId); if (direct != null) return direct;
             int h = 17; foreach (char c in workerId ?? "") h = h * 31 + c;
             var day = System.Array.FindAll(OldMarket, r => !r.NightOnly);
             return day[(h & 0x7fffffff) % day.Length];
+        }
+        static readonly Dictionary<string, StaffDefinition> staff = new Dictionary<string, StaffDefinition>();
+        public static StaffDefinition Staff(string id) {
+            if (staff.TryGetValue(id ?? "", out var s)) return s;
+            var d = Get(id); if (d == null || !IsRecruitable(id)) return null;
+            s = new StaffDefinition(d.Id, d.Name, d.Job, d.FluxCost, -1, 0, d.Blurb + " Specialty: " + d.Job + ". Can do any job.");
+            staff[id] = s; return s;
         }
     }
 }

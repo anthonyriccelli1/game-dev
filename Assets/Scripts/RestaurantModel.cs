@@ -155,12 +155,12 @@ namespace RestaurantCity {
         };
         public static CatalogItem Find(string id) => Array.Find(Items,i=>i.Id==id);
         public static DishDefinition Dish(string id) => Array.Find(Dishes,i=>i.Id==id);
-        public static StaffDefinition Worker(string id) => Array.Find(Staff,i=>i.Id==id);
+        public static StaffDefinition Worker(string id) => Array.Find(Staff,i=>i.Id==id)??ResidentCast.Staff(id);
     }
 
     [Serializable] public class PlacedItem { public int InstanceId,X,Z,Rotation,Paid; public string CatalogId; }
     [Serializable] public class RestaurantOrder {
-        public int Id,CustomerType,SeatInstanceId; public string DishId;
+        public int Id,CustomerType,SeatInstanceId; public string DishId,ResidentId="";
         public RestaurantOrderStage Stage; public float Wait,CookProgress,Quality=1,StageTime;
     }
     [Serializable] public class RestaurantReview { public string Customer,Comment; public float Score; public string DishId; }
@@ -320,14 +320,14 @@ namespace RestaurantCity {
             Open=true;ServiceSeconds=0;message="OPEN! Customers can arrive. Close service at any time to stop new arrivals.";return true;
         }
         public bool EndService(out string message) {if(!Open)return Fail("Service is already closed.",out message);Open=false;message="CLOSED to new arrivals. Finish current orders; renovate once everyone leaves.";return true;}
-        public RestaurantOrder AddCustomer(GameState wallet,int type,int seatInstanceId,out string message) {
+        public RestaurantOrder AddCustomer(GameState wallet,int type,int seatInstanceId,out string message,string residentId="") {
             if(!Open||type<0||type>=RestaurantCatalog.Customers.Length){message="Restaurant is closed or customer is unavailable.";return null;}
             var seat=Layout.Find(p=>p.InstanceId==seatInstanceId);int capacity=seat==null?0:RestaurantCatalog.Find(seat.CatalogId).Seats;
             capacity-=wallet.Kitchen?.DirtyAtTable(seatInstanceId)??0;
             if(capacity<=Orders.Count(o=>o.SeatInstanceId==seatInstanceId&&o.Stage!=RestaurantOrderStage.Leaving)){message="All seats here are occupied.";return null;}
             var available=ActiveMenu.Where(id=>IsDishAvailable(wallet,id)).ToList();if(available.Count==0){message="No available menu dishes.";return null;}
             var customer=RestaurantCatalog.Customers[type];string dish=available.Contains(customer.FavoriteDish)?customer.FavoriteDish:available[(NextOrderId+type)%available.Count];
-            var order=new RestaurantOrder{Id=NextOrderId++,CustomerType=type,DishId=dish,SeatInstanceId=seatInstanceId};Orders.Add(order);message=$"{customer.Name} ordered {RestaurantCatalog.Dish(dish).Name}.";return order;
+            var who=ResidentCast.Get(residentId);var order=new RestaurantOrder{Id=NextOrderId++,CustomerType=type,DishId=dish,SeatInstanceId=seatInstanceId,ResidentId=residentId??""};Orders.Add(order);message=$"{(who!=null?who.Name:customer.Name)} ordered {RestaurantCatalog.Dish(dish).Name}.";return order;
         }
         public float CookTime(RestaurantOrder order) {var d=RestaurantCatalog.Dish(order.DishId);return d.CookSeconds*(d.Id=="salad"?Math.Max(.5f,1-.25f*(Layout.Count(p=>p.CatalogId=="prep_bench")-1)):1);}
         public bool BeginCooking(int id,out string message) {
@@ -342,15 +342,15 @@ namespace RestaurantCity {
             var c=RestaurantCatalog.Customers[o.CustomerType];var d=RestaurantCatalog.Dish(o.DishId);
             float waitRatio=o.Wait/c.Patience,score=45+o.Quality*30+(waitRatio<.35f?10:waitRatio>.7f?-15:0)+Math.Min(10,Ambience*.55f)*c.AmbienceWeight+(Cleanliness-60)*.15f*c.CleanlinessWeight+(c.FavoriteDish==o.DishId?5:0);
             score=Clamp(score,0,100);int tip=score>=85?4:score>=70?2:0,wage=WagesPerOrder,revenue=Math.Max(0,d.Price+tip-wage);
-            wallet.Cash+=revenue;Earnings+=revenue;Served++;int rep=score>=70?Reputation.HappyCustomer:score>=45?Reputation.OkCustomer:0;if(score>=60&&o.CustomerType>=0&&o.CustomerType<ServedByType.Length){if(ServedByType[o.CustomerType]==0)rep+=Reputation.NewResident;ServedByType[o.CustomerType]++;}Rep(rep>Reputation.HappyCustomer?"New kinds of guests":"Restaurant guests",rep);Cleanliness=Math.Max(0,Cleanliness-4);
+            wallet.Cash+=revenue;Earnings+=revenue;Served++;int rep=score>=70?Reputation.HappyCustomer:score>=45?Reputation.OkCustomer:0;if(score>=60&&o.CustomerType>=0&&o.CustomerType<ServedByType.Length){ServedByType[o.CustomerType]++;}bool met=wallet.MeetResident(o.ResidentId,Reputation.NewResident);Rep(rep>Reputation.HappyCustomer?"New kinds of guests":"Restaurant guests",rep);Cleanliness=Math.Max(0,Cleanliness-4);
             string food=o.Quality>.85f?"Food fresh":o.Quality>.6f?"Food cooled":"Food sat too long";
             string wait=waitRatio<.35f?"short wait":waitRatio>.7f?"long wait":"reasonable wait";
             string room=Cleanliness<45?"dirty tables":Cleanliness>75?"spotless room":"room could be cleaner";
             AddReview(o,score,$"{food}; {wait}; {room}; {(Ambience>=12?"lovely ambience":"plain surroundings")}{(c.FavoriteDish==o.DishId?"; my favorite dish!":".")}");
-            wallet.Emit("served:"+o.Id+":"+(int)score+":"+tip);o.Stage=RestaurantOrderStage.Eating;o.StageTime=0;UpdateRank();message=$"{c.Name}: {score:0}% satisfaction. +${d.Price+tip} ({(wage>0?$"${wage} staff wages":"no wages")}){(rep>0?$"  +{rep} rep":"")}.";return true;
+            wallet.Emit("served:"+o.Id+":"+(int)score+":"+tip);o.Stage=RestaurantOrderStage.Eating;o.StageTime=0;UpdateRank();var who=ResidentCast.Get(o.ResidentId);message=$"{(who!=null?who.Name:c.Name)}: {score:0}% satisfaction. +${d.Price+tip} ({(wage>0?$"${wage} staff wages":"no wages")}){(rep>0?$"  +{rep} rep":"")}."+(met?$"  NEW: {who.Name} joined your People book!":"");return true;
         }
         void AddReview(RestaurantOrder o,float score,string comment) {
-            Reviews.Insert(0,new RestaurantReview{Customer=RestaurantCatalog.Customers[o.CustomerType].Name,Score=score,Comment=comment,DishId=o.DishId});
+            Reviews.Insert(0,new RestaurantReview{Customer=ResidentCast.Get(o.ResidentId)?.Name??RestaurantCatalog.Customers[o.CustomerType].Name,Score=score,Comment=comment,DishId=o.DishId});
             if(Reviews.Count>12)Reviews.RemoveAt(Reviews.Count-1);Satisfaction=Reviews.Average(r=>r.Score);
         }
         public void RecordQueueLoss(int customerType){Lost++;Rep("Guests who left",Reputation.LostCustomer);AddReview(new RestaurantOrder{CustomerType=customerType,DishId="burger"},20,"No clean table became available. Clear and wash dishes, or add seating.");}
@@ -360,6 +360,8 @@ namespace RestaurantCity {
             var d=RestaurantCatalog.Worker(id);if((!Owned&&!wallet.StandBuilt)||d==null)return Fail("Set up your food stand first.",out message);
             if(Workers.Exists(w=>w.Id==id))return Fail("This worker already works here.",out message);
             if(d.Special){
+                var resident=ResidentCast.Get(id);
+                if(resident!=null&&!wallet.HasMet(id))return Fail($"Feed {resident.Name} once and they'll join your People book. Then you can recruit them.",out message);
                 if(wallet.Flux<d.FluxCost)return Fail($"Recruiting {d.Name} costs {d.FluxCost} Flux. Earn Flux from the rival's stash at night.",out message);
                 wallet.Flux-=d.FluxCost;Workers.Add(new WorkerState{Id=id,Job=d.Role});wallet.GainReputation(Reputation.Recruit,"Recruits");message=$"{d.Name} joined your crew for {d.FluxCost} Flux! Specialty: {d.Role}. Assign any job in the Staff tab.";return true;
             }

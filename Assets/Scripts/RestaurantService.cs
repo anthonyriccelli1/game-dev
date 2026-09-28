@@ -10,6 +10,7 @@ namespace RestaurantCity {
             public TextMesh Bubble;
             public Transform Seat;
             public int Type, OrderId = -1, SeatIndex;
+            public string ResidentId = "";
             public bool Seated, Leaving;
             public float QueueWait;
             public readonly Queue<Vector3> Path = new Queue<Vector3>();
@@ -68,7 +69,7 @@ namespace RestaurantCity {
                         Data.Orders.Any(o => o.Id == g.OrderId && o.Stage != RestaurantOrderStage.Leaving)).Select(g => g.SeatIndex));
                     int seatIndex = Enumerable.Range(0, capacity).Where(n => !occupied.Contains(n)).DefaultIfEmpty(-1).First();
                     if (seatIndex < 0) continue;
-                    var order = Data.AddCustomer(Game.State, view.Type, place.InstanceId, out var message);
+                    var order = Data.AddCustomer(Game.State, view.Type, place.InstanceId, out var message, view.ResidentId);
                     if (order != null) {
                         queue.RemoveAt(i); view.OrderId = order.Id;
                         view.SeatIndex = seatIndex;
@@ -105,18 +106,17 @@ namespace RestaurantCity {
                 }
                 view.Motion.Seated = view.Seated;
                 var def = RestaurantCatalog.Customers[order.CustomerType];
+                var who = ResidentCast.Get(order.ResidentId); string guestName = who != null ? who.Name : def.Name;
                 string dish = RestaurantCatalog.Dish(order.DishId).Name;
                 if (order.Stage == RestaurantOrderStage.Eating) {
-                    var review = Data.Reviews.FirstOrDefault(r => r.Customer == def.Name);
+                    var review = Data.Reviews.FirstOrDefault(r => r.Customer == guestName);
                     float score = review == null ? 70 : review.Score; view.Motion.SetMood(score);
                     SetBubble(view.Bubble, (score >= 85 ? "<3  Delicious!" : score >= 65 ? "That hit the spot." : "Could be better...") + "\n" + Mathf.RoundToInt(score) + "%  /  " + (score >= 85 ? "+$3 tip" : "Thanks for dinner"));
 
                 } else {
                     float patience = Mathf.Clamp01(1 - order.Wait / def.Patience); view.Motion.SetMood(patience);
                     string status = order.Stage == RestaurantOrderStage.Ready ? "Dish ready!" : patience < .35f ? "I'm getting hungry..." : order.Stage == RestaurantOrderStage.Cooking ? "Smells good!" : "I'd like " + dish;
-                    var recruit = RestaurantCatalog.Staff.FirstOrDefault(w => w.Special && w.CustomerType == order.CustomerType);
-                    if (recruit != null && !Data.Workers.Any(w => w.Id == recruit.Id)) status += "\n<color=#E8C34A>Recruitable: " + recruit.FluxCost + " Flux</color>";
-                    SetBubble(view.Bubble, def.Name + "\n" + status);
+                    SetBubble(view.Bubble, guestName + (who != null && !Game.State.HasMet(who.Id) ? "  <color=#E8C34A>NEW!</color>" : "") + "\n" + status);
                 }
             }
             UpdatePhysicalEmployees(seconds);
@@ -138,11 +138,13 @@ namespace RestaurantCity {
             guests.Clear(); queue.Clear(); employees.Clear(); workerPlans.Clear(); kitchenPlates.Clear(); crumbs.Clear(); observedTypes.Clear();
             if(heldPlate)Destroy(heldPlate); CarriedOrderId = -1; arrival = 3; nextType = 0; actorState = Data; lastRank = Data.Stars;
         }
+        static int visitorSeed;
         GuestView NewGuest(int type) {
-            var root = People.NextVisitor(type, transform, Game.State.IsNight);
+            string residentId = People.UseResidents ? Game.State.PickVisitor(++visitorSeed * 13 + Game.State.Day * 977 + type) : "";
+            var root = People.Resident(residentId, type, transform);
             var collider = root.AddComponent<CapsuleCollider>(); collider.radius = .29f; collider.height = 1.6f; collider.center = Vector3.up * .83f;
             root.AddComponent<RestaurantTarget>().Kind = "Customer";
-            return new GuestView { Root = root, Type = type, Motion = root.GetComponent<CharacterMotion>(), Bubble = WorldCaption(root.transform, "", new Vector3(0, 2.4f, 0), .025f) };
+            return new GuestView { Root = root, Type = type, ResidentId = residentId, Motion = root.GetComponent<CharacterMotion>(), Bubble = WorldCaption(root.transform, "", new Vector3(0, 2.4f, 0), .025f) };
         }
         void SetBubble(TextMesh text, string value) {
             text.text = value;

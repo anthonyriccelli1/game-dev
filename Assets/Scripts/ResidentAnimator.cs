@@ -41,6 +41,8 @@ namespace RestaurantCity {
             AnimationPlayableOutput.Create(graph, "Resident", animator).SetSourcePlayable(mixer);
             weights[0] = 1; Apply(); graph.Play();
         }
+        // Poses the model immediately (for portraits taken outside the normal frame loop).
+        public void Pose(float seconds) { if (graph.IsValid()) graph.Evaluate(seconds); }
         public void React(bool happy) {
             var clip = happy ? (Clip("Cheer") ?? Clip("Happy")) : Clip("Angry");
             if (!clip || !graph.IsValid()) return;

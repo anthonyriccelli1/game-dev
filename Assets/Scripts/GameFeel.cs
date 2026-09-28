@@ -74,6 +74,14 @@ namespace RestaurantCity {
                     if (guest) { var m = guest.GetComponent<CharacterMotion>(); if (m) m.Stomp(); Pop(guest.transform.position + Vector3.up * 2.1f, "Too slow! I'm leaving.", "E1543B", .026f); }
                     break;
                 }
+                case "met": {
+                    // First meal for a resident: they join the People book (recruitable with Flux from then on).
+                    var def = ResidentCast.Get(parts.Length > 1 ? parts[1] : ""); if (def == null) break;
+                    Fx(SoundFx.Tip, 1f);
+                    foreach (var tag in FindObjectsByType<ResidentTag>(FindObjectsSortMode.None))
+                        if (tag.Def == def) { Pop(tag.transform.position + Vector3.up * 2.95f, "NEW! " + def.Name + " added to your People book", "F2C94C", .03f); break; }
+                    break;
+                }
                 case "queue_walkout": case "stand_walkout": Fx(SoundFx.Huff, .8f); break;
                 case "arrive": Fx(SoundFx.Doorbell, .45f); break;
                 case "chop": if (chopCooldown <= 0) { chopCooldown = .24f; Fx(SoundFx.Chop, .7f); } break;
