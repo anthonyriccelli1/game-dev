@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace RestaurantCity {
     /// <summary>Original runtime art. Create these models at runtime: generated meshes are intentionally not editor assets.</summary>
-    public static class RestaurantArt {
+    public static partial class RestaurantArt {
         static readonly Dictionary<string, Material> materials = new Dictionary<string, Material>();
         static readonly Dictionary<string, Mesh> meshes = new Dictionary<string, Mesh>();
         static readonly Color Cream = C("F5DBAA"), Coral = C("D96555"), Teal = C("317E79"), Ink = C("233B46"), Brass = C("CA9B53"), Wood = C("895343"), White = C("FFF1D1"), Green = C("73A566");

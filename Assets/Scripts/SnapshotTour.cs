@@ -61,6 +61,9 @@ namespace RestaurantCity {
             ("41_stash_main_west", new Vector3(-120, 0, 2.5f), 0, 14, 195),
             ("42_stash_main_east", new Vector3(70, 0, -13.5f), 0, 14, 195),
             ("43_phone_zeeb", new Vector3(0, 0, 3), 0, 0, 60),
+            ("44_style_kit_new", new Vector3(-9.5f, 0, 4.6f), 180, 6, 70),
+            ("45_style_kit_old", new Vector3(-9.5f, 0, 4.6f), 180, 6, 70),
+            ("46_style_kit_closeup", new Vector3(-8.2f, 0, 1.5f), 180, 10, 70),
         };
 
         IEnumerator Start() {
@@ -94,6 +97,18 @@ namespace RestaurantCity {
                     var crate = GameObject.Find("Night stash"); if (crate) { var c = crate.transform.position; p.transform.position = new Vector3(c.x, 0, c.z - 5.5f); Debug.LogWarning("STASH_SPOT " + spot + " at " + c); }
                 }
                 if (rc && shot.name.Contains("phone_zeeb")) { Game.State.Learn("midnight"); Game.State.DropBottles = 0; Game.State.ZeebDebt = 33; Game.State.Cash = 60; rc.Advance(.01f); rc.ShowPanel("Phone"); }
+                if (shot.name.Contains("style_kit")) {
+                    // Character style test: the new kit cast vs. today's hand-coded characters, lined up on Main Street.
+                    var old = GameObject.Find("Style lineup"); if (old) Destroy(old);
+                    var line = new GameObject("Style lineup").transform; bool legacy = shot.name.Contains("old");
+                    int n = legacy ? 8 : RestaurantArt.StyleTestCast.Length;
+                    for (int i = 0; i < n; i++) {
+                        var c = legacy ? RestaurantArt.CreateCharacter(i, line) : RestaurantArt.BuildCharacter(RestaurantArt.StyleTestCast[i], line);
+                        c.transform.position = new Vector3(-14.4f + i * 1.4f, 0, -1.2f); c.transform.rotation = Quaternion.identity;
+                        var m = c.GetComponent<CharacterMotion>(); if (m) m.SetMood(.9f);
+                    }
+                    Game.State.StandOpen = false;
+                }
                 if (rc && shot.name.Contains("milo_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); }
                 if (rc && shot.name.Contains("listing")) { Game.State.Cash = 95; rc.BuyRestaurant(Game.Player, "bayside"); }
                 if (rc && shot.name.Contains("stand_tables")) {
