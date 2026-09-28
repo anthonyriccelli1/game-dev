@@ -28,6 +28,15 @@ namespace RestaurantCity {
         public List<string> KnownRecipes = new List<string> { "burger", "salad" };
         public int LastMiloHelpDay;
         public bool Knows(string dish) => KnownRecipes != null && KnownRecipes.Contains(dish);
+        public bool BuyRecipe(string dish, out string message) {
+            var offer = Array.Find(RecipeBook.ForSale, f => f.dish == dish);
+            if (offer.dish == null) { message = "That recipe isn't for sale."; return false; }
+            if (Knows(dish)) { message = "You already know it."; return false; }
+            if (RankEarned < offer.rank) { message = "Sold to " + Reputation.Titles[offer.rank] + "s and up."; return false; }
+            if (Cash < offer.price) { message = "The recipe costs $" + offer.price + "."; return false; }
+            Cash -= offer.price; Learn(dish);
+            message = "Learned " + RestaurantCatalog.Dish(dish).Name + "! Add it to your menu, and buy its ingredients from Milo."; return true;
+        }
         public void Learn(string dish) { KnownRecipes = KnownRecipes ?? new List<string>(); if (!KnownRecipes.Contains(dish)) KnownRecipes.Add(dish); }
         public void GainReputation(int amount, string source = "Other") {
             if (amount == 0) return;

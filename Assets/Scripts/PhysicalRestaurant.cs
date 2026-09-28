@@ -79,6 +79,11 @@ namespace RestaurantCity {
   }
   // Grill feedback: a small bar that fills while cooking, turns green when done, red when burning.
   static string CookStatus(KitchenStation s,KitchenItem item){
+   if(item!=null&&s.CatalogId=="stove"){
+    if(item.Kind==KitchenItemKind.ScorchedSoup)return "\n<color=#E1543B>SCORCHED - take the pot and throw it away</color>";
+    if(item.Kind==KitchenItemKind.Soup)return "\n<color=#4FCB7A>SOUP'S READY - bring a plate and ladle it</color>";
+    if(item.Kind==KitchenItemKind.SoupPot){int f=Mathf.Clamp(Mathf.FloorToInt(s.Progress/KitchenState.SoupSeconds*10),0,10);return "\n"+(item.Stir>=KitchenState.StirWarning?"<color=#E1543B>STIR IT! Scorching in "+Mathf.CeilToInt(KitchenState.ScorchSeconds-item.Stir)+"s</color>":"<color=#E8C34A>Simmering ["+new string('#',f)+new string('-',10-f)+"]</color>");}
+   }
    if(item==null||(s.CatalogId!="grill"&&s.CatalogId!="oven"))return "";
    float done=s.CatalogId=="oven"?6:8,burn=24,t=s.Progress;
    if(item.Kind==KitchenItemKind.BurntPatty)return "\n<color=#E1543B>BURNT - take it and press Q to discard</color>";
@@ -131,6 +136,9 @@ namespace RestaurantCity {
      if(item.Kind==KitchenItemKind.RawProtein)ratio=s.Progress/done;
      else if(item.Kind==KitchenItemKind.CookedPatty){float heat=(s.Progress-done)/(burn-done);ratio=1;color=heat<.5f?"4FCB7A":heat<.8f?"E8973A":"E1543B";}
      else if(item.Kind==KitchenItemKind.BurntPatty){ratio=1;color="3A2A26";}
+    }else if(item!=null&&s.CatalogId=="stove"){
+     if(item.Kind==KitchenItemKind.SoupPot){ratio=s.Progress/KitchenState.SoupSeconds;color=item.Stir>=KitchenState.StirWarning?"E1543B":"E8C34A";}
+     else if(item.Kind==KitchenItemKind.Soup){ratio=1;color="4FCB7A";}else if(item.Kind==KitchenItemKind.ScorchedSoup){ratio=1;color="3A2A26";}
     }else if(item!=null&&s.CatalogId=="prep_bench"&&(item.Kind==KitchenItemKind.RawGreens||item.Kind==KitchenItemKind.RawSauce)){
      float d=(item.Kind==KitchenItemKind.RawSauce?4:3)*(Game.State.FluxResearch?.65f:1);ratio=s.Progress/d;
     }else if(item!=null&&s.CatalogId=="prep_bench"&&(item.Kind==KitchenItemKind.ChoppedGreens||item.Kind==KitchenItemKind.MidnightSauce)){ratio=1;color="4FCB7A";}

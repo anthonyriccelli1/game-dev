@@ -52,6 +52,15 @@ namespace RestaurantCity {
     {int cash=st.Cash;var saved=st.Restaurant.Pantry;st.Restaurant.Pantry=new System.Collections.Generic.List<StockLine>();st.Cash=5;
      Check(st.Restaurant.RequestSupplyHelp(st,out var hm)&&st.Restaurant.Stock("patty")==3&&st.Restaurant.Stock("greens")==3,"broke player gets free basics from Milo: "+hm);
      st.Restaurant.Pantry=new System.Collections.Generic.List<StockLine>();Check(!st.Restaurant.RequestSupplyHelp(st,out hm),"only once per day");st.Restaurant.Pantry=saved;st.Cash=cash;}
+    // Planet soup: buy the recipe, simmer with a stir, ladle onto a plate. An unstirred pot scorches.
+    Check(!st.Knows("soup")&&!Game.Restaurant.Data.IsDishAvailable(st,"soup"),"soup starts unknown");
+    Check(InstallFirstFree("stove"),"install a stove");st.Kitchen.EnsureStations(Game.Restaurant.Data);Game.Restaurant.RebuildLayout();
+    Check(st.BuyRecipe("soup",out var bm),"buy Planet soup in the Cookbook: "+bm);Check(Game.Restaurant.Data.IsDishAvailable(st,"soup"),"soup can go on the menu once bought with a stove");
+    st.Restaurant.AddStock("soup_veg",4);var stove=Station("stove");
+    Act("pantry","soup");Act("stove");st.Kitchen.Tick(st,6);Act("stove");st.Kitchen.Tick(st,8.1f);Check(st.Kitchen.At(stove)?.Kind==KitchenItemKind.Soup,"a stirred pot becomes soup");
+    Act("plate_rack");Act("stove");Check(st.Kitchen.RecipeOf(st.Kitchen.Hold("player:0"))=="soup"&&st.Kitchen.At(stove)==null,"ladle the soup onto a plate");
+    Check(st.Kitchen.Discard(st,"player:0",out var dm),dm);Act("sink");Check(st.Kitchen.Work(st,"player:0",Station("sink"),KitchenState.WashSeconds+.1f,out dm),dm);
+    Act("pantry","soup");Act("stove");st.Kitchen.Tick(st,10);Check(st.Kitchen.At(stove)?.Kind==KitchenItemKind.ScorchedSoup,"an unstirred pot scorches");Act("stove");Check(st.Kitchen.Discard(st,"player:0",out dm),"throw the scorched pot away");
     Game.Player.Teleport(new Vector3(-10,.15f,-11));}catch(Exception e){Fail(e);yield break;}
    yield return new WaitForSecondsRealtime(1);Capture("01-physical-kitchen.png");
    try{var pos=Game.Player.transform.position;Game.CoOp.ToggleElevated(Game.Player);Check(Vector3.Distance(pos,Game.Player.transform.position)<.01f,"camera preserves position");Game.CoOp.Join(null);Game.CoOp.SecondPlayer.LookAt(new Vector3(-11,1,-18));Check(Game.CoOp.PlayerCount==2,"two independent players created");var hostPosition=Game.Player.transform.position;var partnerPosition=Game.CoOp.SecondPlayer.transform.position;Game.CoOp.SecondPlayer.ApplyMovement(new Vector2(1,0),.2f);Check(Vector3.Distance(hostPosition,Game.Player.transform.position)<.01f&&Vector3.Distance(partnerPosition,Game.CoOp.SecondPlayer.transform.position)>.05f,"partner movement leaves host independent");Game.Restaurant.ToggleService();Game.Restaurant.ClosePanel();Game.Restaurant.Advance(5);}catch(Exception e){Fail(e);yield break;}

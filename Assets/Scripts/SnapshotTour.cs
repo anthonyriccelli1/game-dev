@@ -54,6 +54,8 @@ namespace RestaurantCity {
             ("34_stand_pantry", new Vector3(-2.4f, 0, 10.4f), 180, 14, 60),
             ("35_stand_front", new Vector3(0, 0, 3.4f), 0, 4, 60),
             ("36_pantry_from_street", new Vector3(-2.2f, 0, 6.0f), 0, 16, 60),
+            ("37_menu_tab", new Vector3(-10, 0, -11), 180, 0, 60),
+            ("38_cookbook_tab", new Vector3(-10, 0, -11), 180, 0, 60),
         };
 
         IEnumerator Start() {
@@ -79,6 +81,7 @@ namespace RestaurantCity {
                 var rc = FindFirstObjectByType<RestaurantController>();
                 if (rc && shot.name.Contains("phone_map")) rc.ShowPanel("Map");
                 if (rc && (shot.name.Contains("stand_pantry") || shot.name.Contains("pantry_from_street"))) { foreach (var i in new[] { "patty", "bun" }) rc.Data.AddStock(i, 14); rc.Advance(.05f); }
+                if (rc && (shot.name.Contains("menu_tab") || shot.name.Contains("cookbook_tab"))) { rc.Data.Owned = true; Game.State.Cash = 120; rc.ShowPanel(shot.name.Contains("menu") ? "Menu" : "Cookbook"); }
                 if (rc && shot.name.Contains("milo_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); }
                 if (rc && shot.name.Contains("listing")) { Game.State.Cash = 95; rc.BuyRestaurant(Game.Player, "bayside"); }
                 if (rc && shot.name.Contains("stand_tables")) {

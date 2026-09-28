@@ -69,6 +69,7 @@ namespace RestaurantCity {
                 // resolve exactly which ingredient the player is looking at, replacing the hidden Q cycle.
                 PantryShelf(p,"protein",-.48f,0,.62f); PantryShelf(p,"greens",.48f,0,.62f);
                 PantryShelf(p,"bun",-.48f,.62f,1.12f); PantryShelf(p,"sauce",.48f,.62f,1.12f);
+                PantryShelf(p,"soup",-.48f,1.12f,1.8f);
             } else if(id=="plate_rack") {
                 Bench(p,width,"317E79");
                 for(int stack=0;stack<2;stack++)for(int n=0;n<5;n++)Plate(p,new Vector3(stack==0?-.21f:.21f,1+n*.04f,0),.8f);
@@ -152,6 +153,7 @@ namespace RestaurantCity {
                     bool bun=Has("bun"),patty=Has("cooked_patty");
                     if(bun)Disk("Bottom bun",p,new Vector3(0,.03f,0),new Vector3(.28f,.045f,.28f),"D9A45E");
                     if(Has("chopped_greens"))Greens(p,new Vector3(0,.08f,0),true);
+                    if(Has("soup")){S("Soup bowl",p,Profile("bowl",new[]{0f,.01f,.08f,.09f},new[]{.07f,.12f,.15f,.15f},10),new Vector3(0,.02f,0),Vector3.one,M("F5DBAA"));Disk("Bowl of soup",p,new Vector3(0,.095f,0),new Vector3(.27f,.015f,.27f),"D9822B");}
                     if(patty)Patty(p,new Vector3(0,bun?.105f:.04f,0),"CookedPatty");
                     if(Has("midnight_sauce")){Disk("Midnight glaze",p,new Vector3(0,.17f,0),new Vector3(.24f,.012f,.22f),"824DA1");for(int i=0;i<3;i++)Box("Glaze glint",p,new Vector3(-.065f+i*.055f,.187f,0),new Vector3(.023f,.006f,.07f),"B492CB");}
                     if(bun)Bun(p,new Vector3(0,patty?.18f:.09f,0));
@@ -164,6 +166,16 @@ namespace RestaurantCity {
                 // Milo's paper grocery bag: kraft paper, a folded rim, and a bun and greens peeking out.
                 Box("Kraft bag",p,new Vector3(0,.17f,0),new Vector3(.3f,.34f,.2f),"C9A26B");Box("Folded rim",p,new Vector3(0,.345f,0),new Vector3(.31f,.03f,.21f),"B08A55");
                 Box("Milo stamp",p,new Vector3(0,.2f,.101f),new Vector3(.14f,.09f,.003f),"317E79");Greens(p,new Vector3(-.06f,.33f,0),false);Bun(p,new Vector3(.07f,.35f,0));
+            } else if(kind=="SoupVeg") {
+                // A little bundle of soup veg: carrots, a potato and an onion.
+                for(int i=0;i<2;i++){var c=S("Carrot",p,Profile("carrot",new[]{0f,.02f,.18f},new[]{0f,.035f,0f},6),new Vector3(-.06f+i*.1f,.03f,0),Vector3.one,M("E8792E"));c.transform.localRotation=Quaternion.Euler(90,20+i*30,0);}
+                Box("Potato",p,new Vector3(.02f,.045f,.08f),new Vector3(.1f,.08f,.08f),"C9A26B");Disk("Onion",p,new Vector3(-.05f,.04f,-.08f),new Vector3(.09f,.08f,.09f),"D8B4E0");
+            } else if(kind=="SoupPot"||kind=="Soup"||kind=="ScorchedSoup") {
+                // A steel pot on the burner; the soup colour tells you its state.
+                S("Soup pot",p,Profile("pot",new[]{0f,.02f,.22f,.24f},new[]{.15f,.2f,.2f,.19f},10),Vector3.zero,Vector3.one,M("A8B0B4"));
+                Disk("Soup surface",p,new Vector3(0,.2f,0),new Vector3(.36f,.02f,.36f),kind=="ScorchedSoup"?"2E2320":kind=="Soup"?"D9822B":"C9A25A");
+                if(kind!="ScorchedSoup")for(int i=0;i<3;i++)Disk("Veg bit",p,new Vector3(-.07f+i*.07f,.215f,.03f*(i-1)),new Vector3(.04f,.012f,.04f),i==1?"73A566":"E8792E");
+                if(kind=="Soup")for(int i=0;i<2;i++){var steam=Disk("Steam",p,new Vector3(-.04f+i*.08f,.32f+i*.05f,0),new Vector3(.07f,.07f,.07f),"F5F1E8");steam.transform.localScale*=.9f;}
             } else if(kind=="Bun")Bun(p,Vector3.zero);
             else if(kind=="RawProtein") {var meat=Box("Raw cut of protein",p,new Vector3(0,.045f,0),new Vector3(.24f,.085f,.18f),"C96C64");meat.transform.localRotation=Quaternion.Euler(0,15,0);for(int i=0;i<3;i++){var fat=Box("Raw marbling",p,new Vector3((i-1)*.057f,.09f,0),new Vector3(.014f,.004f,.13f),"F0BC9D");fat.transform.localRotation=Quaternion.Euler(0,-22,0);}}
             else Patty(p,Vector3.zero,kind);

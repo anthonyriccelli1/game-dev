@@ -50,8 +50,17 @@ namespace RestaurantCity {
                 "Cook a patty like a burger.",
                 "Take sauce ingredients from the pantry and prepare them at the prep bench.",
                 "Add the cooked patty, a bun, and the midnight sauce.",
-                "Carry the finished plate to the matching guest."})
+                "Carry the finished plate to the matching guest."}),
+            new RecipeDefinition("soup",new[]{"soup"},new[]{
+                "Buy the recipe in the Cookbook, and soup vegetables from Milo.",
+                "Take soup vegetables from the pantry's top shelf and put them in the pot on the stove.",
+                "It simmers for 14 seconds. Stir it (E) at least every 9 seconds or it scorches.",
+                "Carry a clean plate to the stove and ladle the soup onto it.",
+                "Carry the finished soup to the matching guest."})
         };
+        // Recipes you can buy in the Cookbook (cash, and the rank that sells them). Others are starters or found in the city.
+        public static readonly (string dish,int price,int rank)[] ForSale = { ("soup",60,0) };
+        public static string HowToGet(string dish)=>dish=="burger"||dish=="salad"?"Starter recipe":dish=="midnight"?"Beat the rival in the alley at night and open his stash":Array.Exists(ForSale,f=>f.dish==dish)?"Buy it in the Cookbook":"Not available yet";
         public static RecipeDefinition Find(string dishId) => Array.Find(Recipes,r=>r.DishId==dishId);
         public static string Match(List<string> components) {
             if(components==null||components.Count==0)return "";
@@ -84,7 +93,7 @@ namespace RestaurantCity {
             new CatalogItem("sink","Deep washing sink",CatalogCategory.Kitchen,30,1,1,0,0,"Wash dirty plates for six seconds to replenish the rack."),
             new CatalogItem("prep_bench","Steel prep bench",CatalogCategory.Kitchen,28,2,1,0,0,"Prepare one ingredient at a time. Extra benches let partners prep together."),
             new CatalogItem("grill","Comet grill",CatalogCategory.Kitchen,45,2,1,0,1,"Burgers and midnight buns. Extra grills add a cooking slot."),
-            new CatalogItem("stove","Little red stove",CatalogCategory.Kitchen,55,1,1,0,1,"LINE COOK gear: a second cooking line for soups and stews.",1,1),
+            new CatalogItem("stove","Little red stove",CatalogCategory.Kitchen,55,1,1,0,1,"Simmers Planet soup. Stir it or it scorches.",1,0),
             new CatalogItem("oven","Starlight oven",CatalogCategory.Kitchen,100,2,1,0,2,"LINE COOK gear: cooks patties in six seconds instead of eight.",2,1),
             new CatalogItem("fridge","Mint refrigerator",CatalogCategory.Kitchen,40,1,1,0,1,"Raises each stock limit from 24 to 48; keeps ready dishes fresh longer."),
             new CatalogItem("stool_pair","Counter stools",CatalogCategory.Seating,20,2,2,2,1,"Two inexpensive customer seats."),

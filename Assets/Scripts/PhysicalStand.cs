@@ -146,7 +146,7 @@ namespace RestaurantCity {
             var s = Game.State;
             TickPantryDisplays();
             s.Players = Game.CoOp ? Mathf.Max(1, Game.CoOp.PlayerCount) : 1;
-            if (standSignText) standSignText.text = s.StandOpen ? "<color=#4FCB7A>OPEN</color>\nBurgers" : "<color=#E1543B>CLOSED</color>";
+            if (standSignText) standSignText.text = s.StandOpen ? "<color=#4FCB7A>OPEN</color>\nBurgers\n& Salad" + (s.Knows("midnight") ? "\n+ Midnight" : "") : "<color=#E1543B>CLOSED</color>";
             if (!standPlatesText && standObjects.TryGetValue(KitchenState.StandBase + 4, out var rack) && rack) { standPlatesText = WorldCaption(rack.transform, "", new Vector3(0, 2.1f, 0), .014f); }
             if (!standSinkText && standObjects.TryGetValue(KitchenState.StandBase + 5, out var sink) && sink) { standSinkText = WorldCaption(sink.transform, "", new Vector3(0, 2.1f, 0), .014f); }
             if (standPlatesText) { standPlatesText.text = "Clean plates: " + s.StandClean; standPlatesText.transform.rotation = Quaternion.identity; }

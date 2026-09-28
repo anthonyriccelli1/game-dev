@@ -119,7 +119,7 @@ namespace RestaurantCity {
             modal = Block(canvas.transform, "Restaurant management", 0, 105, 1440, 735, new Color(ink.r, ink.g, ink.b, .60f));
             var sheet = Block(modal, "Order pad", 110, 12, 1220, 710, paper);
             Block(sheet, "Top accent", 0, 0, 1220, 7, teal);
-            Label(sheet, Owner.Panel == "Listing" ? "For sale later." : Owner.Panel == "Supplies" ? "Milo's Market." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "How every dish is built." : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
+            Label(sheet, Owner.Panel == "Listing" ? "For sale later." : Owner.Panel == "Supplies" ? "Milo's Market." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "Recipes." : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
             Button(sheet, "Close  x", 1060, 24, 130, 36, () => Owner.ClosePanel(), ink, paper);
             Label(sheet, "Time pauses while management is open.", 823, 62, 365, 19, 12, muted, false, TextAnchor.MiddleRight);
             string[] panels = { "Catalog", "Service", "Menu", "Cookbook", "Staff", "Map", "Reviews", "Furniture" };
@@ -176,43 +176,50 @@ namespace RestaurantCity {
             }
         }
 
+        // Menu: every dish with hands-on steps. Starters (burger, salad) are always known; others are bought or found.
         void BuildMenu(RectTransform sheet) {
             Label(sheet, "Offer fewer dishes for an easier shift, or a wider menu for more favorites and better takings.", 30, 141, 1148, 29, 16, ink);
-            int count = RestaurantCatalog.Dishes.Length;
-            var content = Scroller(sheet, 30, 182, 1160, 390, Mathf.CeilToInt(count / 2f) * 155);
-            int index = 0;
-            foreach (var dish in RestaurantCatalog.Dishes) {
-                if (dish.Id != "burger" && dish.Id != "salad" && dish.Id != "midnight") continue; var entry = dish; int col = index % 2, row = index / 2; index++;
-                var card = Block(content, entry.Name, col * 580, row * 155, 562, 142, white);
-                bool midnight = !Owner.Game.State.Knows(entry.Id);
-                bool locked = !Owner.Data.IsDishAvailable(Owner.Game.State, entry.Id);
-                bool active = Owner.Data.ActiveMenu.Contains(entry.Id);
-                Label(card, entry.Name, 18, 13, 364, 30, 23, ink, true);
+            var dishes = RecipeBook.Recipes.Select(r => RestaurantCatalog.Dish(r.DishId)).Where(x => x != null).ToList();
+            var content = Scroller(sheet, 30, 182, 1160, 390, Mathf.CeilToInt(dishes.Count / 2f) * 155);
+            var st = Owner.Game.State;
+            for (int index = 0; index < dishes.Count; index++) {
+                var entry = dishes[index]; int col = index % 2, row = index / 2;
+                bool known = st.Knows(entry.Id), hasGear = string.IsNullOrEmpty(entry.Equipment) || Owner.Data.HasEquipment(entry.Equipment);
+                bool available = Owner.Data.IsDishAvailable(st, entry.Id), active = Owner.Data.ActiveMenu.Contains(entry.Id);
+                var card = Block(content, entry.Name, col * 580, row * 155, 562, 142, known ? white : new Color(.92f, .91f, .86f));
+                Label(card, entry.Name, 18, 13, 300, 30, 23, known ? ink : muted, true);
+                string badge = entry.Id == "burger" || entry.Id == "salad" ? "STARTER" : !known ? "LOCKED" : entry.Id == "midnight" ? "FOUND" : "BOUGHT";
+                Label(card, badge, 318, 19, 110, 22, 13, known ? teal : coral, true, TextAnchor.MiddleRight);
                 Label(card, "$" + entry.Price, 441, 13, 101, 30, 23, teal, true, TextAnchor.MiddleRight);
-                Label(card, "Uses " + string.Join(" + ", Ingredients.For(entry.Id).Select(Ingredients.Name)) + "   /   " + entry.CookSeconds.ToString("0") + "s to cook", 18, 50, 521, 25, 15, muted);
-                string help = midnight ? "Find the midnight recipe in the rival alley after dark." : entry.RequiredStars > Owner.Data.Stars ? "Reach " + entry.RequiredStars + " stars to unlock this recipe." : locked ? "Needs " + EquipmentName(entry.Equipment) + " from the shop." : active ? "Guests can order this dish." : "Add this dish to offer it to arriving guests.";
-                Label(card, help, 18, 85, 335, 43, 14, ink);
-                Button(card, locked ? "Locked" : active ? "On menu" : "Add to menu", 372, 87, 171, 35, () => Owner.ToggleDish(entry.Id), active ? teal : pale, active ? white : ink, !locked);
+                Label(card, "Uses " + string.Join(" + ", Ingredients.For(entry.Id).Select(Ingredients.Name)) + "   /   " + (string.IsNullOrEmpty(entry.Equipment) ? "" : "on the " + EquipmentName(entry.Equipment)), 18, 50, 521, 25, 15, muted);
+                string help = !known ? RecipeBook.HowToGet(entry.Id) + "." : !hasGear ? "You know it. Now buy a " + EquipmentName(entry.Equipment) + " in the Shop." : entry.RequiredStars > Owner.Data.Stars ? "Reach " + entry.RequiredStars + " stars to serve it." : active ? "Guests can order this dish." : "Add it so guests can order it.";
+                Label(card, help, 18, 85, 335, 43, 14, known ? ink : coral);
+                Button(card, !available ? (known ? "Needs gear" : "Locked") : active ? "On menu" : "Add to menu", 372, 87, 171, 35, () => Owner.ToggleDish(entry.Id), available && active ? teal : pale, available && active ? white : available ? ink : muted, available);
             }
             var pantry = Block(sheet, "Pantry", 30, 589, 1160, 61, ink);
             Label(pantry, "Pantry: " + string.Join("   ", Ingredients.All.Where(i => Owner.Data.Stock(i.Id) > 0 || i.Source == Ingredients.Milo && i.Recipe == null).Select(i => Ingredients.Name(i.Id) + " " + Owner.Data.Stock(i.Id))), 16, 16, 760, 33, 17, paper, true);
             Label(pantry, "Restock by talking to Milo.", 800, 16, 344, 35, 16, paper, false, TextAnchor.MiddleRight);
         }
 
+        // Cookbook: how every dish is built, and where new recipes come from (bought here, or found in the city).
         void BuildCookbook(RectTransform sheet) {
-            Label(sheet, "Every playable recipe: what it needs and how to build it. Order does not matter.", 30, 141, 1148, 29, 16, ink);
+            var st = Owner.Game.State;
+            Label(sheet, "Buy new recipes here. Rare ones can't be bought: they're hidden in the city.", 30, 141, 1148, 29, 16, ink);
             var content = Scroller(sheet, 30, 182, 1160, 466, RecipeBook.Recipes.Length * 165);
             for (int i = 0; i < RecipeBook.Recipes.Length; i++) {
-                var recipe = RecipeBook.Recipes[i];
-                var dish = RestaurantCatalog.Dish(recipe.DishId);
-                bool locked = dish.RequiresMidnight && !Owner.Game.State.RecipeUnlocked;
-                var card = Block(content, dish.Name, 0, i * 165, 1141, 152, white);
-                Label(card, dish.Name + (locked ? "  (locked)" : ""), 18, 12, 700, 30, 22, locked ? muted : ink, true);
-                Label(card, "Needs: " + string.Join(" + ", recipe.Components.Select(ComponentName)), 18, 44, 1100, 24, 15, teal, true);
-                Label(card, locked ? "Find this recipe on a night city outing, then it is usable in service." : string.Join("   >   ", recipe.Steps), 18, 70, 1100, 76, 14, muted);
+                var recipe = RecipeBook.Recipes[i]; var dish = RestaurantCatalog.Dish(recipe.DishId); string id = dish.Id;
+                bool known = st.Knows(id); var offer = Array.Find(RecipeBook.ForSale, f => f.dish == id);
+                var card = Block(content, dish.Name, 0, i * 165, 1141, 152, known ? white : new Color(.92f, .91f, .86f));
+                Label(card, dish.Name + (known ? "" : "  (not learned)"), 18, 12, 700, 30, 22, known ? ink : muted, true);
+                Label(card, "Needs: " + string.Join(" + ", recipe.Components.Select(ComponentName)) + "   /   sells for $" + dish.Price, 18, 44, 800, 24, 15, teal, true);
+                Label(card, known ? string.Join("   >   ", recipe.Steps) : RecipeBook.HowToGet(id) + ".", 18, 70, offer.dish != null && !known ? 820 : 1100, 76, 14, muted);
+                if (offer.dish != null && !known) {
+                    bool rankOk = st.RankEarned >= offer.rank, cash = st.Cash >= offer.price;
+                    Button(card, !rankOk ? "Needs " + Reputation.Titles[offer.rank] : "Buy recipe  /  $" + offer.price, 870, 50, 250, 44, () => Owner.BuyRecipe(id), rankOk && cash ? teal : pale, rankOk && cash ? white : muted, rankOk && cash);
+                }
             }
         }
-        static string ComponentName(string id) => id == "bun" ? "bun" : id == "cooked_patty" ? "cooked patty" : id == "chopped_greens" ? "chopped greens" : id == "midnight_sauce" ? "midnight sauce" : id;
+        static string ComponentName(string id) => id == "soup" ? "a ladle of soup" : id == "bun" ? "bun" : id == "cooked_patty" ? "cooked patty" : id == "chopped_greens" ? "chopped greens" : id == "midnight_sauce" ? "midnight sauce" : id;
         // The second restaurant's listing: what it is, and the checklist that gets you there.
         void BuildListing(RectTransform sheet) {
             var site = RestaurantSites.Get(Owner.ListingSite); var d = Owner.Data; var st = Owner.Game.State;

@@ -8,6 +8,7 @@ namespace RestaurantCity {
         static readonly (string shelf, string ingredient, string kind, float x, float y, string title)[] PantrySpots = {
             ("protein", "patty", "RawProtein", -.48f, .265f, "Patties"), ("greens", "greens", "RawGreens", .48f, .265f, "Greens"),
             ("bun", "bun", "Bun", -.48f, .805f, "Buns"), ("sauce", "midnight_sauce", "RawSauce", .48f, .805f, "Sauce"),
+            ("soup", "soup_veg", "SoupVeg", -.48f, 1.345f, "Soup veg"),
         };
         readonly Dictionary<GameObject, Dictionary<string, ShelfView>> pantryViews = new Dictionary<GameObject, Dictionary<string, ShelfView>>();
         IEnumerable<GameObject> PantryObjects() {
@@ -19,7 +20,7 @@ namespace RestaurantCity {
             foreach (var pantry in PantryObjects()) {
                 if (!pantryViews.TryGetValue(pantry, out var views)) pantryViews[pantry] = views = new Dictionary<string, ShelfView>();
                 foreach (var spot in PantrySpots) {
-                    if (spot.shelf == "sauce" && !Game.State.Knows("midnight") && Data.Stock(spot.ingredient) == 0) continue;
+                    if ((spot.shelf == "sauce" && !Game.State.Knows("midnight") || spot.shelf == "soup" && !Game.State.Knows("soup")) && Data.Stock(spot.ingredient) == 0) continue;
                     if (!views.TryGetValue(spot.shelf, out var v)) views[spot.shelf] = v = new ShelfView();
                     int count = Data.Stock(spot.ingredient); int show = count == 0 ? 0 : Mathf.Clamp(Mathf.CeilToInt(count / 4f), 1, 6);
                     if (show != v.Shown) {
