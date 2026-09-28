@@ -69,7 +69,7 @@ namespace RestaurantCity {
   }
   // Each pantry shelf holds one real ingredient; stock is counted and runs out per ingredient.
   static KitchenItemKind ShelfKind(string shelf)=>shelf=="soup"?KitchenItemKind.SoupVeg:shelf=="protein"?KitchenItemKind.RawProtein:shelf=="greens"?KitchenItemKind.RawGreens:shelf=="bun"?KitchenItemKind.Bun:KitchenItemKind.RawSauce;
-  static string OutOf(IngredientDef ing)=>ing.Source==Ingredients.Stash?"Out of "+ing.Name.ToLower()+". Find a night stash.":"Out of "+ing.Name.ToLower()+". Buy more at Milo's.";
+  static string OutOf(IngredientDef ing)=>ing.Source==Ingredients.Stash?"Out of "+ing.Name.ToLower()+". Call Zeeb on your phone (P).":"Out of "+ing.Name.ToLower()+". Buy more at Milo's.";
   KitchenAction PreviewPantry(GameState game,string actor,KitchenItem hand,string subId){
    var r=game.Restaurant;
    // Groceries from Milo's are unpacked into the pantry with one press, whichever shelf you look at.
@@ -105,6 +105,14 @@ namespace RestaurantCity {
    }
    if(r.Stock(ing.Id)<1)return Blocked(OutOf(ing));
    return Tap("Take "+PantryLabel(choice)+"  ("+r.Stock(ing.Id)+" left)",()=>{r.UseStock(ing.Id);ShiftCosts+=ing.UnitCost;var created=Create(ShelfKind(choice),actor);return "Picked up "+Label(created);});
+  }
+  // Tonight's secret stash: the sauce goes in a bag you carry home (and can lose on the way), not straight into the pantry.
+  public bool CollectStash(GameState game,string actor,out string message){
+   if(!game.StashActive)return Fail("Nothing here. The stash is gone.",out message);
+   var hand=Hold(actor);if(hand!=null&&hand.Kind!=KitchenItemKind.GroceryBag)return Fail("Free your hands to grab the stash.",out message);
+   int bottles=game.DropBottles;var bag=hand??Create(KitchenItemKind.GroceryBag,actor);for(int i=0;i<bottles;i++)bag.Components.Add("midnight_sauce");
+   game.DropBottles=0;game.DropPlaced=false;game.StashSpot=-1;
+   message="Found Zeeb's drop: "+bottles+" bottles of Midnight sauce. Get them home to your pantry"+(game.ZeebDebt>0?", and don't forget you owe him $"+game.ZeebDebt+".":".");return true;
   }
   // Milo's shop: pay for the cart and carry it home in a grocery bag (merges with a bag you're already holding).
   public bool BuyGroceries(GameState game,string actor,List<StockLine> cart,out string message){

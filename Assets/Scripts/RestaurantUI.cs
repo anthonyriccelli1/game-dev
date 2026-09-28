@@ -91,7 +91,7 @@ namespace RestaurantCity {
             summary.Append(waiting).Append(" waiting  /  ").Append(cooking).Append(" cooking  /  ").Append(ready).Append(" ready\nTab to manage orders");
             orderSummary.text = summary.ToString();
             // The crew "phone" (Staff tab) works before you own the restaurant, as soon as the stand is up.
-            bool panelVisible = visible || ((Owner.Panel == "Map" || Owner.Panel == "Listing" || Owner.Panel == "Supplies" || (Owner.Panel == "Staff" && Owner.Game.State.StandBuilt)) && Owner.Game.Started && !Owner.Game.Paused);
+            bool panelVisible = visible || ((Owner.Panel == "Map" || Owner.Panel == "Listing" || Owner.Panel == "Supplies" || Owner.Panel == "Phone" || (Owner.Panel == "Staff" && Owner.Game.State.StandBuilt)) && Owner.Game.Started && !Owner.Game.Paused);
             if (!Owner.PanelOpen || !panelVisible) {
                 if (modal) { modal.gameObject.SetActive(false); Destroy(modal.gameObject); modal = null; }
                 tickLabels.Clear(); signature = ""; return;
@@ -119,19 +119,20 @@ namespace RestaurantCity {
             modal = Block(canvas.transform, "Restaurant management", 0, 105, 1440, 735, new Color(ink.r, ink.g, ink.b, .60f));
             var sheet = Block(modal, "Order pad", 110, 12, 1220, 710, paper);
             Block(sheet, "Top accent", 0, 0, 1220, 7, teal);
-            Label(sheet, Owner.Panel == "Listing" ? "For sale later." : Owner.Panel == "Supplies" ? "Milo's Market." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "Recipes." : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
+            Label(sheet, Owner.Panel == "Phone" ? "Your phone." : Owner.Panel == "Listing" ? "For sale later." : Owner.Panel == "Supplies" ? "Milo's Market." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "Recipes." : Owner.Panel == "Staff" ? "A very unusual crew." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
             Button(sheet, "Close  x", 1060, 24, 130, 36, () => Owner.ClosePanel(), ink, paper);
             Label(sheet, "Time pauses while management is open.", 823, 62, 365, 19, 12, muted, false, TextAnchor.MiddleRight);
             string[] panels = { "Catalog", "Service", "Menu", "Cookbook", "Staff", "Map", "Reviews", "Furniture" };
             // Milo's shop and property listings are places in the city, not restaurant management: no tabs.
-            if (Owner.Panel == "Supplies" || Owner.Panel == "Listing") panels = new string[0];
+            if (Owner.Panel == "Supplies" || Owner.Panel == "Listing" || Owner.Panel == "Phone") panels = new string[0];
             for (int i = 0; i < panels.Length; i++) {
                 string tab = panels[i]; bool active = Owner.Panel == tab;
                 Button(sheet, tab == "Catalog" ? "Shop" : tab == "Furniture" ? "Arrange" : tab, 30 + i * 114, 78, 108, 35, () => { Owner.ShowPanel(tab); signature = ""; Refresh(); }, active ? teal : pale, active ? white : ink);
             }
             Label(sheet, "Your budget  $" + Owner.Game.State.Cash, 950, 82, 236, 28, 17, ink, true, TextAnchor.MiddleRight);
             Block(sheet, "Rule", 30, 124, 1160, 2, pale);
-            if (Owner.Panel == "Listing") BuildListing(sheet);
+            if (Owner.Panel == "Phone") BuildPhone(sheet);
+            else if (Owner.Panel == "Listing") BuildListing(sheet);
             else if (Owner.Panel == "Supplies") BuildSupplies(sheet);
             else if (Owner.Panel == "Catalog") BuildCatalog(sheet);
             else if (Owner.Panel == "Menu") BuildMenu(sheet);
@@ -220,6 +221,38 @@ namespace RestaurantCity {
             }
         }
         static string ComponentName(string id) => id == "soup" ? "a ladle of soup" : id == "bun" ? "bun" : id == "cooked_patty" ? "cooked patty" : id == "chopped_greens" ? "chopped greens" : id == "midnight_sauce" ? "midnight sauce" : id;
+        // Phone (P): your crew and the map, plus contacts. Zeeb sells secret-recipe ingredients once you know one.
+        void BuildPhone(RectTransform sheet) {
+            var st = Owner.Game.State; var purple = new Color(.45f, .3f, .7f);
+            Label(sheet, "APPS", 35, 140, 300, 22, 13, muted, true);
+            Button(sheet, "Crew  (your workers)", 35, 166, 300, 50, () => Owner.ShowPanel("Staff"), teal, white);
+            Button(sheet, "Map  (M)", 35, 226, 300, 50, () => Owner.ShowPanel("Map"), teal, white);
+            if (Owner.Data.Owned) Button(sheet, "My restaurant  (Tab)", 35, 286, 300, 50, () => Owner.ShowPanel("Service"), teal, white);
+            Label(sheet, "CONTACTS", 365, 140, 300, 22, 13, muted, true);
+            var milo = Block(sheet, "Contact Milo", 365, 166, 825, 70, white);
+            Label(milo, "Milo", 20, 10, 300, 28, 21, ink, true); Label(milo, "Everyday ingredients. Visit his shop in person.", 20, 40, 780, 22, 14, muted);
+            var card = Block(sheet, "Contact Zeeb", 365, 248, 825, 400, st.Knows("midnight") ? ink : new Color(.25f, .25f, .28f));
+            var face = Block(card, "Zeeb avatar", 20, 20, 90, 90, st.Knows("midnight") ? purple : new Color(.35f, .35f, .38f));
+            Label(face, st.Knows("midnight") ? "Z" : "?", 0, 0, 90, 90, 48, white, true, TextAnchor.MiddleCenter);
+            if (!st.Knows("midnight")) {
+                Label(card, "Unknown number", 130, 22, 660, 32, 24, paper, true);
+                Label(card, "Word is someone out of Little Nebula sells ingredients you can't buy anywhere. They only deal with cooks who know a rare recipe. Win one first.", 130, 62, 660, 80, 16, new Color(.8f, .8f, .82f));
+                return;
+            }
+            Label(card, NightStashes.Dealer, 130, 18, 660, 34, 26, paper, true);
+            Label(card, "Alien, Little Nebula. Secret ingredients, no questions. Pays later is cool, not paying is not.", 130, 56, 660, 44, 15, new Color(.8f, .8f, .82f));
+            string status = st.DropBottles > 0 ? (st.DropPlaced ? "Your drop (" + st.DropBottles + " bottles) is waiting near " + NightStashes.Spots[st.StashSpot].Hint + ". Look for the purple glow." : "Order on the way: " + st.DropBottles + " bottles. He drops it after dark and texts you where.") : "No order out.";
+            Label(card, status, 20, 126, 785, 44, 16, new Color(.85f, .75f, 1f), true);
+            Label(card, st.ZeebDebt > 0 ? "You owe Zeeb $" + st.ZeebDebt + ". Pay it before you order again." : "You're square with Zeeb.", 20, 172, 785, 26, 16, st.ZeebDebt > 0 ? coral : teal, true);
+            Label(card, "ORDER MIDNIGHT SAUCE  ($" + NightStashes.SaucePrice + " a bottle, " + Mathf.RoundToInt(NightStashes.Deposit * 100) + "% up front)", 20, 214, 785, 22, 13, new Color(.75f, .8f, .8f), true);
+            bool canOrder = st.ZeebDebt == 0 && st.DropBottles == 0;
+            for (int i = 0; i < NightStashes.Orders.Length; i++) {
+                int n = NightStashes.Orders[i], dep = NightStashes.DepositFor(n); bool ok = canOrder && st.Cash >= dep;
+                Button(card, n + " bottles:  $" + dep + " now + $" + (NightStashes.Cost(n) - dep) + " later", 20 + i * 262, 242, 250, 48, () => Owner.OrderZeeb(n), ok ? purple : pale, ok ? white : muted, ok);
+            }
+            if (st.ZeebDebt > 0) Button(card, "Pay Zeeb $" + Mathf.Min(st.Cash, st.ZeebDebt) + (st.Cash < st.ZeebDebt ? " (all you have)" : ""), 20, 306, 380, 44, () => Owner.PayZeeb(), st.Cash > 0 ? teal : pale, st.Cash > 0 ? white : muted, st.Cash > 0);
+        }
+
         // The second restaurant's listing: what it is, and the checklist that gets you there.
         void BuildListing(RectTransform sheet) {
             var site = RestaurantSites.Get(Owner.ListingSite); var d = Owner.Data; var st = Owner.Game.State;
@@ -395,6 +428,12 @@ namespace RestaurantCity {
                 bool home = Mathf.Abs(place.X) < 40 && Mathf.Abs(place.Z) < 40 && place.Name != "The Odd Table";
                 bool right = place.X > 480;
                 if ((open || place.Kind == "rival") && !home) Label(sheet, place.Name, right ? q.x - 136 : q.x + 6, q.y - 8, 130, 16, 10, open ? white : new Color(1, 1, 1, .55f), false, right ? TextAnchor.UpperRight : TextAnchor.UpperLeft);
+            }
+            // Tonight's stash: a purple circle around the rough area, not the exact spot.
+            if (st.StashActive) {
+                var spot = NightStashes.Spots[st.StashSpot]; var c = P(spot.X + 9, spot.Z - 7); float r = 26 * sc;
+                Block(sheet, "Stash area", c.x - r, c.y - r, r * 2, r * 2, new Color(.62f, .45f, .9f, .35f));
+                Label(sheet, "Zeeb's drop: near " + spot.Hint, c.x + r + 2, c.y - 8, 190, 16, 10, new Color(.85f, .75f, 1f), true);
             }
             var markers = new System.Collections.Generic.List<(RectTransform, Transform)>();
             if (LocalCoop.Instance != null && LocalCoop.Instance.PlayerCount > 0) { int n = 0; foreach (var pl in LocalCoop.Instance.Players) if (pl) markers.Add((Block(sheet, "P" + (++n), 0, 0, 12, 12, n == 1 ? coral : new Color(.3f, .8f, 1f)), pl.transform)); }

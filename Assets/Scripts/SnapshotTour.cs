@@ -56,6 +56,11 @@ namespace RestaurantCity {
             ("36_pantry_from_street", new Vector3(-2.2f, 0, 6.0f), 0, 16, 60),
             ("37_menu_tab", new Vector3(-10, 0, -11), 180, 0, 60),
             ("38_cookbook_tab", new Vector3(-10, 0, -11), 180, 0, 60),
+            ("39_stash_park", new Vector3(65, 0, -31), 0, 14, 195),
+            ("40_stash_waterfront", new Vector3(-210, 0, -37), 0, 14, 195),
+            ("41_stash_main_west", new Vector3(-120, 0, 2.5f), 0, 14, 195),
+            ("42_stash_main_east", new Vector3(70, 0, -13.5f), 0, 14, 195),
+            ("43_phone_zeeb", new Vector3(0, 0, 3), 0, 0, 60),
         };
 
         IEnumerator Start() {
@@ -82,6 +87,13 @@ namespace RestaurantCity {
                 if (rc && shot.name.Contains("phone_map")) rc.ShowPanel("Map");
                 if (rc && (shot.name.Contains("stand_pantry") || shot.name.Contains("pantry_from_street"))) { foreach (var i in new[] { "patty", "bun" }) rc.Data.AddStock(i, 14); rc.Advance(.05f); }
                 if (rc && (shot.name.Contains("menu_tab") || shot.name.Contains("cookbook_tab"))) { rc.Data.Owned = true; Game.State.Cash = 120; rc.ShowPanel(shot.name.Contains("menu") ? "Menu" : "Cookbook"); }
+                if (rc && shot.name.Contains("stash_")) {
+                    int spot = shot.name.Contains("park") ? 0 : shot.name.Contains("waterfront") ? 1 : shot.name.Contains("west") ? 2 : 3;
+                    Game.State.Learn("midnight"); Game.State.DropBottles = 6; Game.State.DropPlaced = true; Game.State.StashSpot = spot; rc.Advance(.01f);
+                    yield return null;
+                    var crate = GameObject.Find("Night stash"); if (crate) { var c = crate.transform.position; p.transform.position = new Vector3(c.x, 0, c.z - 5.5f); Debug.LogWarning("STASH_SPOT " + spot + " at " + c); }
+                }
+                if (rc && shot.name.Contains("phone_zeeb")) { Game.State.Learn("midnight"); Game.State.DropBottles = 0; Game.State.ZeebDebt = 33; Game.State.Cash = 60; rc.Advance(.01f); rc.ShowPanel("Phone"); }
                 if (rc && shot.name.Contains("milo_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); }
                 if (rc && shot.name.Contains("listing")) { Game.State.Cash = 95; rc.BuyRestaurant(Game.Player, "bayside"); }
                 if (rc && shot.name.Contains("stand_tables")) {

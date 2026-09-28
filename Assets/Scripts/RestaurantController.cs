@@ -111,7 +111,7 @@ namespace RestaurantCity {
             if (hudTimer <= 0) { hudTimer = .35f; UI.Refresh(); }
             if (!Game.Paused && !ManagementPauses && !PlacementActive && !Game.SmokeMode) { Advance(Time.deltaTime); CheckLeavingStaffing(); }
             // "Phone": P opens your crew list from anywhere in the city.
-            if (!Game.Paused && Game.Started && Keyboard.current != null && Keyboard.current.pKey.wasPressedThisFrame && !PlacementActive && (Data.Owned || Game.State.StandBuilt)) { if (PanelOpen) ClosePanel(); else ShowPanel("Staff"); }
+            if (!Game.Paused && Game.Started && Keyboard.current != null && Keyboard.current.pKey.wasPressedThisFrame && !PlacementActive && (Data.Owned || Game.State.StandBuilt)) { if (PanelOpen) ClosePanel(); else ShowPanel("Phone"); }
             if (!Game.Paused && Game.Started && Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame && !PlacementActive) { if (PanelOpen && Panel == "Map") ClosePanel(); else ShowPanel("Map"); }
         }
         public void Feedback(string message) { Hint = message; Game.Notify(message, 5); if (UI) UI.Refresh(); }
@@ -130,9 +130,9 @@ namespace RestaurantCity {
             return true;
         }
         public void ShowPanel(string panel) {
-            bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map" || panel == "Listing" || panel == "Supplies" && Game.State.StandBuilt;
+            bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map" || panel == "Listing" || panel == "Supplies" && Game.State.StandBuilt || panel == "Phone" && Game.State.StandBuilt;
             if (!Data.Owned && !phone) { Feedback("Earn $150 and buy the restaurant at its front sign."); return; }
-            if (ServiceInProgress && panel != "Staff" && panel != "Service" && panel != "Map" && panel != "Supplies") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
+            if (ServiceInProgress && panel != "Staff" && panel != "Service" && panel != "Map" && panel != "Supplies" && panel != "Phone") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
             if (PlacementActive) CancelPlacement(false);
             Panel = panel; PanelOpen = true;
             if (Game.CoOp) Game.CoOp.RefreshViews();
@@ -330,6 +330,8 @@ namespace RestaurantCity {
         }
         public void TryCook(int id) { Feedback("Cooking happens at the stations: pantry, prep, grill, then assemble on a plate. Follow your order card."); }
         // Milo's shop: pay at the counter and carry the groceries home in a bag.
+        public void OrderZeeb(int bottles) { Game.State.OrderFromZeeb(bottles, out string m); Feedback(m); Game.Save(); UI.Rebuild(); }
+        public void PayZeeb() { Game.State.PayZeeb(out string m); Feedback(m); Game.Save(); UI.Rebuild(); }
         public void BuyRecipe(string dish) { Game.State.BuyRecipe(dish, out string message); Feedback(message); Game.Save(); UI.Rebuild(); }
         public void AskMiloForHelp() {
             if (!AtSupplier) { Feedback("Talk to Milo in his shop."); return; }

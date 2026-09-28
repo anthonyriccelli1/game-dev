@@ -1,7 +1,7 @@
 using UnityEngine;
 
 namespace RestaurantCity {
-    public enum InteractionKind { Supplier, Stand, Prep, Grill, Serve, Bin, Recipe, FutureRestaurant, SupplyProtein, SupplyProduce, StandSign, StandTable }
+    public enum InteractionKind { Supplier, Stand, Prep, Grill, Serve, Bin, Recipe, FutureRestaurant, SupplyProtein, SupplyProduce, StandSign, StandTable, NightStash }
     public class Interactable : MonoBehaviour {
         public InteractionKind Kind;
         public string Site = "oddtable";   // which restaurant a FutureRestaurant lease sign belongs to
@@ -21,6 +21,7 @@ namespace RestaurantCity {
                 case InteractionKind.SupplyProtein: return "Buy 6 patties  /  $10";
                 case InteractionKind.SupplyProduce: return "Buy 6 buns & greens  /  $6";
                 case InteractionKind.StandTable: return "Sidewalk table";
+                case InteractionKind.NightStash: return "Hidden stash";
                 default: {
                     var site = RestaurantSites.Get(Site);
                     if (!site.Starter) return site.Title + "  /  for sale later  /  view listing";

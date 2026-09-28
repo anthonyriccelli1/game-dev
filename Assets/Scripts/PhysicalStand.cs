@@ -145,6 +145,7 @@ namespace RestaurantCity {
         void TickStreet(float seconds) {
             var s = Game.State;
             TickPantryDisplays();
+            TickNightStash();
             s.Players = Game.CoOp ? Mathf.Max(1, Game.CoOp.PlayerCount) : 1;
             if (standSignText) standSignText.text = s.StandOpen ? "<color=#4FCB7A>OPEN</color>\nBurgers\n& Salad" + (s.Knows("midnight") ? "\n+ Midnight" : "") : "<color=#E1543B>CLOSED</color>";
             if (!standPlatesText && standObjects.TryGetValue(KitchenState.StandBase + 4, out var rack) && rack) { standPlatesText = WorldCaption(rack.transform, "", new Vector3(0, 2.1f, 0), .014f); }
@@ -226,6 +227,7 @@ namespace RestaurantCity {
 
         // Prompt + action for Milo's crates and the stand customer. Returns true when handled.
         bool InspectStreet(FirstPersonPlayer p, Interactable city, bool pressed) {
+            if (InspectNightStash(p, city, pressed)) return true;
             var k = Game.State.Kitchen; string actor = p.ActorId;
             if (city.Kind == InteractionKind.Supplier && city.name == "Milo shopkeeper") {
                 var held = k.Hold(actor);

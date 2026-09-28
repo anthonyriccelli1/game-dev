@@ -27,6 +27,33 @@ namespace RestaurantCity {
         // Recipes you can cook. Burger and salad are known from the start; others are found, bought or taught.
         public List<string> KnownRecipes = new List<string> { "burger", "salad" };
         public int LastMiloHelpDay;
+        // Zeeb's order (see NightStashes): bottles on the way, where he'll hide them, and what you still owe him.
+        // StashTip is raised for one frame when the drop is placed, so the phone can buzz.
+        public int DropBottles, StashSpot = -1, ZeebDebt, ZeebOrders; public bool DropPlaced; [NonSerialized] public bool StashTip;
+        public bool StashActive => DropBottles > 0 && DropPlaced && StashSpot >= 0;
+        void TickStash() {
+            if (DropBottles <= 0 || DropPlaced || !IsNight) return;   // he only moves after dark
+            DropPlaced = true; StashTip = true;
+        }
+        public bool OrderFromZeeb(int bottles, out string message) {
+            if (!Knows("midnight")) { message = "You don't have anyone to call yet."; return false; }
+            if (ZeebDebt > 0) { message = "\"Ayy, you still owe me $" + ZeebDebt + ", dawg. Square up first, then we talk.\""; return false; }
+            if (DropBottles > 0) { message = "\"Relax, bruh, your last order's still out there. Go grab it.\""; return false; }
+            int deposit = NightStashes.DepositFor(bottles);
+            if (Cash < deposit) { message = "\"I need $" + deposit + " up front, that's just business.\""; return false; }
+            Cash -= deposit; ZeebDebt = NightStashes.Cost(bottles) - deposit; DropBottles = bottles; DropPlaced = false;
+            StashSpot = (ZeebOrders * 3 + Day) % NightStashes.Spots.Length; ZeebOrders++;
+            message = "\"Say less. " + bottles + " bottles, $" + deposit + " now, $" + ZeebDebt + " later. I drop after dark, I'll text you where.\"";
+            if (IsNight) TickStash();
+            return true;
+        }
+        public bool PayZeeb(out string message) {
+            if (ZeebDebt <= 0) { message = "You don't owe Zeeb anything."; return false; }
+            int pay = Math.Min(Cash, ZeebDebt); if (pay <= 0) { message = "You're broke. Zeeb can wait... for now."; return false; }
+            Cash -= pay; ZeebDebt -= pay;
+            message = ZeebDebt == 0 ? "\"Pleasure doing business. Hit my line whenever.\"" : "Paid $" + pay + ". You still owe Zeeb $" + ZeebDebt + ".";
+            return true;
+        }
         public bool Knows(string dish) => KnownRecipes != null && KnownRecipes.Contains(dish);
         public bool BuyRecipe(string dish, out string message) {
             var offer = Array.Find(RecipeBook.ForSale, f => f.dish == dish);
@@ -209,6 +236,7 @@ namespace RestaurantCity {
                     NextCustomer = StandArrivalSeconds + (id % 3) * 1.5f;
                 }
             }
+            TickStash();
             SeatStandGuests();
             TickStandWorker(seconds);
             SeatStandGuests();

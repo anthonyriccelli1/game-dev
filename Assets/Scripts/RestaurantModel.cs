@@ -295,7 +295,7 @@ namespace RestaurantCity {
         }
         // Can this ingredient be bought at Milo's right now? (Secret ones never are; recipe ones need the recipe.)
         public string IngredientLock(GameState wallet,IngredientDef d){
-            if(d.Source!=Ingredients.Milo)return "Only in night stashes";
+            if(d.Source!=Ingredients.Milo)return "Only from Zeeb (phone)";
             if(!string.IsNullOrEmpty(d.Recipe)&&!wallet.Knows(d.Recipe))return "Learn "+RestaurantCatalog.Dish(d.Recipe).Name+" first";
             if(Stars<d.RequiredStars)return "Needs a "+d.RequiredStars+"-star restaurant";
             return null;
