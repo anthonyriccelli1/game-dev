@@ -4,7 +4,7 @@ namespace RestaurantCity {
     // Turns kitchen and service moments (GameState.Events) into sound, floating pop-ups and guest reactions,
     // runs the sizzle/bubble loops on cooking stations, and announces the rush.
     public partial class RestaurantController {
-        AudioSource fx; float chopCooldown, washCooldown, clinkCooldown; string lastPhase = ""; bool lastStandRush;
+        AudioSource fx; float clinkCooldown; string lastPhase = ""; bool lastStandRush;
         readonly Dictionary<int, AudioSource> stationLoops = new Dictionary<int, AudioSource>();
         sealed class FloatText { public TextMesh Text; public float Age; public Vector3 Start; }
         readonly List<FloatText> floaters = new List<FloatText>();
@@ -21,7 +21,7 @@ namespace RestaurantCity {
         GameObject StandGuestFor(int orderId) => standGuests.TryGetValue(orderId, out var g) && g ? g : null;
 
         void TickGameFeel(float dt) {
-            chopCooldown -= dt; washCooldown -= dt; clinkCooldown -= dt;
+            clinkCooldown -= dt;
             var s = Game.State;
             if (s.Events != null && s.Events.Count > 0) {
                 var batch = new List<string>(s.Events); s.Events.Clear();
@@ -84,8 +84,10 @@ namespace RestaurantCity {
                 }
                 case "queue_walkout": case "stand_walkout": Fx(SoundFx.Huff, .8f); break;
                 case "arrive": Fx(SoundFx.Doorbell, .45f); break;
-                case "chop": if (chopCooldown <= 0) { chopCooldown = .24f; Fx(SoundFx.Chop, .7f); } break;
-                case "wash": if (washCooldown <= 0) { washCooldown = .45f; Fx(SoundFx.Wash, .6f); } break;
+                case "chop": AcceptedChop(A(1)); break;
+                case "wash": AcceptedWash(A(1)); break;
+                case "discard": AcceptedDiscard(A(1)); break;
+                case "emptybin": AcceptedEmptyBin(A(1)); break;
                 case "stir": Fx(SoundFx.Stir, .8f); break;
                 case "act": if (clinkCooldown <= 0) { clinkCooldown = .08f; var st = Game.State.Kitchen.Stations.Find(x => x.InstanceId == A(1)); Fx(st != null && (st.CatalogId == "pantry" || st.CatalogId == "trash") ? SoundFx.Thud : SoundFx.Clink, .5f); } break;
                 case "burn": case "scorch": {

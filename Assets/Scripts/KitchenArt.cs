@@ -194,6 +194,30 @@ namespace RestaurantCity {
         }
         // Market display crate for Milo's shop: a big crate heaped with one kind of ingredient.
         public static Material Material(string hex) => M(hex);
+        // Station-side preparation props share the original faceted kitchen art and add no colliders.
+        public static GameObject ChoppingKnife(Transform parent) {
+            var root = G("Knife", parent);
+            S("Steel blade", root.transform, Block(), new Vector3(-.025f,.052f,0), new Vector3(.27f,.1f,.012f), M("D8DEE0", true));
+            Box("Sharpened edge",root.transform,new Vector3(-.025f,.005f,0),new Vector3(.27f,.01f,.014f),"F5F1E8");
+            Box("Walnut handle",root.transform,new Vector3(.175f,.088f,0),new Vector3(.14f,.04f,.035f),"49382D");
+            for(int i=0;i<2;i++)Box("Handle rivet",root.transform,new Vector3(.14f+i*.065f,.109f,0),new Vector3(.009f,.003f,.01f),"D8DEE0");
+            return root;
+        }
+        public static GameObject PrepGreens(Transform parent, bool chopped, int sector) {
+            var root = G(chopped ? "Cut greens " + sector : "Whole leaf " + sector, parent);
+            float a = sector * Mathf.PI / 3;
+            if(!chopped) {
+                var leaf=S("Folded leaf",root.transform,Profile("leaf",new[]{0f,.06f,.13f,.22f},new[]{0f,.067f,.055f,0f},5),
+                    new Vector3(Mathf.Cos(a)*.04f,0,Mathf.Sin(a)*.04f),new Vector3(1,1,.65f),M(sector%2==0?"73A566":"A0C77D"));
+                leaf.transform.localRotation=Quaternion.Euler(Mathf.Cos(a)*27,sector*60,Mathf.Sin(a)*27);
+            } else for(int i=0;i<5;i++) {
+                float angle=(sector*5+i)*2.399f, radius=.035f+.017f*(i%4);
+                var leaf=Box("Leaf piece",root.transform,new Vector3(Mathf.Cos(angle)*radius,.012f+.014f*(i%2),Mathf.Sin(angle)*radius),
+                    new Vector3(.045f,.02f,.035f),i%2==0?"73A566":"A0C77D");
+                leaf.transform.localRotation=Quaternion.Euler(0,sector*43+i*31,8);
+            }
+            return root;
+        }
         public static GameObject SupplyCrate(Transform parent,string contents) {
             var root=G(contents=="protein"?"Meat crate":"Produce crate",parent);
             Box("Crate stand",root.transform,new Vector3(0,.45f,0),new Vector3(1.1f,.9f,.9f),"317E79");
@@ -215,4 +239,3 @@ namespace RestaurantCity {
         }
     }
 }
-

@@ -56,6 +56,7 @@ namespace RestaurantCity {
         readonly List<Renderer> hiddenRoof = new List<Renderer>();
         Vector3 savedPosition, savedViewLocal, savedLook;
         Quaternion savedViewRotation;
+        int savedPlacementMask;
         int previewX, previewZ, movingId = -1;
         float hudTimer;
         bool previewValid;
@@ -222,10 +223,12 @@ namespace RestaurantCity {
             PanelOpen = false; PlacementActive = true;
             savedPosition = Game.Player.transform.position; savedViewLocal = Game.Player.View.transform.localPosition;
             savedViewRotation = Game.Player.View.transform.localRotation;
+            savedPlacementMask = Game.Player.View.cullingMask;
             savedLook = Game.Player.View.transform.position + Game.Player.View.transform.forward * 10;
             Game.Player.View.transform.position = W(-10, 14, -15.5f);
             Game.Player.View.transform.rotation = Quaternion.Euler(90, 0, 0); Game.Player.View.orthographic = true; Game.Player.View.orthographicSize = 8;
             if (Game.CoOp) Game.CoOp.RefreshViews();
+            Game.Player.View.cullingMask &= ~(1 << 27);
             Game.Player.Spatula.gameObject.SetActive(false); Game.HandFood.SetActive(false);
             foreach (var renderer in Room.GetComponentsInChildren<Renderer>()) if (renderer.name.IndexOf("ceiling", StringComparison.OrdinalIgnoreCase) >= 0 || renderer.name.IndexOf("roof", StringComparison.OrdinalIgnoreCase) >= 0) { if (renderer.enabled) { hiddenRoof.Add(renderer); renderer.enabled = false; } }
             preview = CreateFurnishing(id, transform); preview.name = "Placement preview";
@@ -259,6 +262,7 @@ namespace RestaurantCity {
             foreach (var r in hiddenRoof) if (r) r.enabled = true; hiddenRoof.Clear();
             Game.Player.View.orthographic = false; Game.Player.View.transform.localPosition = savedViewLocal;
             Game.Player.View.transform.localRotation = savedViewRotation; Game.Player.Spatula.gameObject.SetActive(true);
+            Game.Player.View.cullingMask = savedPlacementMask;
             if (movingId >= 0 && Furnishings.TryGetValue(movingId, out var original)) original.SetActive(true);
             PlacementActive = false; movingId = -1;
             if (Game.CoOp) Game.CoOp.RefreshViews();

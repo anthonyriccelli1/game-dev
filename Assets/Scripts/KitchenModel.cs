@@ -8,8 +8,8 @@ namespace RestaurantCity {
  // invoking the very same Apply callback it returned, so the on-screen prompt and the executed action can
  // never disagree (Stage A / A1).
  public struct KitchenAction { public bool Allowed; public string Label; public KitchenActionKind Kind; public string FailReason; public Func<string> Apply; }
- [Serializable] public class KitchenItem { public int Id,Parts,TableInstanceId; public KitchenItemKind Kind; public float Quality=1,Age; public string Holder; public List<string> Components=new List<string>(); public bool Disposable,StandPlate; public float Stir; }   // Stir: seconds since a simmering pot was last stirred
- [Serializable] public class KitchenStation { public int InstanceId; public string CatalogId,WorkOwner,InputAction; public float Progress; }
+ [Serializable] public class KitchenItem { public int Id,Parts,TableInstanceId,SeatNumber; public KitchenItemKind Kind; public float Quality=1,Age; public string Holder; public List<string> Components=new List<string>(); public bool Disposable,StandPlate; public float Stir; }   // SeatNumber: one-based, zero for legacy plates. Stir: seconds since a simmering pot was last stirred
+ [Serializable] public class KitchenStation { public int InstanceId; public string CatalogId,WorkOwner,InputAction; public float Progress; public int WasteCount; }
  [Serializable] public class ShiftReport { public int GrossSales,Wages,Net,Served,Lost,StarsBefore,StarsAfter; public float IngredientCosts,Satisfaction; public List<string> Comments=new List<string>(); public string StaffSummary; }
  [Serializable] public class KitchenState {
   public List<KitchenItem> Items=new List<KitchenItem>(); public List<KitchenStation> Stations=new List<KitchenStation>();
@@ -137,11 +137,14 @@ namespace RestaurantCity {
    var hand=Hold(actor);var item=At(stationId);
    if(s.CatalogId=="pantry")return PreviewPantry(game,actor,hand,subId);
    if(s.CatalogId=="trash"){
-    if(hand==null)return Blocked("Trash can. Bring food you want to throw away.");
+    if(hand==null){
+     if(s.WasteCount>0)return Tap("Empty trash",()=>{s.WasteCount=0;game.Emit("emptybin:"+s.InstanceId);return "Trash emptied.";});
+     return Blocked("Trash can is empty. Bring food you want to throw away.");
+    }
     if(hand.Kind==KitchenItemKind.DirtyPlate)return Blocked("Wash dirty plates at the sink.");
     if(hand.Kind==KitchenItemKind.Plate&&hand.Components.Count==0&&!hand.Disposable)return Blocked("That plate is clean. Keep it or set it down.");
     string what=hand.Kind==KitchenItemKind.Plate?"the food (keep the plate)":Label(hand).ToLower();
-    return Tap("Throw away "+what,()=>{Discard(game,actor,out string msg);return msg;});
+    return Tap("Throw away "+what,()=>{if(Discard(game,actor,out string msg)){s.WasteCount=Math.Min(6,s.WasteCount+1);game.Emit("discard:"+s.InstanceId);}return msg;});
    }
    if(s.CatalogId=="plate_rack"){
     if(hand!=null&&hand.Kind==KitchenItemKind.Plate&&hand.Components.Count==0&&!hand.StandPlate&&!hand.Disposable){var back=hand;return Tap("Put the clean plate back",()=>{Items.Remove(back);CleanPlates++;return "Plate back on the rack.";});}
@@ -230,7 +233,7 @@ namespace RestaurantCity {
    int gross=game.Cash-before+wages,bonus=ShiftNight?(int)Math.Round(gross*.3f):0;game.Cash+=bonus;game.Restaurant.Earnings+=bonus;ShiftGross+=gross+bonus;ShiftWages+=wages;
    if(bonus>0)message+=" Night premium +$"+bonus+".";
    if(item.Disposable||item.StandPlate){if(item.StandPlate)game.StandDirty++;Items.Remove(item);return true;}
-   item.Holder="table:"+orderId;item.TableInstanceId=order.SeatInstanceId;return true;
+   item.Holder="table:"+orderId;item.TableInstanceId=order.SeatInstanceId;item.SeatNumber=order.SeatNumber;return true;
   }
   // --- The street stand: guests sit at two sidewalk tables; you bring the food to them, then clear and wash. ---
   static string DishName(string dish)=>dish=="midnight"?"midnight burger":dish=="salad"?"salad":"burger";
@@ -282,9 +285,9 @@ namespace RestaurantCity {
   }
   public static int StandPrice(GameState game,string dish)=>(dish=="midnight"?18:dish=="salad"?10:12)*(game.IsNight?3:2)/2;
   public int DirtyAtTable(int table)=>Items.Count(i=>i.Kind==KitchenItemKind.DirtyPlate&&i.TableInstanceId==table&&i.Holder.StartsWith("table:"));
-  public bool ClearTable(GameState game,string actor,int table,out string message){
-   if(Hold(actor)!=null)return Fail("Your hands are full.",out message);var item=Items.Find(i=>i.Kind==KitchenItemKind.DirtyPlate&&i.TableInstanceId==table&&i.Holder.StartsWith("table:"));
-   if(item==null)return Fail("No dirty plate yet.",out message);item.Holder=actor;item.TableInstanceId=0;message="Take the dirty plate to the sink.";return true;
+  public bool ClearTable(GameState game,string actor,int table,out string message,int seatNumber=0){
+   if(Hold(actor)!=null)return Fail("Your hands are full.",out message);var item=Items.Find(i=>i.Kind==KitchenItemKind.DirtyPlate&&i.TableInstanceId==table&&i.Holder.StartsWith("table:")&&(seatNumber==0||i.SeatNumber==0||i.SeatNumber==seatNumber));
+   if(item==null)return Fail("No dirty plate yet.",out message);item.Holder=actor;item.TableInstanceId=0;item.SeatNumber=0;message="Take the dirty plate to the sink.";return true;
   }
   public bool Discard(GameState game,string actor,out string message){
    var item=Hold(actor);if(item==null)return Fail("Your hands are empty.",out message);
@@ -343,7 +346,7 @@ namespace RestaurantCity {
     if(item.Kind==KitchenItemKind.PreparedPatty)item.Kind=KitchenItemKind.RawProtein;
     if(item.Holder.StartsWith("table:")){item.Kind=KitchenItemKind.DirtyPlate;item.Components.Clear();}
    }
-   Stations.RemoveAll(s=>s==null);Stations=Stations.GroupBy(s=>s.InstanceId).Select(g=>g.First()).ToList();foreach(var s in Stations){s.WorkOwner=null;if(float.IsNaN(s.Progress)||float.IsInfinity(s.Progress))s.Progress=0;}
+   Stations.RemoveAll(s=>s==null);Stations=Stations.GroupBy(s=>s.InstanceId).Select(g=>g.First()).ToList();foreach(var s in Stations){s.WorkOwner=null;s.WasteCount=Math.Max(0,Math.Min(6,s.WasteCount));if(float.IsNaN(s.Progress)||float.IsInfinity(s.Progress))s.Progress=0;}
    EnsureStations(game.Restaurant);
    foreach(var item in Items.Where(i=>i.Holder.StartsWith("player:")||i.Holder.StartsWith("staff:")).ToList()){
     var free=Stations.Find(s=>At(s.InstanceId)==null&&((item.Kind==KitchenItemKind.DirtyPlate&&s.CatalogId=="sink")||(item.Kind==KitchenItemKind.Plate&&s.CatalogId=="assembly")||(item.Kind!=KitchenItemKind.DirtyPlate&&item.Kind!=KitchenItemKind.Plate&&s.CatalogId=="prep_bench")));

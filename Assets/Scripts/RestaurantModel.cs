@@ -160,7 +160,7 @@ namespace RestaurantCity {
 
     [Serializable] public class PlacedItem { public int InstanceId,X,Z,Rotation,Paid; public string CatalogId; }
     [Serializable] public class RestaurantOrder {
-        public int Id,CustomerType,SeatInstanceId; public string DishId,ResidentId="";
+        public int Id,CustomerType,SeatInstanceId,SeatNumber; public string DishId,ResidentId=""; // SeatNumber is one-based; zero means an older save.
         public RestaurantOrderStage Stage; public float Wait,CookProgress,Quality=1,StageTime;
     }
     [Serializable] public class RestaurantReview { public string Customer,Comment; public float Score; public string DishId; }
@@ -327,7 +327,11 @@ namespace RestaurantCity {
             if(capacity<=Orders.Count(o=>o.SeatInstanceId==seatInstanceId&&o.Stage!=RestaurantOrderStage.Leaving)){message="All seats here are occupied.";return null;}
             var available=ActiveMenu.Where(id=>IsDishAvailable(wallet,id)).ToList();if(available.Count==0){message="No available menu dishes.";return null;}
             var customer=RestaurantCatalog.Customers[type];string dish=available.Contains(customer.FavoriteDish)?customer.FavoriteDish:available[(NextOrderId+type)%available.Count];
-            var who=ResidentCast.Get(residentId);var order=new RestaurantOrder{Id=NextOrderId++,CustomerType=type,DishId=dish,SeatInstanceId=seatInstanceId,ResidentId=residentId??""};Orders.Add(order);message=$"{(who!=null?who.Name:customer.Name)} ordered {RestaurantCatalog.Dish(dish).Name}.";return order;
+            var occupied=new HashSet<int>(Orders.Where(o=>o.SeatInstanceId==seatInstanceId&&o.Stage!=RestaurantOrderStage.Leaving).Select(o=>o.SeatNumber));
+            if(wallet.Kitchen!=null)foreach(var plate in wallet.Kitchen.Items.Where(i=>i.TableInstanceId==seatInstanceId&&i.Holder.StartsWith("table:")))occupied.Add(plate.SeatNumber);
+            int seatNumber=Enumerable.Range(1,RestaurantCatalog.Find(seat.CatalogId).Seats).FirstOrDefault(n=>!occupied.Contains(n));
+            if(seatNumber==0){message="All seats here are occupied.";return null;}
+            var who=ResidentCast.Get(residentId);var order=new RestaurantOrder{Id=NextOrderId++,CustomerType=type,DishId=dish,SeatInstanceId=seatInstanceId,SeatNumber=seatNumber,ResidentId=residentId??""};Orders.Add(order);message=$"{(who!=null?who.Name:customer.Name)} ordered {RestaurantCatalog.Dish(dish).Name}.";return order;
         }
         public float CookTime(RestaurantOrder order) {var d=RestaurantCatalog.Dish(order.DishId);return d.CookSeconds*(d.Id=="salad"?Math.Max(.5f,1-.25f*(Layout.Count(p=>p.CatalogId=="prep_bench")-1)):1);}
         public bool BeginCooking(int id,out string message) {

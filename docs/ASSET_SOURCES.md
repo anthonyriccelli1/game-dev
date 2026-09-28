@@ -17,4 +17,9 @@ Call art factories at runtime so generated meshes, materials, and textures are r
 
 ## Physical kitchen pass
 
+The chopping, grill, washing and bin feedback uses original procedural tools, food surfaces, stains, refuse and transform animation (`ChoppingFeedback.cs`, `GrillFeedback.cs`, `WashBinFeedback.cs`). No external animation pack or art asset was acquired for these effects. Grill flips are presentation only; wash progress and bin contents come from the kitchen model.
+
 `Assets/Scripts/KitchenArt.cs` adds original runtime mesh designs for the pantry, plate rack, sink, serving pass, raw/prepared/cooked/burnt ingredients, sesame buns, clean/dirty plates, assembled dishes, ingredient crates, and street herb trough. Faceted revolution profiles and chamfered polygon blocks form the models; split mesh vertices preserve readable flat shading. Cabinet doors, handles, shelf slats, plate rims, sauce bottles, sesame seeds, grill marks, and dish scraps are modeled details. Materials and meshes are cached for reuse. These are original project assets; no external models, images, textures, or sound assets were downloaded or purchased for this pass. Unity shader and engine terms continue to apply as described above.
+# Prep-table chopping pass (September 28, 2026)
+
+The chopping knife, intermediate food presentation and procedural station animation are original project-generated art and code. Cutting sounds use the existing synthesized SoundFx.Chop clip. This pass adds no downloaded models, textures, skeletal animations or third-party licenses. Character assets and earlier environment packs retain their own existing licensing requirements.

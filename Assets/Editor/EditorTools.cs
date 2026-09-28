@@ -127,5 +127,13 @@ public static class EditorTools {
         return "launched " + name;
     }
     public static string RunInteractionAcceptance() => RunBuild("interaction", "--interaction-test");
+    // Runtime-only changes can build the saved scene without regenerating the entire city.
+    public static string BuildCurrentWindows() {
+        for (int i = 0; i < UnityEditor.SceneManagement.EditorSceneManager.sceneCount; i++)
+            if (UnityEditor.SceneManagement.EditorSceneManager.GetSceneAt(i).isDirty)
+                throw new System.Exception("Save your current scene before building; no unsaved work was changed.");
+        PrototypeBuilder.Build();
+        return "saved scene validated and Windows player built";
+    }
     public static string RunPhysicalAcceptance() => RunBuild("physical", "--physical-test");
 }

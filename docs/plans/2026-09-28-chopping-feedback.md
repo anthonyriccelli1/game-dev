@@ -27,3 +27,12 @@
 ## Acceptance
 
 Knife motion and cutting audio match productive work, stop immediately when work stops, and do not continue on stale ownership. Food visibly changes during preparation. Two players cannot double progress one ingredient. Staff and stand use the same presentation. Existing table serving, cooking, progression and persistence checks continue passing. Human controller feel remains a separate playtest.
+
+## Recorded verification
+
+- Red run: `Acceptance/chopping-red.log`, 54 checks with the expected missing-presentation failure; the original 53 checks passed.
+- Final interaction run: `Acceptance/chopping-green.log`, `INTERACTION_RUNTIME_PASS 72 checks, 0 failures`.
+- Broader physical run: `Acceptance/chopping-physical.log`, `PHYSICAL_RUNTIME_PASS 591`. Final rebuild changed only the test's deferred-destruction/physics synchronization, with no further production code changes.
+- Inspected offscreen URP captures: `InteractionEvidence/chop-whole.png`, `chop-working.png`, `chop-finished.png`. Knife lift, board alignment and finished food are visible.
+- Windows build completed through the open Editor request hook. Saves were isolated during tests. These are scripted runtime checks and visual inspection, not a human play session or physical controller test.
+- Presentation uses procedural tool motion; full hands/arms and grill/washing feedback remain later passes. The normal spatula remains visible but does not obscure the board in the inspected views.

@@ -72,7 +72,7 @@ namespace RestaurantCity {
                     var order = Data.AddCustomer(Game.State, view.Type, place.InstanceId, out var message, view.ResidentId);
                     if (order != null) {
                         queue.RemoveAt(i); view.OrderId = order.Id;
-                        view.SeatIndex = seatIndex;
+                        view.SeatIndex = order.SeatNumber > 0 ? order.SeatNumber - 1 : seatIndex;
                         view.Seat = Furnishings[place.InstanceId].transform.Find("Seat_" + view.SeatIndex);
                         view.Root.GetComponent<RestaurantTarget>().OrderId = order.Id;
                         view.Path.Enqueue(W(-10, .055f, -8));

@@ -158,6 +158,7 @@ namespace RestaurantCity {
         public bool Swing() {
             if (swingTimer > 0) return false;
             swingTimer = .55f;
+            if (Game && Game.Restaurant && Game.Restaurant.TryFlipStation(this)) return true;
             Ray ray = InteractionRay;
             if (Physics.SphereCast(ray.origin, .25f, ray.direction, out var strike, 3, ~OwnBodyMask, QueryTriggerInteraction.Ignore)) {
                 var guard = strike.collider.GetComponentInParent<StreetGuard>();

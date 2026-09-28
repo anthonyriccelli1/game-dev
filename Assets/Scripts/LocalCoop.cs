@@ -24,6 +24,11 @@ namespace RestaurantCity {
                     if (part.name.IndexOf("Ceiling", System.StringComparison.OrdinalIgnoreCase) >= 0 || part.name.IndexOf("Roof", System.StringComparison.OrdinalIgnoreCase) >= 0)
                         foreach (var roofPart in part.GetComponentsInChildren<Transform>()) roofPart.gameObject.layer = 27;
             }
+            // The city shell includes apartment floors above the runtime room. Cut the whole shell
+            // away in overhead views, not just meshes whose names contain "roof".
+            var upperBuilding = GameObject.Find("Your restaurant's building");
+            if (upperBuilding)
+                foreach (var part in upperBuilding.GetComponentsInChildren<Transform>(true)) part.gameObject.layer = 27;
             LogDevices(); RefreshViews();
         }
         void OnDestroy() { InputSystem.onDeviceChange -= DeviceChanged; if (Instance == this) Instance = null; }

@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace RestaurantCity {
     // Run only with --interaction-acceptance. CityGame starts with an isolated state and disables saves.
-    public class InteractionAcceptance : MonoBehaviour {
+    public partial class InteractionAcceptance : MonoBehaviour {
         public CityGame Game;
         int checks, failures;
         RestaurantController R => Game.Restaurant;
@@ -34,10 +34,19 @@ namespace RestaurantCity {
                 Check(aim != null && ((RectTransform)aim.transform).rect.height >= aim.preferredHeight + 2,
                     "center reticle has enough height for generated glyph");
                 var prep = Station("prep_bench");
+                Check(typeof(RestaurantController).Assembly.GetType("RestaurantCity.ChoppingFeedback") != null,
+                    "prep stations provide accepted-work chopping presentation");
+                foreach (var feedbackType in new[] { "GrillFeedback", "WashFeedback", "BinFeedback" })
+                    Check(typeof(RestaurantController).Assembly.GetType("RestaurantCity." + feedbackType) != null, feedbackType + " presentation exists");
+                Check(typeof(KitchenStation).GetField("WasteCount") != null, "bin contents have backward-compatible station storage");
                 var rack = Station("plate_rack");
                 var pantry = Station("pantry");
                 var assembly = Station("assembly");
                 var grill = Station("grill");
+                RunStationFeedbackChecks(grill, Station("sink"));
+                RunChoppingChecks(prep);
+                yield return null; // Rebuild cleanup is deferred until the end of the frame.
+                Physics.SyncTransforms();
                 var table = R.Data.Layout.First(x => RestaurantCatalog.Find(x.CatalogId).Seats > 0).InstanceId;
 
                 // A level eye ray aimed at a visible bench should resolve the interactive object, consistently
@@ -86,6 +95,12 @@ namespace RestaurantCity {
                     if (move) {
                         move.onClick.Invoke();
                         Check(R.PlacementActive, "move action enters overhead placement");
+                        var upperBuilding = GameObject.Find("Your restaurant's building");
+                        Check(upperBuilding != null, "restaurant apartment shell exists for overhead regression");
+                        Check(upperBuilding == null || upperBuilding.GetComponentsInChildren<Renderer>().All(r => !r.enabled || (P.View.cullingMask & (1 << r.gameObject.layer)) == 0), "placement view excludes apartment floors and roof above restaurant");
+                        yield return new WaitForEndOfFrame();
+                        System.IO.Directory.CreateDirectory("InteractionEvidence");
+                        CapturePlacement();
                         if (R.PlacementActive) {
                             var placed = R.Data.Layout.First(x => x.InstanceId == prep);
                             int oldX = placed.X, oldZ = placed.Z;
@@ -109,6 +124,7 @@ namespace RestaurantCity {
                 if (R.PanelOpen) R.ClosePanel();
 
                 Check(AimAt(rack), "ray targets plate rack");
+                Check((P.View.cullingMask & (1 << 27)) != 0, "first person view restores upper building after placement");
                 P.ResolveAndInteract(true, false);
                 Check(K.Hold(P.ActorId)?.Kind == KitchenItemKind.Plate, "E picks up a clean plate through ray interaction");
                 Check(AimAt(assembly), "ray targets assembly counter");
@@ -148,6 +164,50 @@ namespace RestaurantCity {
                 Check(K.Hold(P.ActorId)?.Components.Contains("bun") == true, "E adds a bun straight onto the held plate from its shelf");
                 Check(K.RecipeOf(K.Hold(P.ActorId)) == "burger", "components-based recipe match recognizes the finished burger");
 
+                // A placed two-seat table must accept food at either place setting through its own collider.
+                R.Data.Layout.First(x => x.InstanceId == table).Rotation = 1;
+                R.RebuildLayout(); Physics.SyncTransforms();
+                R.Data.Open = true;
+                R.Data.ActiveMenu.Clear(); R.Data.ActiveMenu.Add("burger");
+                var firstGuest = R.Data.AddCustomer(Game.State, 0, table, out _);
+                var secondGuest = R.Data.AddCustomer(Game.State, 0, table, out _);
+                Require(firstGuest != null && secondGuest != null, "two guests can order at the placed table");
+                var tableHits = new RaycastHit[2];
+                foreach (var order in new[] { firstGuest, secondGuest }) {
+                    if (K.Hold(P.ActorId) == null) K.Items.Add(new KitchenItem { Id = K.NextItemId++, Kind = KitchenItemKind.Plate, Holder = P.ActorId, Components = new System.Collections.Generic.List<string> { "bun", "cooked_patty" } });
+                    int seatIndex = order == firstGuest ? 0 : 1;
+                    var furniture = R.Furnishings[table];
+                    var seat = furniture.transform.Find("Seat_" + seatIndex);
+                    var local = seat.localPosition * .4f; local.y = .85f;
+                    var point = furniture.transform.TransformPoint(local);
+                    var outward = (seat.position - furniture.transform.position).normalized;
+                    var origin = point + outward * 1.8f + Vector3.up * .15f;
+                    Physics.SyncTransforms();
+                    bool found = Physics.Raycast(origin, point - origin, out var serveHit, 2.5f) && TargetId(serveHit) == table;
+                    Check(found, "table collider exposes serving spot " + seatIndex);
+                    if (found) {
+                        tableHits[seatIndex] = serveHit;
+                        R.InspectPlayerRay(P, serveHit, false, false);
+                        Check(R.PromptFor(P.ActorId).Contains("serve #" + order.Id), "table spot prompts its own guest " + seatIndex);
+                        R.InspectPlayerRay(P, serveHit, true, false);
+                    }
+                    Check(order.Stage == RestaurantOrderStage.Eating && K.Hold(P.ActorId) == null, "table spot serves matching guest " + seatIndex);
+                    Check(K.Items.Any(i => i.Holder == "table:" + order.Id && i.SeatNumber == seatIndex + 1), "served plate remembers its own seat " + seatIndex);
+                }
+                firstGuest.Stage = secondGuest.Stage = RestaurantOrderStage.Leaving;
+                K.Tick(Game.State, .1f);
+                Check(K.DirtyAtTable(table) == 2, "both place settings retain their dirty plates");
+                // Clear the second setting first, so a table-wide first-item lookup cannot pass accidentally.
+                foreach (int seatIndex in new[] { 1, 0 }) {
+                    if (tableHits[seatIndex].collider) R.InspectPlayerRay(P, tableHits[seatIndex], true, false);
+                    var dirty = K.Hold(P.ActorId);
+                    int expectedId = seatIndex == 0 ? firstGuest.Id : secondGuest.Id;
+                    Check(dirty?.Kind == KitchenItemKind.DirtyPlate && dirty.Holder == P.ActorId && !K.Items.Any(i => i.Holder == "table:" + expectedId), "clearing takes the aimed seat's plate " + seatIndex);
+                    Check(K.DirtyAtTable(table) == (seatIndex == 1 ? 1 : 0), "clearing one setting leaves the other intact " + seatIndex);
+                    if (dirty != null) { K.Items.Remove(dirty); K.CleanPlates++; }
+                }
+                R.Data.Open = false;
+
                 Check(AimAtShelf(pantry, "sauce"), "ray targets the pantry's sauce shelf");
                 Check(!PromptFor().Contains("E  Take"), "midnight sauce shelf is locked before the recipe is learned");
                 P.Teleport(new Vector3(0, .15f, 0));
@@ -155,12 +215,81 @@ namespace RestaurantCity {
                 var second = Game.CoOp.SecondPlayer;
                 Check(second && second.gameObject.layer == 29 && second.OwnBodyMask == 1 << 29,
                     "second player's controller uses its own excluded interaction layer");
+            RunFinishChecks();
             Debug.Log("INTERACTION_RUNTIME_" + (failures == 0 ? "PASS " : "FAIL ") + checks + " checks, " + failures + " failures");
             Application.logMessageReceived -= OnLog;
             Application.Quit(failures == 0 ? 0 : 1);
         }
         void InstallFirstFree(string id) {
             for (int z = 0; z < 10; z++) for (int x = 0; x < 12; x++) if (R.Data.CanPlace(id, x, z, 0, -1, out _)) { R.Data.Place(Game.State, id, x, z, 0, out _); return; }
+        }
+        void RunChoppingChecks(int prep) {
+            var type = typeof(RestaurantController).Assembly.GetType("RestaurantCity.ChoppingFeedback");
+            if (type == null) return; // The initial red check reports missing presentation without a compile error.
+            var tick = typeof(RestaurantController).GetMethod("TickChoppingFeedback", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Require(tick != null, "chopping presentation can reconcile accepted work");
+            void Present(float dt = .1f) => tick.Invoke(R, new object[] { dt });
+            Component View(int id) => R.StationObject(id).GetComponent(type);
+            T Read<T>(Component v, string property) => (T)type.GetProperty(property).GetValue(v);
+            bool standBuilt=Game.State.StandBuilt;
+            Game.State.StandBuilt=true; Game.SyncWorld();
+            int stand = K.Stations.First(s => s.CatalogId == "prep_bench" && KitchenState.IsStandStation(s.InstanceId)).InstanceId;
+            var greens = new KitchenItem { Id = K.NextItemId++, Kind = KitchenItemKind.RawGreens, Holder = "station:" + prep };
+            var other = new KitchenItem { Id = K.NextItemId++, Kind = KitchenItemKind.RawGreens, Holder = "station:" + stand };
+            K.Items.Add(greens); K.Items.Add(other); Present();
+            var view = View(prep); var standView = View(stand);
+            Require(view && standView, "restaurant and stand each bind their own chopping presentation");
+            Check(R.StationObject(prep).transform.Find("Chopping feedback").GetComponentsInChildren<Collider>().Length == 0,
+                "chopping presentation adds no interaction colliders");
+            var board = R.StationObject(prep).transform.Find("ChoppingBoard");
+            P.Teleport(board.position + R.StationObject(prep).transform.forward * 1.1f + Vector3.up * -.85f);
+            P.LookAt(board.position + Vector3.up * .1f);
+            System.IO.Directory.CreateDirectory("InteractionEvidence"); CapturePlacement("chop-whole.png");
+            Check(K.Work(Game.State, P.ActorId, prep, .8f, out _), "player accepted preparation work"); Present(.16f);
+            Check(Read<bool>(view, "Active") && Read<float>(view, "Ratio") > .2f, "accepted work animates knife and progressively cuts greens");
+            var knife = R.StationObject(prep).transform.Find("Chopping feedback/Knife");
+            Check(knife && knife.localPosition.y > .04f, "productive stroke lifts knife off board");
+            CapturePlacement("chop-working.png");
+            float partial = Read<float>(view, "Ratio"); int strokes = Read<int>(view, "StrokeCount");
+            Present(.3f);
+            Check(!Read<bool>(view, "Active") && Read<int>(view, "StrokeCount") == strokes && Read<float>(view, "Ratio") == partial,
+                "lookaway or release stops immediately even with stale WorkOwner and retains partial cuts");
+            K.ReleaseWork(P.ActorId);
+            K.Work(Game.State,P.ActorId,prep,.1f,out _); K.ReleaseWork(P.ActorId); Present();
+            Check(!Read<bool>(view,"Active"), "release cancels a queued accepted stroke in the same presentation frame");
+            Check(K.Work(Game.State, "staff:test", prep, .2f, out _) && K.Work(Game.State, "player:second-test", stand, .4f, out _), "staff and second player accept work independently"); Present(.35f);
+            Check(Read<bool>(view, "Active") && Read<bool>(standView, "Active"), "two station knives run independently for staff and players");
+            var prepSound=R.StationObject(prep).transform.Find("Chopping feedback").GetComponent<AudioSource>();
+            var standSound=R.StationObject(stand).transform.Find("Chopping feedback").GetComponent<AudioSource>();
+            Check(Read<int>(view,"StrokeCount")>strokes && prepSound && standSound && prepSound!=standSound && prepSound.spatialBlend==1,
+                "knife impact produces its own spatial stroke sound with independent station sources");
+            Check(!K.Work(Game.State, P.ActorId, prep, .4f, out _), "second actor cannot double progress owned ingredient"); Present(.2f);
+            Check(!Read<bool>(view, "Active"), "rejected work produces no stroke");
+            Check(!prepSound.isPlaying, "stopped work stops cutting audio");
+            K.Work(Game.State, "staff:test", prep, .2f, out _); Game.SetPaused(true); Present(.2f);
+            Check(!Read<bool>(view, "Active"), "pause suppresses accepted pending chopping"); Game.SetPaused(false);
+            K.Work(Game.State, "staff:test", prep, 4, out _); Present(.2f);
+            Check(greens.Kind == KitchenItemKind.ChoppedGreens && !Read<bool>(view, "Active") && Read<float>(view, "Ratio") == 1,
+                "completed greens stay chopped and knife rests"); CapturePlacement("chop-finished.png");
+            R.Data.Layout.First(x => x.InstanceId == prep).Rotation = 1; var oldView = view;
+            R.RebuildLayout(); Present();
+            Check(View(prep) && View(prep) != oldView, "rotated rebuilt furnishing rebinds presentation");
+            K.Items.Remove(greens); K.Items.Remove(other); K.ReleaseWork("staff:test"); K.ReleaseWork("player:second-test"); Present();
+            Check(Read<float>(View(prep), "Ratio") == 0 && !Read<bool>(View(prep), "Active"), "removed ingredient clears chopping presentation");
+            Game.State.StandBuilt=standBuilt; Game.SyncWorld();
+        }
+        void CapturePlacement(string file = "placement.png") {
+            // Render directly: an acceptance player may run in a hidden window.
+            var target = new RenderTexture(1280, 720, 24);
+            var pixels = new Texture2D(1280, 720, TextureFormat.RGB24, false);
+            var previous = RenderTexture.active;
+            try {
+                target.Create();
+                UnityEngine.Rendering.RenderPipeline.SubmitRenderRequest(P.View, new UnityEngine.Rendering.Universal.UniversalRenderPipeline.SingleCameraRequest { destination = target });
+                RenderTexture.active = target;
+                pixels.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0); pixels.Apply();
+                System.IO.File.WriteAllBytes(System.IO.Path.GetFullPath("InteractionEvidence/" + file), pixels.EncodeToPNG());
+            } finally { RenderTexture.active = previous; target.Release(); Destroy(target); Destroy(pixels); }
         }
         int Station(string id) => R.Data.Layout.First(x => x.CatalogId == id).InstanceId;
         static int TargetId(RaycastHit hit) { var t = hit.collider ? hit.collider.GetComponentInParent<RestaurantTarget>() : null; return t ? t.InstanceId : -1; }

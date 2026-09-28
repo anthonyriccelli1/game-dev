@@ -72,10 +72,32 @@ namespace RestaurantCity {
     string line=preview.Kind==KitchenActionKind.None?preview.FailReason:glyph+(preview.Allowed?preview.Label:preview.FailReason);
     prompts[actor]=station.CatalogId.Replace('_',' ')+(string.IsNullOrEmpty(line)?"":"\n"+line);
     prompts[actor]+=CookStatus(station,k.At(station.InstanceId));
+    if(station.CatalogId=="grill"&&k.At(station.InstanceId)!=null)prompts[actor]+="\nLeft click / RB: flip patty";
+    if(station.CatalogId=="trash")prompts[actor]+="\nContents "+station.WasteCount+" / 6";
     if(pressed&&preview.Kind==KitchenActionKind.Tap){k.Act(Game.State,actor,station.InstanceId,target.SubId,out message);Feedback(message);}
     if(held&&k.Hold(actor)==null)k.Work(Game.State,actor,station.InstanceId,Time.deltaTime,out _);
-   }else{bool dirty=k.DirtyAtTable(target.InstanceId)>0;prompts[actor]=dirty?"E / A: clear dirty plate | B / D-pad up: edit furniture":"B / D-pad up: edit furniture";if(pressed&&dirty){k.ClearTable(Game.State,actor,target.InstanceId,out message);Feedback(message);}}
+   }else{
+    int seat=TableSeatAt(target.InstanceId,hit.point);
+    bool dirty=k.Items.Any(i=>i.Kind==KitchenItemKind.DirtyPlate&&i.TableInstanceId==target.InstanceId&&i.Holder.StartsWith("table:")&&(seat==0||i.SeatNumber==0||i.SeatNumber==seat));
+    var order=Data.Orders.FirstOrDefault(o=>o.SeatInstanceId==target.InstanceId&&o.SeatNumber==seat&&seat>0&&o.Stage!=RestaurantOrderStage.Leaving);
+    if(dirty){prompts[actor]="E / A: clear dirty plate | B / D-pad up: edit furniture";if(pressed){k.ClearTable(Game.State,actor,target.InstanceId,out message,seat);Feedback(message);}}
+    else if(order!=null){prompts[actor]=order.Stage==RestaurantOrderStage.Waiting?"E / A: serve #"+order.Id+" "+RestaurantCatalog.Dish(order.DishId).Name:"Guest eating";if(pressed&&order.Stage==RestaurantOrderStage.Waiting){k.Serve(Game.State,actor,order.Id,out message);Feedback(message);}}
+    else prompts[actor]=seat>0?"Empty seat | B / D-pad up: edit furniture":"B / D-pad up: edit furniture";
+   }
    return true;
+  }
+  // Use the actual table hit in its rotated local coordinates; opposite place settings stay independent.
+  int TableSeatAt(int instanceId,Vector3 point){
+   if(!Furnishings.TryGetValue(instanceId,out var table)||!table)return 0;
+   var local=table.transform.InverseTransformPoint(point);local.y=0;
+   int nearest=0;float distance=float.PositiveInfinity;
+   for(int n=0;;n++){var seat=table.transform.Find("Seat_"+n);if(!seat)break;var delta=seat.localPosition-local;delta.y=0;if(delta.sqrMagnitude<distance){distance=delta.sqrMagnitude;nearest=n+1;}}
+   return nearest;
+  }
+  Vector3 TablePlatePosition(GameObject table,int seatNumber,int itemId){
+   var seat=seatNumber>0?table.transform.Find("Seat_"+(seatNumber-1)):null;
+   if(!seat)return new Vector3((itemId%2-.5f)*.4f,.94f,0);
+   var pos=seat.localPosition;pos.z*=.4f;pos.y=.94f;return pos;
   }
   // Grill feedback: a small bar that fills while cooking, turns green when done, red when burning.
   static string CookStatus(KitchenStation s,KitchenItem item){
@@ -102,8 +124,11 @@ namespace RestaurantCity {
     Transform parent=transform;Vector3 pos=Vector3.zero;bool found=false;
     if(item.Holder.StartsWith("player:")){var p=Game.CoOp?.Players.FirstOrDefault(v=>v.ActorId==item.Holder);if(p){parent=p.Elevated?p.transform:p.View.transform;pos=p.Elevated?new Vector3(.3f,1,.6f):new Vector3(.32f,-.32f,.7f);found=true;}}
     else if(item.Holder.StartsWith("staff:")){if(employees.TryGetValue(item.Holder.Substring(6),out var w)){parent=w.Root.transform;pos=new Vector3(.25f,1,.45f);found=true;}}
-    else{int id;if(item.Holder.StartsWith("station:")&&int.TryParse(item.Holder.Substring(8),out id)&&StationObject(id) is GameObject s&&s){parent=s.transform;pos=new Vector3(0,1.08f,0);found=true;}else if(item.TableInstanceId>0&&Furnishings.TryGetValue(item.TableInstanceId,out var t)){parent=t.transform;pos=new Vector3((item.Id%2-.5f)*.4f,.94f,0);found=true;}}
-    obj.SetActive(found);obj.transform.SetParent(parent,false);obj.transform.localPosition=pos;
+    else{int id;if(item.Holder.StartsWith("station:")&&int.TryParse(item.Holder.Substring(8),out id)&&StationObject(id) is GameObject s&&s){parent=s.transform;pos=new Vector3(0,1.08f,0);found=true;}else if(item.TableInstanceId>0&&Furnishings.TryGetValue(item.TableInstanceId,out var t)){parent=t.transform;pos=TablePlatePosition(t,item.SeatNumber,item.Id);found=true;}}
+    // Prep greens are rendered by the board presentation, including retained partial cuts.
+    bool boardGreens=item.Holder.StartsWith("station:")&&(item.Kind==KitchenItemKind.RawGreens||item.Kind==KitchenItemKind.ChoppedGreens)&&parent.GetComponent<ChoppingFeedback>();
+    if(item.Holder.StartsWith("station:")&&parent.GetComponent<ChoppingFeedback>())pos=ChoppingFeedback.BoardTop(parent);
+    obj.SetActive(found&&!boardGreens);obj.transform.SetParent(parent,false);obj.transform.localPosition=pos;
    }
    DrawProgressBars();
    DrawRestaurantPlates();
