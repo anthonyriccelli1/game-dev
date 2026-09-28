@@ -12,7 +12,7 @@ namespace RestaurantCity {
   static int S(int i)=>KitchenState.StandBase+i; // 1 pantry, 2 grill, 3 counter, 4 plates, 5 sink, 6 trash
   void ActId(int id,string sub=""){Check(Game.State.Kitchen.Act(Game.State,"player:0",id,sub,out var m),"stand step: "+m);}
   void StandBurger(bool midnight){ActId(S(4));ActId(S(3));ActId(S(1),"protein");ActId(S(2));Game.State.Kitchen.Tick(Game.State,8);ActId(S(2));ActId(S(3));ActId(S(1),"bun");ActId(S(3));ActId(S(3));if(midnight)ActId(S(1),"sauce");}
-  void ClearStandTables(){var st=Game.State;for(int t=0;t<GameState.StandTables;t++)if(st.StandTableDirty[t]){Check(st.Kitchen.ClearStandTable(st,"player:0",t,out var m),"clear table: "+m);ActId(S(5));Check(st.Kitchen.Work(st,"player:0",S(5),KitchenState.WashSeconds+.1f,out m),"wash table plate: "+m);}}
+  void ClearStandTables(){var st=Game.State;for(int t=0;t<GameState.StandSeats;t++)if(st.StandTableDirty[t]){Check(st.Kitchen.ClearStandTable(st,"player:0",t,out var m),"clear table: "+m);ActId(S(5));Check(st.Kitchen.Work(st,"player:0",S(5),KitchenState.WashSeconds+.1f,out m),"wash table plate: "+m);}}
   // Tests fill the pantry directly; players buy at Milo's.
   void Stock(int n){var r=Game.State.Restaurant;foreach(var i in new[]{"patty","bun","greens","midnight_sauce"})r.AddStock(i,n-r.Stock(i));}
   // Stand salad: plate on the counter, greens from the pantry onto the cutting board, chop, then onto the plate.

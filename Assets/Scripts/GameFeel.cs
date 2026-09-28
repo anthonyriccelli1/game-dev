@@ -4,7 +4,7 @@ namespace RestaurantCity {
     // Turns kitchen and service moments (GameState.Events) into sound, floating pop-ups and guest reactions,
     // runs the sizzle/bubble loops on cooking stations, and announces the rush.
     public partial class RestaurantController {
-        AudioSource fx; float chopCooldown, washCooldown, clinkCooldown; string lastPhase = "";
+        AudioSource fx; float chopCooldown, washCooldown, clinkCooldown; string lastPhase = ""; bool lastStandRush;
         readonly Dictionary<int, AudioSource> stationLoops = new Dictionary<int, AudioSource>();
         sealed class FloatText { public TextMesh Text; public float Age; public Vector3 Start; }
         readonly List<FloatText> floaters = new List<FloatText>();
@@ -33,6 +33,11 @@ namespace RestaurantCity {
                 if (phase == "rush") { Fx(SoundFx.Horn, .9f); Game.Notify("RUSH HOUR! Guests are pouring in" + (s.IsNight ? " (night rush: every order pays 30% more)." : "."), 4); }
                 else if (phase == "wind" && lastPhase == "rush") Game.Notify("The rush is over. Finish the last guests strong.", 4);
                 lastPhase = phase;
+            }
+            // The stand's lunch and night rushes announce themselves too.
+            if (s.StandRush != lastStandRush) {
+                if (s.StandRush) { Fx(SoundFx.Horn, .9f); Game.Notify((s.IsNight ? "NIGHT RUSH" : "LUNCH RUSH") + " at the stand! Customers are lining up.", 4); }
+                lastStandRush = s.StandRush;
             }
             TickStationLoops();
             for (int i = floaters.Count - 1; i >= 0; i--) {

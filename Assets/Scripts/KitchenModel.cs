@@ -245,11 +245,16 @@ namespace RestaurantCity {
    if(dish!="")return "They ordered a "+DishName(o.Dish)+", not a "+DishName(dish)+".";
    return "Wants a "+DishName(o.Dish)+"\nBuild it: "+HowTo(o.Dish)+", then bring it here.";
   }
+  // A table has two seats (seat = table*2 and table*2+1). Clearing comes first, then serving whoever is waiting.
+  public int DirtySeatAt(GameState game,int table){for(int s=table*2;s<table*2+2&&s<game.StandTableDirty.Count;s++)if(game.StandTableDirty[s])return s;return -1;}
+  public StandOrder WaitingAtTable(GameState game,string actor,int table){string dish=RecipeOf(Hold(actor));var waiting=game.StandQueue.FindAll(o=>o.Stage==1&&o.Table/2==table);return waiting.Find(o=>o.Dish==dish)??(waiting.Count>0?waiting[0]:null);}
   public string StandTablePreview(GameState game,string actor,int table){
-   if(table<0||table>=game.StandTableDirty.Count)return "Table";
-   if(game.StandTableDirty[table])return Hold(actor)==null?"E / A  Clear the dirty plate":"Dirty plate. Free your hands to clear it.";
-   var o=SeatedAt(game,table);
-   return o!=null?StandGuestPreview(game,actor,o):"Free table";
+   int dirty=DirtySeatAt(game,table);
+   if(dirty>=0&&Hold(actor)==null)return "E / A  Clear the dirty plate";
+   var o=WaitingAtTable(game,actor,table);
+   if(o!=null)return StandGuestPreview(game,actor,o);
+   if(dirty>=0)return "Dirty plate. Free your hands to clear it.";
+   return game.StandQueue.Exists(x=>x.Stage==2&&x.Table/2==table)?"Guests eating":"Free table";
   }
   public bool ServeStandGuest(GameState game,string actor,int orderId,out string message){
    var item=Hold(actor);string dish=RecipeOf(item);var order=game.StandQueue.Find(o=>o.Id==orderId);

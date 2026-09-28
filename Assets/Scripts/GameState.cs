@@ -17,7 +17,7 @@ namespace RestaurantCity {
         public bool StandBuilt, RecipeUnlocked, HasOrder, StandOpen;
         public int StandCustomerType; public string StandDish = "burger";
         // Up to StandQueueMax customers line up at the stand. HasOrder/Patience/StandDish mirror the front of the line.
-        public List<StandOrder> StandQueue = new List<StandOrder>(); public int NextStandOrder = 1, StandClean = 4, StandDirty;
+        public List<StandOrder> StandQueue = new List<StandOrder>(); public int NextStandOrder = 1, StandClean = StandPlates, StandDirty;
         [NonSerialized] public int Players = 1;
         // Reputation (XP) from every sale; RankUpTo is set for one frame when a sale crosses a rank threshold.
         [NonSerialized] public int RankUpTo = -1;
@@ -117,12 +117,15 @@ namespace RestaurantCity {
             Cash += earned; StandWorkerEarned += earned; Served++; w.TasksCompleted++;
             StandClean--; front.Stage = 2; front.EatLeft = StandEatSeconds; SyncStandFront();
         }
-        public const int StandQueueMax = 3, StandPlates = 4, StandTables = 2;
+        // Two cafe tables x two chairs = four seats. StandTableDirty and StandOrder.Table are per SEAT (seat / 2 = table).
+        public const int StandQueueMax = 5, StandPlates = 6, StandTables = 2, StandSeats = 4;
         public const float StandEatSeconds = 12, StandPatience = 75, StandFirstPatience = 100;
-        public List<bool> StandTableDirty = new List<bool> { false, false };
-        public float StandArrivalSeconds => Players > 1 ? 14 : 22;
+        public List<bool> StandTableDirty = new List<bool> { false, false, false, false };
+        // The stand has a lunch rush and a (bigger-paying) night rush: guests arrive twice as fast.
+        public bool StandRush => StandOpen && (Clock >= 70 && Clock < 110 || Clock >= 180 && Clock < 215);
+        public float StandArrivalSeconds => (Players > 1 ? 14 : 22) * (StandRush ? .5f : 1);
         public int FreeStandTable() {
-            for (int t = 0; t < StandTables; t++) {
+            for (int t = 0; t < StandSeats; t++) {
                 if (StandTableDirty[t]) continue;
                 bool taken = false; foreach (var o in StandQueue) if (o.Stage > 0 && o.Table == t) taken = true;
                 if (!taken) return t;
@@ -210,8 +213,8 @@ namespace RestaurantCity {
             Clock = float.IsNaN(Clock) || float.IsInfinity(Clock) ? 0 : Math.Max(0, Clock) % 240;
             Health = 100; HasOrder = false; NextCustomer = 2; Discard();
             // Plates left on the sidewalk tables go to the dirty pile, so no plate is ever lost across a reload.
-            if (StandTableDirty == null || StandTableDirty.Count != StandTables) StandTableDirty = new List<bool> { false, false };
-            for (int t = 0; t < StandTables; t++) if (StandTableDirty[t]) { StandDirty++; StandTableDirty[t] = false; }
+            if (StandTableDirty == null || StandTableDirty.Count != StandSeats) StandTableDirty = new List<bool> { false, false, false, false };
+            for (int t = 0; t < StandSeats; t++) if (StandTableDirty[t]) { StandDirty++; StandTableDirty[t] = false; }
             StandQueue = new List<StandOrder>(); StandDirty = Math.Max(0, Math.Min(StandPlates, StandDirty)); StandClean = StandPlates - StandDirty;
         }
         public void Tick(float seconds) {
@@ -223,7 +226,7 @@ namespace RestaurantCity {
             while (Clock >= 240) { Clock -= 240; Day++; }
             if (Food == FoodStage.Cooking) CookSeconds += seconds;
             StandQueue = StandQueue ?? new List<StandOrder>();
-            if (StandTableDirty == null || StandTableDirty.Count != StandTables) StandTableDirty = new List<bool> { false, false };
+            if (StandTableDirty == null || StandTableDirty.Count != StandSeats) StandTableDirty = new List<bool> { false, false, false, false };
             foreach (var o in StandQueue) {
                 if (o.Stage < 2) o.Patience -= seconds;
                 else { o.EatLeft -= seconds; if (o.EatLeft <= 0 && o.Table >= 0) StandTableDirty[o.Table] = true; }

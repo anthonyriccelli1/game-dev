@@ -45,11 +45,11 @@ namespace RestaurantCity {
         // The stand's two sidewalk tables are the same cafe tables guests sit at in the restaurant (same chairs,
         // same seat point, same sitting pose), so the stand already looks and plays like a tiny restaurant.
         static readonly Vector3[] StandTablePositions = { new Vector3(-5.2f, 0, 10.6f), new Vector3(-8.2f, 0, 10.6f) };
-        readonly List<Transform> standSeats = new List<Transform>();
+        readonly List<Transform> standSeats = new List<Transform>();          // four seats: seat / 2 = table, seat % 2 = near/far chair
         readonly List<Vector3> standTableSpots = new List<Vector3>();
         readonly Dictionary<int, GameObject> tablePlates = new Dictionary<int, GameObject>();
-        readonly Dictionary<int, int> tablePlateState = new Dictionary<int, int>();   // 0 none, 1 eating, 2 dirty
-        readonly HashSet<int> guestsPastStand = new HashSet<int>();
+        readonly Dictionary<int, string> tablePlateState = new Dictionary<int, string>();   // per seat: "", "dirty" or the dish being eaten
+        readonly Dictionary<int, int> guestLeg = new Dictionary<int, int>();   // how far along the walk to their seat each guest is
         static readonly Vector3 StandCorner = new Vector3(-4.9f, 0, 6.2f);  // guests walk round the stand's end, not through it
         void BuildStandTables(Transform world) {
             if (standTableSpots.Count > 0 || !world) return;
@@ -59,21 +59,30 @@ namespace RestaurantCity {
                 if (table.GetComponentsInChildren<Collider>().Length == 0) { var box = table.AddComponent<BoxCollider>(); box.center = new Vector3(0, .45f, 0); box.size = new Vector3(1.2f, .9f, 1.9f); }
                 var it = table.AddComponent<Interactable>(); it.Kind = InteractionKind.StandTable; it.Index = t;
                 standTableSpots.Add(StandTablePositions[t]);
-                standSeats.Add(table.transform.Find("Seat_0"));
+                standSeats.Add(table.transform.Find("Seat_0")); standSeats.Add(table.transform.Find("Seat_1"));
             }
         }
-        Transform SeatOf(int t) => t >= 0 && t < standSeats.Count ? standSeats[t] : null;
-        Vector3 TableSeat(int t) { var seat = SeatOf(t); return seat ? seat.position : StandFront; }
-        void SyncTablePlate(int t, int state) {
-            tablePlateState.TryGetValue(t, out int shown);
-            if (shown == state && (state == 0 || tablePlates.ContainsKey(t) && tablePlates[t])) return;
-            if (tablePlates.TryGetValue(t, out var old) && old) Destroy(old);
-            tablePlates.Remove(t); tablePlateState[t] = state;
-            if (state == 0 || t >= standTableSpots.Count) return;
-            var plate = state == 1 ? KitchenArt.CreateItem("Plate", new List<string> { "bun", "cooked_patty" }, transform) : KitchenArt.CreateItem("DirtyPlate", transform);
-            plate.transform.position = standTableSpots[t] + new Vector3(0, .84f, -.28f); plate.transform.localScale = Vector3.one * .8f;
-            tablePlates[t] = plate;
+        Transform SeatOf(int seat) => seat >= 0 && seat < standSeats.Count ? standSeats[seat] : null;
+        // The walk to a seat: round the stand's end, then (for the far chair) round the side of the table, then sit.
+        Vector3[] SeatRoute(int seat) {
+            var s = SeatOf(seat); var target = s ? s.position : StandFront;
+            if (seat % 2 == 0 || seat / 2 >= standTableSpots.Count) return new[] { StandCorner, target };
+            var table = standTableSpots[seat / 2];
+            return new[] { StandCorner, new Vector3(table.x - 1.25f, 0, table.z - 1.2f), new Vector3(table.x - 1.25f, 0, target.z), target };
         }
+        void SyncTablePlate(int seat, string state) {
+            tablePlateState.TryGetValue(seat, out var shown);
+            if (shown == state && (state == "" || tablePlates.ContainsKey(seat) && tablePlates[seat])) return;
+            if (tablePlates.TryGetValue(seat, out var old) && old) Destroy(old);
+            tablePlates.Remove(seat); tablePlateState[seat] = state;
+            if (state == "" || seat / 2 >= standTableSpots.Count) return;
+            // The plate shows the dish they actually ordered (salad, burger or midnight burger).
+            var recipe = RecipeBook.Find(state);
+            var plate = state == "dirty" ? KitchenArt.CreateItem("DirtyPlate", transform) : KitchenArt.CreateItem("Plate", recipe != null ? new List<string>(recipe.Components) : new List<string> { "bun", "cooked_patty" }, transform);
+            plate.transform.position = standTableSpots[seat / 2] + new Vector3(0, .84f, seat % 2 == 0 ? -.28f : .28f); plate.transform.localScale = Vector3.one * .8f;
+            tablePlates[seat] = plate;
+        }
+
 
         TextMesh standSignText;
 
@@ -159,7 +168,7 @@ namespace RestaurantCity {
             SyncPlateStack(dirtyStack, KitchenState.StandBase + 5, s.StandDirty, "DirtyPlate", new Vector3(.75f, 1.08f, .2f));
             var world = Game.Stand ? Game.Stand.transform.parent : transform;
             var live = new HashSet<int>(); int lineSpot = 0;
-            for (int t = 0; t < standTableSpots.Count; t++) SyncTablePlate(t, t < s.StandTableDirty.Count && s.StandTableDirty[t] ? 2 : s.StandQueue.Exists(o => o.Stage == 2 && o.Table == t) ? 1 : 0);
+            for (int seat = 0; seat < standSeats.Count; seat++) { var eating = s.StandQueue.Find(o => o.Stage == 2 && o.Table == seat); SyncTablePlate(seat, seat < s.StandTableDirty.Count && s.StandTableDirty[seat] ? "dirty" : eating != null ? eating.Dish : ""); }
             for (int i = 0; i < s.StandQueue.Count; i++) {
                 var order = s.StandQueue[i]; live.Add(order.Id);
                 if (!standGuests.TryGetValue(order.Id, out var guest) || !guest) {
@@ -172,12 +181,15 @@ namespace RestaurantCity {
                 // In line at the window until a table frees up; then round the end of the stand and onto a stool.
                 Vector3 spot;
                 if (order.Stage == 0) spot = StandFront + new Vector3(1.4f * lineSpot++, 0, 0);
-                else if (!guestsPastStand.Contains(order.Id)) { spot = StandCorner; if ((guest.transform.position - StandCorner).sqrMagnitude < .05f) guestsPastStand.Add(order.Id); }
-                else spot = TableSeat(order.Table);
+                else {
+                    var route = SeatRoute(order.Table); guestLeg.TryGetValue(order.Id, out int leg); leg = Mathf.Min(leg, route.Length - 1);
+                    spot = route[leg];
+                    if (leg < route.Length - 1 && (guest.transform.position - spot).sqrMagnitude < .05f) guestLeg[order.Id] = leg + 1;
+                }
                 var before = guest.transform.position;
                 guest.transform.position = Vector3.MoveTowards(before, spot, seconds * 2.4f);
                 var step = guest.transform.position - before; bool walking = step.sqrMagnitude > .000001f;
-                var seat = order.Stage > 0 && guestsPastStand.Contains(order.Id) ? SeatOf(order.Table) : null;
+                var seat = order.Stage > 0 ? SeatOf(order.Table) : null;
                 bool seated = seat && !walking && (guest.transform.position - seat.position).sqrMagnitude < .01f;
                 guest.transform.rotation = walking ? Quaternion.LookRotation(new Vector3(step.x, 0, step.z)) : seated ? seat.rotation : Quaternion.identity;
                 var motion = guest.GetComponent<CharacterMotion>();
@@ -189,7 +201,7 @@ namespace RestaurantCity {
                 string want = order.Dish == "midnight" ? "Midnight burger!" : order.Dish == "salad" ? "Salad, please!" : "Burger, please!";
                 SetBubble(standBubbles[order.Id], name + "\n" + (order.Stage == 2 ? "<color=#4FCB7A>Mmm!</color>" : (order.Stage == 0 ? "Waiting for a table\n" : "") + want + "\n<color=" + color + ">" + new string('|', filled) + "</color>"));
             }
-            foreach (var id in new List<int>(standGuests.Keys)) if (!live.Contains(id)) { if (standGuests[id]) Destroy(standGuests[id]); standGuests.Remove(id); standBubbles.Remove(id); guestsPastStand.Remove(id); }
+            foreach (var id in new List<int>(standGuests.Keys)) if (!live.Contains(id)) { if (standGuests[id]) Destroy(standGuests[id]); standGuests.Remove(id); standBubbles.Remove(id); guestLeg.Remove(id); }
         }
 
         public static Vector2 MiloSpot = new Vector2(-12, 9); public static float MiloRadius = 4.5f;
@@ -251,12 +263,12 @@ namespace RestaurantCity {
             }
             if (city.Kind == InteractionKind.StandTable) {
                 int t = city.Index; var st = Game.State;
-                prompts[actor] = "Sidewalk table\n" + k.StandTablePreview(st, actor, t);
+                prompts[actor] = "Sidewalk table " + (t + 1) + "\n" + k.StandTablePreview(st, actor, t);
                 if (pressed) {
-                    string m; bool ok;
-                    if (t < st.StandTableDirty.Count && st.StandTableDirty[t]) ok = k.ClearStandTable(st, actor, t, out m);
-                    else { var seated = k.SeatedAt(st, t); if (seated == null || seated.Stage != 1) return true; ok = k.ServeStandGuest(st, actor, seated.Id, out m); if (ok) PlayChime(false); }
-                    Feedback(m); if (ok) Game.Save();
+                    string m = null; bool ok = false; int dirty = k.DirtySeatAt(st, t); var waiting = k.WaitingAtTable(st, actor, t);
+                    if (dirty >= 0 && k.Hold(actor) == null) ok = k.ClearStandTable(st, actor, dirty, out m);
+                    else if (waiting != null) { ok = k.ServeStandGuest(st, actor, waiting.Id, out m); if (ok) PlayChime(false); }
+                    if (m != null) Feedback(m); if (ok) Game.Save();
                 }
                 return true;
             }
