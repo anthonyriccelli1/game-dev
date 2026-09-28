@@ -341,13 +341,13 @@ namespace RestaurantCity {
             var o=Orders.Find(x=>x.Id==id);if(o==null||o.Stage!=RestaurantOrderStage.Ready)return Fail("Choose a ready dish to serve.",out message);
             var c=RestaurantCatalog.Customers[o.CustomerType];var d=RestaurantCatalog.Dish(o.DishId);
             float waitRatio=o.Wait/c.Patience,score=45+o.Quality*30+(waitRatio<.35f?10:waitRatio>.7f?-15:0)+Math.Min(10,Ambience*.55f)*c.AmbienceWeight+(Cleanliness-60)*.15f*c.CleanlinessWeight+(c.FavoriteDish==o.DishId?5:0);
-            score=Clamp(score,0,100);int tip=score>=85?3:score>=70?1:0,wage=WagesPerOrder,revenue=Math.Max(0,d.Price+tip-wage);
+            score=Clamp(score,0,100);int tip=score>=85?4:score>=70?2:0,wage=WagesPerOrder,revenue=Math.Max(0,d.Price+tip-wage);
             wallet.Cash+=revenue;Earnings+=revenue;Served++;int rep=score>=70?Reputation.HappyCustomer:score>=45?Reputation.OkCustomer:0;if(score>=60&&o.CustomerType>=0&&o.CustomerType<ServedByType.Length){if(ServedByType[o.CustomerType]==0)rep+=Reputation.NewResident;ServedByType[o.CustomerType]++;}Rep(rep>Reputation.HappyCustomer?"New kinds of guests":"Restaurant guests",rep);Cleanliness=Math.Max(0,Cleanliness-4);
             string food=o.Quality>.85f?"Food fresh":o.Quality>.6f?"Food cooled":"Food sat too long";
             string wait=waitRatio<.35f?"short wait":waitRatio>.7f?"long wait":"reasonable wait";
             string room=Cleanliness<45?"dirty tables":Cleanliness>75?"spotless room":"room could be cleaner";
             AddReview(o,score,$"{food}; {wait}; {room}; {(Ambience>=12?"lovely ambience":"plain surroundings")}{(c.FavoriteDish==o.DishId?"; my favorite dish!":".")}");
-            o.Stage=RestaurantOrderStage.Eating;o.StageTime=0;UpdateRank();message=$"{c.Name}: {score:0}% satisfaction. +${d.Price+tip} ({(wage>0?$"${wage} staff wages":"no wages")}){(rep>0?$"  +{rep} rep":"")}.";return true;
+            wallet.Emit("served:"+o.Id+":"+(int)score+":"+tip);o.Stage=RestaurantOrderStage.Eating;o.StageTime=0;UpdateRank();message=$"{c.Name}: {score:0}% satisfaction. +${d.Price+tip} ({(wage>0?$"${wage} staff wages":"no wages")}){(rep>0?$"  +{rep} rep":"")}.";return true;
         }
         void AddReview(RestaurantOrder o,float score,string comment) {
             Reviews.Insert(0,new RestaurantReview{Customer=RestaurantCatalog.Customers[o.CustomerType].Name,Score=score,Comment=comment,DishId=o.DishId});
@@ -390,7 +390,7 @@ namespace RestaurantCity {
                 o.Wait+=seconds;
                 if(o.Stage==RestaurantOrderStage.Cooking){o.CookProgress+=seconds;if(o.CookProgress>=CookTime(o)){o.Stage=RestaurantOrderStage.Ready;o.StageTime=0;}}
                 if(o.Stage==RestaurantOrderStage.Ready)o.Quality=Clamp(1-Math.Max(0,o.StageTime-(HasEquipment("fridge")?40:20))*.015f,.35f,1);
-                if(o.Wait>RestaurantCatalog.Customers[o.CustomerType].Patience){Lost++;Rep("Guests who left",Reputation.LostCustomer);AddReview(o,15,"Waited too long and left hungry. Start cooking sooner, add equipment, or hire help.");o.Stage=RestaurantOrderStage.Leaving;o.StageTime=0;}
+                if(o.Wait>RestaurantCatalog.Customers[o.CustomerType].Patience){Lost++;wallet.Emit("walkout:"+o.Id);Rep("Guests who left",Reputation.LostCustomer);AddReview(o,15,"Waited too long and left hungry. Start cooking sooner, add equipment, or hire help.");o.Stage=RestaurantOrderStage.Leaving;o.StageTime=0;}
             }
             Orders.RemoveAll(o=>o.Stage==RestaurantOrderStage.Leaving&&o.StageTime>=6);UpdateRank();
         }

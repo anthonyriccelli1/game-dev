@@ -51,11 +51,11 @@ namespace RestaurantCity {
             if (Data.Open) {
                 arrival -= seconds;
                 if (arrival <= 0) {
-                    arrival = Rush ? 14 : Game.State.RecipeUnlocked && Data.ActiveMenu.Contains("midnight") ? 13 : 17;
+                    arrival = Rush ? (Game.State.IsNight ? 6 : 8) : ShiftPhase == "wind" ? 20 : 15;
                     if (queue.Count < 3) {
                         var guest = NewGuest(nextType++ % RestaurantCatalog.Customers.Length);
                         guest.Root.transform.position = W(-8.7f, .055f, -5.4f + queue.Count);
-                        queue.Add(guest);
+                        queue.Add(guest); Game.State.Emit("arrive");
                     }
                 }
             } else arrival = Mathf.Min(arrival, 4);
@@ -81,7 +81,7 @@ namespace RestaurantCity {
                         continue;
                     }
                 }
-                if (!Data.Open || view.QueueWait > 32) { if(Data.Open)Data.RecordQueueLoss(view.Type);Destroy(view.Root); queue.RemoveAt(i); continue; }
+                if (!Data.Open || view.QueueWait > 32) { if(Data.Open){Data.RecordQueueLoss(view.Type);Game.State.Emit("queue_walkout");if(view.Root){var m=view.Root.GetComponent<CharacterMotion>();if(m)m.Stomp();}}Destroy(view.Root); queue.RemoveAt(i); continue; }
                 Vector3 spot = W(-8.5f, .055f, -7.4f + i * .95f);
                 view.Motion.Walking = StepTo(view.Root.transform, spot, seconds * 1.9f);
                 SetBubble(view.Bubble, "Waiting for a table\n" + RestaurantCatalog.Customers[view.Type].Name);

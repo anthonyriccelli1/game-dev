@@ -27,6 +27,9 @@ namespace RestaurantCity {
         // Recipes you can cook. Burger and salad are known from the start; others are found, bought or taught.
         public List<string> KnownRecipes = new List<string> { "burger", "salad" };
         public int LastMiloHelpDay;
+        // Moments the presentation layer turns into sound and pop-ups ("served:12:88:4", "walkout:12", "chop:5"...). Never saved.
+        [NonSerialized] public List<string> Events = new List<string>();
+        public void Emit(string e) { if (Events == null) Events = new List<string>(); Events.Add(e); if (Events.Count > 64) Events.RemoveAt(0); }
         // Zeeb's order (see NightStashes): bottles on the way, where he'll hide them, and what you still owe him.
         // StashTip is raised for one frame when the drop is placed, so the phone can buzz.
         public int DropBottles, StashSpot = -1, ZeebDebt, ZeebOrders; public bool DropPlaced; [NonSerialized] public bool StashTip;
@@ -226,7 +229,7 @@ namespace RestaurantCity {
                 else { o.EatLeft -= seconds; if (o.EatLeft <= 0 && o.Table >= 0) StandTableDirty[o.Table] = true; }
             }
             StandQueue.RemoveAll(o => o.Stage == 2 && o.EatLeft <= 0);   // finished: they leave the dirty plate on the table
-            int walked = StandQueue.RemoveAll(o => o.Stage < 2 && o.Patience <= 0); Missed += walked; if (walked > 0) GainReputation(walked * Reputation.LostCustomer, "Stand walk-outs");
+            int walked = StandQueue.RemoveAll(o => o.Stage < 2 && o.Patience <= 0); if (walked > 0) Emit("stand_walkout"); Missed += walked; if (walked > 0) GainReputation(walked * Reputation.LostCustomer, "Stand walk-outs");
             if (StandBuilt && StandOpen && StandQueue.Count < StandQueueMax) {
                 NextCustomer -= seconds;
                 if (NextCustomer <= 0) {

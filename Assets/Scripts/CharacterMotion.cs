@@ -21,6 +21,10 @@ namespace RestaurantCity {
             phase = (nextPhase++ % 31) * .7f;
         }
         public void SetMood(float score) { mood = Mathf.Clamp01(score > 1 ? score / 100f : score); }
+        // One-off reactions: a happy hop with arms up, or an angry stomp.
+        float cheerUntil, stompUntil;
+        public void Cheer() { cheerUntil = Time.time + 1.3f; mood = 1; }
+        public void Stomp() { stompUntil = Time.time + 1.1f; mood = .1f; }
         void Update() {
             if (!body) return;
             float t = Time.time * (Walking ? 8f : Working ? 5f : 1.9f) + phase;
@@ -39,6 +43,13 @@ namespace RestaurantCity {
             }
             // Scale relative to the modeled mouth size; assigning absolute values turned the mouth into a 1 m block.
             if (mouth) mouth.localScale = Vector3.Scale(mouthScale, new Vector3(mood < .35f ? .65f : 1, mood > .7f ? 1.35f : .35f, 1));
+            if (Time.time < cheerUntil) {
+                float hop = Mathf.Abs(Mathf.Sin(Time.time * 13)) * .14f; body.localPosition += Vector3.up * hop;
+                if (leftArm) leftArm.localRotation = Quaternion.Euler(-160, 0, 20); if (rightArm) rightArm.localRotation = Quaternion.Euler(-160, 0, -20);
+            } else if (Time.time < stompUntil) {
+                body.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(Time.time * 30) * 6);
+                if (leftArm) leftArm.localRotation = Quaternion.Euler(-20, 0, -25); if (rightArm) rightArm.localRotation = Quaternion.Euler(-20, 0, 25);
+            }
         }
     }
 }

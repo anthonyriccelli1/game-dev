@@ -59,7 +59,10 @@ namespace RestaurantCity {
         int previewX, previewZ, movingId = -1;
         float hudTimer;
         bool previewValid;
-        public bool Rush => Data.Open && (Game.State.Clock > 65 && Game.State.Clock < 115 || Game.State.Clock > 175 && Game.State.Clock < 215);
+        // A shift has a shape: calm opening, a RUSH in the middle (harder at night), then a wind-down.
+        public const float RushStart = 30, RushEnd = 80;
+        public string ShiftPhase => !Game.State.Kitchen.ShiftActive || !Data.Open ? "" : shiftTime < RushStart ? "calm" : shiftTime < RushEnd ? "rush" : "wind";
+        public bool Rush => ShiftPhase == "rush";
 
         public void Initialize(CityGame game) {
             Game = game;

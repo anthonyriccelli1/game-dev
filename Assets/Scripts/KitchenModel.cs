@@ -179,7 +179,7 @@ namespace RestaurantCity {
     }
    }
    if(item!=null&&hand==null&&s.CatalogId=="stove"&&item.Kind==KitchenItemKind.SoupPot){
-    var pot=item;return Tap(pot.Stir>=StirWarning?"Stir the soup NOW (it's catching!)":"Stir the soup",()=>{pot.Stir=0;return "Stirred. Keep an eye on it until it's ready.";});
+    var pot=item;return Tap(pot.Stir>=StirWarning?"Stir the soup NOW (it's catching!)":"Stir the soup",()=>{pot.Stir=0;game.Emit("stir:"+stationId);return "Stirred. Keep an eye on it until it's ready.";});
    }
    if(item!=null&&hand==null){
     if(s.CatalogId=="prep_bench"&&Raw(item.Kind))return NeedsHold("Chop "+Label(item).ToLower());
@@ -204,7 +204,7 @@ namespace RestaurantCity {
   public bool Act(GameState game,string actor,int stationId,string subId,out string message){
    var preview=Preview(game,actor,stationId,subId);
    if(!preview.Allowed){message=preview.FailReason;return false;}
-   message=preview.Apply();return true;
+   message=preview.Apply();game.Emit("act:"+stationId);return true;
   }
   public bool Work(GameState game,string actor,int stationId,float seconds,out string message){
    var s=Stations.Find(x=>x.InstanceId==stationId);var item=At(stationId);
@@ -213,7 +213,7 @@ namespace RestaurantCity {
    bool prep=s.CatalogId=="prep_bench"&&Raw(item.Kind),wash=s.CatalogId=="sink"&&item.Kind==KitchenItemKind.DirtyPlate;
    if(!prep&&!wash)return Fail("Nothing to prepare.",out message);
    if(!string.IsNullOrEmpty(s.WorkOwner)&&s.WorkOwner!=actor)return Fail("Someone else is working here.",out message);
-   s.WorkOwner=actor;s.Progress+=seconds;float duration=wash?WashSeconds:item.Kind==KitchenItemKind.RawSauce?4:3;if(prep&&game.FluxResearch)duration*=.65f;
+   s.WorkOwner=actor;s.Progress+=seconds;game.Emit(wash?"wash:"+stationId:"chop:"+stationId);float duration=wash?WashSeconds:item.Kind==KitchenItemKind.RawSauce?4:3;if(prep&&game.FluxResearch)duration*=.65f;
    if(s.Progress<duration){message=(wash?"Washing ":"Preparing ")+(int)(s.Progress/duration*100)+"%";return true;}
    if(wash){Items.Remove(item);if(item.StandPlate){game.StandClean++;message="Clean plate back on the stand stack.";}else{CleanPlates++;game.Restaurant.Cleanliness=Math.Min(100,game.Restaurant.Cleanliness+5);message="Clean plate returned to rack.";}}
    else{item.Kind=item.Kind==KitchenItemKind.RawGreens?KitchenItemKind.ChoppedGreens:KitchenItemKind.MidnightSauce;message=Label(item)+" ready.";}
@@ -258,7 +258,7 @@ namespace RestaurantCity {
    if(order.Stage==2)return Fail("They're already eating.",out message);
    if(dish!=order.Dish)return Fail(dish==""?"Make a "+DishName(order.Dish)+" first: "+HowTo(order.Dish)+".":"They ordered a "+DishName(order.Dish)+".",out message);
    int price=StandPrice(game,dish);bool fast=order.Patience>order.MaxPatience*.6f;if(fast)price+=2;
-   game.Cash+=price;if(fast)game.GainReputation(Reputation.StandFast,"Stand sales");game.Served++;
+   game.Cash+=price;if(fast)game.GainReputation(Reputation.StandFast,"Stand sales");game.Served++;game.Emit("stand_served:"+order.Id+":"+(fast?2:0));
    order.Stage=2;order.EatLeft=GameState.StandEatSeconds;Items.Remove(item);   // the plate stays on their table until they finish
    message="+$"+price+(fast?" (incl. $2 speed tip)  +"+Reputation.StandFast+" rep":"")+"  Enjoy! Clear the plate when they're done.";return true;
   }
@@ -295,18 +295,18 @@ namespace RestaurantCity {
   // Planet soup on the stove: veg in the pot simmers to soup in SoupSeconds, but scorches if nobody stirs for ScorchSeconds.
   public const float SoupSeconds=14,ScorchSeconds=9,StirWarning=5;
   public void StirPot(int stationId){var item=At(stationId);if(item!=null&&item.Kind==KitchenItemKind.SoupPot)item.Stir=0;}
-  void TickStove(KitchenStation s,KitchenItem item,float seconds){
+  void TickStove(GameState game,KitchenStation s,KitchenItem item,float seconds){
    if(item.Kind==KitchenItemKind.SoupVeg){item.Kind=KitchenItemKind.SoupPot;item.Stir=0;s.Progress=0;}
    if(item.Kind!=KitchenItemKind.SoupPot)return;
-   s.Progress+=seconds;item.Stir+=seconds;
-   if(item.Stir>=ScorchSeconds){item.Kind=KitchenItemKind.ScorchedSoup;item.Quality=0;}
+   s.Progress+=seconds;float before=item.Stir;item.Stir+=seconds;if(before<StirWarning&&item.Stir>=StirWarning)game.Emit("stirwarn:"+s.InstanceId);
+   if(item.Stir>=ScorchSeconds){item.Kind=KitchenItemKind.ScorchedSoup;item.Quality=0;game.Emit("scorch:"+s.InstanceId);}
    else if(s.Progress>=SoupSeconds)item.Kind=KitchenItemKind.Soup;
   }
   public void Tick(GameState game,float seconds){
    if(seconds<=0||float.IsNaN(seconds)||float.IsInfinity(seconds))return;
    BalancePlates(game.Restaurant);
-   foreach(var s in Stations){if(s.CatalogId!="stove")continue;var pot=At(s.InstanceId);if(pot!=null)TickStove(s,pot,seconds);}
-   foreach(var s in Stations){var item=At(s.InstanceId);if((s.CatalogId!="grill"&&s.CatalogId!="oven")||item==null)continue;if(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.CookedPatty){s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=24){item.Kind=KitchenItemKind.BurntPatty;item.Quality=0;}else if(s.Progress>=(s.CatalogId=="oven"?6:8))item.Kind=KitchenItemKind.CookedPatty;}}
+   foreach(var s in Stations){if(s.CatalogId!="stove")continue;var pot=At(s.InstanceId);if(pot!=null)TickStove(game,s,pot,seconds);}
+   foreach(var s in Stations){var item=At(s.InstanceId);if((s.CatalogId!="grill"&&s.CatalogId!="oven")||item==null)continue;if(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.CookedPatty){s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=24){if(item.Kind!=KitchenItemKind.BurntPatty)game.Emit("burn:"+s.InstanceId);item.Kind=KitchenItemKind.BurntPatty;item.Quality=0;}else if(s.Progress>=(s.CatalogId=="oven"?6:8))item.Kind=KitchenItemKind.CookedPatty;}}
    foreach(var item in Items){if(!item.Holder.StartsWith("table:"))continue;int id;if(!int.TryParse(item.Holder.Substring(6),out id))continue;var order=game.Restaurant.Orders.Find(o=>o.Id==id);if(order==null||order.Stage==RestaurantOrderStage.Leaving){item.Kind=KitchenItemKind.DirtyPlate;item.Components.Clear();}}
    foreach(var item in Items)if(!item.Holder.StartsWith("station:")&&(item.Kind==KitchenItemKind.CookedPatty||item.Kind==KitchenItemKind.Plate&&item.Components.Count>0)){item.Age+=seconds;item.Quality=Math.Min(item.Quality,Math.Max(.4f,1-Math.Max(0,item.Age-40)*.008f));}
    foreach(var worker in game.Restaurant.Workers)if(worker.Job==StaffJob.Off||(!game.Restaurant.Open&&worker.Job!=StaffJob.Stand))worker.Energy=Math.Min(100,worker.Energy+seconds*.6f);
