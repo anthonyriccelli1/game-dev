@@ -69,7 +69,9 @@ namespace RestaurantCity {
             ("49_cast_oldmarket_a", new Vector3(-9.5f, 0, 5.2f), 180, 6, 70),
             ("50_cast_oldmarket_b", new Vector3(-9.5f, 0, 5.2f), 180, 6, 70),
             ("51_cast_closeup_anim", new Vector3(-12.6f, 0, 1.4f), 180, 10, 70),
-            ("54_inspector_candidates", new Vector3(-10.8f, 0, 3.2f), 180, 6, 70),
+            ("57_food_showcase", new Vector3(-10.1f, 0, .75f), 180, 30, 70),
+            ("58_grill_levels", new Vector3(-11f, 0, 3.4f), 180, 16, 70),
+            ("59_grill_levels_night", new Vector3(-11f, 0, 3.4f), 180, 16, 190),
             ("55_night_inspector", new Vector3(-30, 0, -1.5f), 90, 4, 190),
             ("56_inspector_chase", new Vector3(-30, 0, -1.5f), 90, 4, 190),
             ("52_people_book", new Vector3(0, 0, 3), 0, 0, 60),
@@ -121,6 +123,27 @@ namespace RestaurantCity {
                     for (int i = 0; i < 40; i++) { g.Clock = 160; p.transform.position = shot.pos; rc.Advance(.05f); if (insp.Mode == RestaurantController.InspectorMode.Stop) break; yield return null; }
                     if (shot.name.Contains("chase")) { insp.Mode = RestaurantController.InspectorMode.Chase; insp.Target = p; insp.Root.transform.position = shot.pos + new Vector3(12, 0, 0);
                         for (int i = 0; i < 25; i++) { g.Clock = 160; p.transform.position = shot.pos; insp.Lost = 0; rc.Advance(.04f); yield return null; } }
+                }
+                if (shot.name.Contains("food_showcase") || shot.name.Contains("grill_levels")) {
+                    var old = GameObject.Find("Style lineup"); if (old) Destroy(old);
+                    var line = new GameObject("Style lineup").transform; Game.State.StandOpen = false;
+                    if (shot.name.Contains("food")) {
+                        foreach (float tx in new[] { -10.95f, -9.25f }) { var t = ArtOverrides.Find("Furniture", "assembly"); if (t) { var tb = Instantiate(t, line); tb.transform.position = new Vector3(tx, 0, -1.2f); } }
+                        var dishes = new (string kind, string[] parts)[] {
+                            ("PreparedPatty", null), ("CookedPatty", null), ("BurntPatty", null), ("Bun", null), ("ChoppedGreens", null),
+                            ("Plate", new[] { "bun", "cooked_patty" }), ("Plate", new[] { "bun", "cooked_patty", "midnight_sauce" }), ("Plate", new[] { "chopped_greens" }), ("Plate", new[] { "soup" }), ("Soup", null) };
+                        for (int i = 0; i < dishes.Length; i++) {
+                            var it = KitchenArt.CreateItem(dishes[i].kind, dishes[i].parts == null ? null : new System.Collections.Generic.List<string>(dishes[i].parts), line);
+                            bool plate = i >= 5; it.transform.position = new Vector3(plate ? -11.3f + (i - 5) * .55f : -11.05f + i * .55f, 1.05f, plate ? -1.0f : -1.55f);
+                        }
+                    } else {
+                        for (int lv = 1; lv <= 3; lv++) {
+                            var g = RestaurantArt.CreateFurniture("grill", line); ArtOverrides.Apply(g, "Furniture", "grill");
+                            g.transform.position = new Vector3(-13.2f + (lv - 1) * 2.2f, 0, -1.2f); StationLooks.ApplyLevel(g, lv);
+                            var pat = KitchenArt.CreateItem("CookedPatty", g.transform); pat.transform.localPosition = new Vector3(0, 1.0f, 0);
+                        }
+                    }
+                    for (int i = 0; i < 20; i++) yield return null;
                 }
                 if (shot.name.Contains("inspector_candidates")) {
                     var old = GameObject.Find("Style lineup"); if (old) Destroy(old);

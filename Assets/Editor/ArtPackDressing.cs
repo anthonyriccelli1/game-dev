@@ -8,11 +8,41 @@ public static class ArtPackDressing {
     const string Generic = "Assets/Synty/PolygonGeneric/Prefabs/";
     const string City = "Assets/Synty/PolygonCity/Prefabs/";
     const string Starter = "Assets/Synty/PolygonStarter/Prefabs/";
+    const string Shops = "Assets/Synty/PolygonShops/Prefabs/";
+
+    // Shops-pack slots built from one or more pack prefabs at real-world scale. Each part: source, local position,
+    // and scale (x,y,z) relative to the pack's own size. Stations keep our gameplay points; only the look changes.
+    static readonly (string cat, string id, (string src, Vector3 pos, Vector3 scale)[] parts)[] Built = {
+        ("Furniture", "grill", new[] { (Shops + "Props/SM_Prop_Kitchen_Grill_01.prefab", Vector3.zero, Vector3.one * 1.05f) }),
+        ("Furniture", "stove", new[] { (Shops + "Props/SM_Prop_Kitchen_Stove_Oven_01.prefab", Vector3.zero, new Vector3(.55f, .9f, .82f)) }),
+        ("Furniture", "prep_bench", new[] { (Shops + "Props/SM_Prop_Kitchen_Prep_Table_01.prefab", Vector3.zero, new Vector3(1.08f, .95f, .85f)),
+                                             (Shops + "Props/SM_Prop_Kitchen_Chopping_Board_01.prefab", new Vector3(.35f, 1.0f, 0), Vector3.one) }),
+        ("Furniture", "assembly", new[] { (Shops + "Props/SM_Prop_Kitchen_Prep_Table_03.prefab", Vector3.zero, new Vector3(1.08f, .95f, .85f)) }),
+        ("Furniture", "counter", new[] { (Shops + "Props/SM_Prop_Kitchen_Prep_Table_02.prefab", Vector3.zero, new Vector3(.86f, .95f, .85f)) }),
+        ("Furniture", "cutting_board", new[] { (Shops + "Props/SM_Prop_Kitchen_Prep_Table_02.prefab", Vector3.zero, new Vector3(.86f, .95f, .85f)),
+                                                (Shops + "Props/SM_Prop_Kitchen_Chopping_Board_01.prefab", new Vector3(0, 1.0f, 0), new Vector3(.9f, 1, .9f)) }),
+        ("Furniture", "sink", new[] { (Shops + "Props/SM_Prop_Kitchen_Sink_01.prefab", Vector3.zero, new Vector3(.36f, .6f, .85f)) }),
+        ("Items", "PreparedPatty", new[] { (Shops + "Food/SM_Prop_Food_Meat_Patty_Raw_01.prefab", Vector3.zero, Vector3.one * 1.15f) }),
+        ("Items", "CookedPatty", new[] { (Shops + "Food/SM_Prop_Food_Meat_Patty_Cooked_01.prefab", Vector3.zero, Vector3.one * 1.15f) }),
+        ("Items", "BurntPatty", new[] { (Shops + "Food/SM_Prop_Food_Meat_Patty_Burnt_01.prefab", Vector3.zero, Vector3.one * 1.15f) }),
+        ("Items", "Bun", new[] { (Shops + "Food/SM_Prop_Food_Bun_01.prefab", Vector3.zero, Vector3.one * 1.15f) }),
+        ("Items", "RawGreens", new[] { (Shops + "Food/SM_Prop_Food_Lettuce_Whole_01.prefab", Vector3.zero, Vector3.one) }),
+        ("Items", "ChoppedGreens", new[] { (Shops + "Food/SM_Prop_Food_Lettuce_Leaves_01.prefab", new Vector3(0, .03f, 0), Vector3.one) }),
+        // Dish parts, stacked at runtime by FoodLooks (Resources/ArtOverrides/Parts/<name>).
+        ("Parts", "Plate", new[] { (Shops + "Food/SM_Prop_Food_Plate_01.prefab", Vector3.zero, Vector3.one * .95f) }),
+        ("Parts", "BunBottom", new[] { (Shops + "Food/SM_Prop_Food_Bun_Bottom_01.prefab", Vector3.zero, Vector3.one * 1.15f) }),
+        ("Parts", "BunTop", new[] { (Shops + "Food/SM_Prop_Food_Bun_Top_01.prefab", Vector3.zero, Vector3.one * 1.15f) }),
+        ("Parts", "Patty", new[] { (Shops + "Food/SM_Prop_Food_Meat_Patty_Cooked_01.prefab", Vector3.zero, Vector3.one * 1.15f) }),
+        ("Parts", "Cheese", new[] { (Shops + "Food/SM_Prop_Food_Cheese_Slice_01.prefab", new Vector3(0, .01f, 0), Vector3.one * 1.25f) }),
+        ("Parts", "Lettuce", new[] { (Shops + "Food/SM_Prop_Food_Lettuce_Leaves_01.prefab", new Vector3(0, .03f, 0), Vector3.one * 1.05f) }),
+        ("Parts", "Tomato", new[] { (Shops + "Food/SM_Prop_Food_Tomato_Slice_01.prefab", Vector3.zero, Vector3.one) }),
+        ("Parts", "Bowl", new[] { (Shops + "Food/SM_Prop_Food_Bowl_01.prefab", Vector3.zero, Vector3.one * 1.1f) }),
+        ("Parts", "Pot", new[] { (Shops + "Props/SM_Prop_Kitchen_Pot_01.prefab", Vector3.zero, Vector3.one * .7f) }),
+    };
 
     // Model slots filled from the pack: (category, slot id, source prefab, largest dimension in meters)
     static readonly (string cat, string id, string src, float size)[] Slots = {
         ("Items", "RawProtein", Generic + "Props/SM_Gen_Prop_Food_Meat_01.prefab", .24f),
-        ("Items", "Bun", Generic + "Props/SM_Gen_Prop_Food_Bread_01.prefab", .2f),
         ("Furniture", "potted_palm", City + "Props/SM_Prop_PotPlant_02.prefab", 1.6f),
         ("Furniture", "flower_pot", City + "Props/SM_Prop_PotPlant_01.prefab", .8f),
         ("Furniture", "planter_box", City + "Props/SM_Prop_Planter_02.prefab", 1.4f),
@@ -35,6 +65,19 @@ public static class ArtPackDressing {
             var model = (GameObject)PrefabUtility.InstantiatePrefab(src); model.transform.SetParent(root.transform, false);
             Fit(model, slot.size);
             PrefabUtility.SaveAsPrefabAsset(root, outPath);
+            Object.DestroyImmediate(root);
+        }
+        foreach (var slot in Built) {
+            string outDir = "Assets/Resources/ArtOverrides/" + slot.cat, outPath = outDir + "/" + slot.id + ".prefab";
+            if (!AssetDatabase.IsValidFolder("Assets/Synty/PolygonShops")) { if (File.Exists(outPath) && slot.parts[0].src.StartsWith(Shops)) AssetDatabase.DeleteAsset(outPath); continue; }
+            Directory.CreateDirectory(outDir);
+            var root = new GameObject(slot.id); bool any = false;
+            foreach (var part in slot.parts) {
+                var src = AssetDatabase.LoadAssetAtPath<GameObject>(part.src); if (!src) continue;
+                var model = (GameObject)PrefabUtility.InstantiatePrefab(src); model.transform.SetParent(root.transform, false);
+                model.transform.localPosition = part.pos; model.transform.localScale = Vector3.Scale(model.transform.localScale, part.scale); any = true;
+            }
+            if (any) PrefabUtility.SaveAsPrefabAsset(root, outPath);
             Object.DestroyImmediate(root);
         }
         AssetDatabase.SaveAssets();

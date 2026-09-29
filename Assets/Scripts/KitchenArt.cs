@@ -146,6 +146,7 @@ namespace RestaurantCity {
         public static GameObject CreateItem(string kind,List<string> components,Transform parent) {
             var root=G("Food_"+kind,parent);var p=root.transform;
             bool Has(string id)=>components!=null&&components.Contains(id);
+            if((kind=="Plate"||kind=="DirtyPlate")&&FoodLooks.Available){FoodLooks.BuildPlate(components,p,kind=="DirtyPlate");return root;}
             if(kind=="Plate"||kind=="DirtyPlate") {
                 Plate(p,Vector3.zero);
                 if(kind=="DirtyPlate"){Disk("Sauce stain",p,new Vector3(.04f,.029f,0),new Vector3(.17f,.003f,.11f),"89513B");for(int i=0;i<4;i++)Box("Plate crumb",p,new Vector3(-.1f+i*.055f,.036f,.06f),new Vector3(.025f,.018f,.023f),"CA9B53");}

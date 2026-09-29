@@ -56,6 +56,17 @@ public static class EditorTools {
 
     // Renders prefabs listed in EditorOutput/render-list.txt (paths relative to Assets/Synty/, one per line; an optional
     // "back" suffix renders from behind) to EditorOutput/previews/*.png, so art can be checked without opening the Editor.
+    // Writes each listed prefab's bounds (size and min/max) so pack models can be fitted to our station footprints.
+    public static string DumpPrefabSizes() {
+        var sb = new StringBuilder();
+        foreach (var line in File.ReadAllLines("EditorOutput/render-list.txt").Select(l => l.Trim().Split(' ')[0]).Where(l => l.Length > 0)) {
+            var src = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Synty/" + line + ".prefab"); if (!src) { sb.AppendLine(line + " MISSING"); continue; }
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(src); var rs = go.GetComponentsInChildren<Renderer>();
+            if (rs.Length > 0) { var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); sb.AppendLine(Path.GetFileName(line) + "\tsize=" + b.size.ToString("F2") + "\tmin=" + b.min.ToString("F2") + "\tmax=" + b.max.ToString("F2")); }
+            Object.DestroyImmediate(go);
+        }
+        Directory.CreateDirectory("EditorOutput"); File.WriteAllText("EditorOutput/prefab-sizes.txt", sb.ToString()); return "sizes written";
+    }
     public static string RenderPrefabs() {
         var lines = File.ReadAllLines("EditorOutput/render-list.txt").Select(l => l.Trim()).Where(l => l.Length > 0).ToArray();
         Directory.CreateDirectory("EditorOutput/previews");
