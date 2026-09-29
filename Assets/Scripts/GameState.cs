@@ -163,7 +163,7 @@ namespace RestaurantCity {
         public bool IsNight => Clock >= 150;
         // A full day/night cycle is 240 clock units. DayLengthSeconds sets how long that takes in real time
         // (night is the last 90 units, 37.5% of the day). Cooking, patience and arrivals still run in real seconds.
-        public static float DayLengthSeconds = 720;
+        public static float DayLengthSeconds = 768;   // 8 minutes of daylight (clock 0-150), then ~4.8 minutes of night
         public static float ClockRate => 240f / Math.Max(1f, DayLengthSeconds);
         public bool IsBurnt => CookSeconds > 10;
         public int SalePrice => (SignatureDish ? 18 : 12) * (IsNight ? 3 : 2) / 2;
