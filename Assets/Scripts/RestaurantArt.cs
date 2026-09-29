@@ -188,11 +188,19 @@ namespace RestaurantCity {
             return room;
         }
         public static void UpdateFinishes(GameObject room,string wallId,string floorId,bool awning,bool neon) {
-            if(!room)return;Color wall=wallId=="wall_teal"?C("80B6A5"):wallId=="wall_rose"?C("E5AAA0"):Cream;
+            if(!room)return;
             bool shabbyWall=string.IsNullOrEmpty(wallId)||wallId=="wall_shabby",shabbyFloor=string.IsNullOrEmpty(floorId)||floorId=="floor_shabby";
             foreach(var r in room.GetComponentsInChildren<MeshRenderer>(true)) {
-                if(r.name.StartsWith("WallFinish"))r.sharedMaterial=shabbyWall?Mat("OldWallpaper",C("C9BA95"),0,false,"wallpaper"):Mat(wallId,wall,0,false,"fabric");
-                if(r.name=="FloorFinish")r.sharedMaterial=shabbyFloor?Mat("OldTile",C("B6AA87"),0,false,"worn"):Mat(floorId,floorId=="floor_wood"?C("BF9368"):Cream,0,false,floorId=="floor_wood"?"wood":"checker");
+                if(r.name.StartsWith("WallFinish")) {
+                    r.sharedMaterial=shabbyWall?Mat("OldWallpaper",C("C9BA95"),0,false,"wallpaper"):FinishMaterial(wallId)??FinishMaterial("wall_cream");
+                    if(!shabbyWall)FinishBaseUV(r,false);
+                    else if(meshes.TryGetValue("flat_architecture",out var originalWall))r.GetComponent<MeshFilter>().sharedMesh=originalWall;
+                }
+                if(r.name=="FloorFinish") {
+                    r.sharedMaterial=shabbyFloor?Mat("OldTile",C("B6AA87"),0,false,"worn"):FinishMaterial(floorId)??FinishMaterial("floor_checker");
+                    if(!shabbyFloor)FinishBaseUV(r,true);
+                    else if(meshes.TryGetValue("flat_architecture",out var originalFloor))r.GetComponent<MeshFilter>().sharedMesh=originalFloor;
+                }
             }
             var wallWear=room.transform.Find("ShabbyWallWear");if(wallWear)wallWear.gameObject.SetActive(shabbyWall);
             var floorWear=room.transform.Find("ShabbyFloorWear");if(floorWear)floorWear.gameObject.SetActive(shabbyFloor);
@@ -212,6 +220,11 @@ namespace RestaurantCity {
             Lathe("BudVase",t.transform,new Vector3(0,.83f,0),new[]{0f,.1f,.2f,.24f},new[]{.075f,.09f,.035f,.04f},Solid(Coral));Rod("FlowerStem",t.transform,new Vector3(0,1,0),new Vector3(.02f,1.15f,0),.015f,Green);Round("Flower",t.transform,new Vector3(.02f,1.16f,0),Vector3.one*.1f,Brass);
         }
         public static GameObject CreateFurniture(string id,Transform parent) {
+            if(FinishCatalog.Find(id)!=null) {
+                var sample=Group("Furniture_"+id,parent);
+                Slab("FinishSample",sample.transform,new Vector3(0,.06f,0),new Vector3(.9f,.12f,.9f),FinishMaterial(id));
+                return sample;
+            }
             var g=Group("Furniture_"+id,parent);var p=g.transform;float w=1,d=1,h=1;bool collide=true;Vector3? elevatedColliderCenter=null;Vector3? elevatedColliderSize=null;
             var steel=Mat("EnamelSteel",C("AAC0BE"),.55f);var dark=Solid(Ink);var wood=Mat("CounterOak",C("BB8E61"),0,false,"wood");
             switch(id) {

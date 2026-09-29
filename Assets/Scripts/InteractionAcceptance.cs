@@ -283,13 +283,16 @@ namespace RestaurantCity {
             var target = new RenderTexture(1280, 720, 24);
             var pixels = new Texture2D(1280, 720, TextureFormat.RGB24, false);
             var previous = RenderTexture.active;
+            var previousRect = P.View.rect;
             try {
+                P.View.rect = new Rect(0, 0, 1, 1);
+                Canvas.ForceUpdateCanvases();
                 target.Create();
                 UnityEngine.Rendering.RenderPipeline.SubmitRenderRequest(P.View, new UnityEngine.Rendering.Universal.UniversalRenderPipeline.SingleCameraRequest { destination = target });
                 RenderTexture.active = target;
                 pixels.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0); pixels.Apply();
                 System.IO.File.WriteAllBytes(System.IO.Path.GetFullPath("InteractionEvidence/" + file), pixels.EncodeToPNG());
-            } finally { RenderTexture.active = previous; target.Release(); Destroy(target); Destroy(pixels); }
+            } finally { P.View.rect = previousRect; Canvas.ForceUpdateCanvases(); RenderTexture.active = previous; target.Release(); Destroy(target); Destroy(pixels); }
         }
         int Station(string id) => R.Data.Layout.First(x => x.CatalogId == id).InstanceId;
         static int TargetId(RaycastHit hit) { var t = hit.collider ? hit.collider.GetComponentInParent<RestaurantTarget>() : null; return t ? t.InstanceId : -1; }

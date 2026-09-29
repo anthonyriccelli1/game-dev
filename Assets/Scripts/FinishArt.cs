@@ -1,0 +1,186 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace RestaurantCity {
+    public static partial class RestaurantArt {
+        static readonly Dictionary<string, Texture2D> finishTextures = new Dictionary<string, Texture2D>();
+
+        public static Texture2D FinishSwatch(string id) {
+            var definition = FinishCatalog.Find(id);
+            if (definition == null) return null;
+            if (finishTextures.TryGetValue(id, out var cached) && cached) return cached;
+            const int size = 256;
+            var texture = new Texture2D(size, size, TextureFormat.RGB24, true) {
+                name = "OriginalFinish_" + id, wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Trilinear, anisoLevel = 8
+            };
+            var pixels = new Color[size * size];
+            Color primary = C(definition.PrimaryHex), secondary = C(definition.SecondaryHex), accent = C(definition.AccentHex);
+            for (int y = 0; y < size; y++) for (int x = 0; x < size; x++) {
+                float u = x / (float)size, v = y / (float)size;
+                float grain = Mathf.PerlinNoise(x * .14f + 17, y * .14f + 31);
+                float broad = Mathf.PerlinNoise(x * .018f + 7, y * .018f + 23);
+                Color color = primary;
+                switch (definition.Pattern) {
+                    case "plaster": color = Color.Lerp(primary, secondary, broad * .42f); break;
+                    case "paint": color = Color.Lerp(primary, secondary, grain * .055f); break;
+                    case "stripe": color = x % 64 < 26 ? primary : secondary; if (x % 64 < 3) color = accent; break;
+                    case "floral": {
+                        float dx = (x % 128 - 64) / 128f, dy = (y % 128 - 64) / 128f;
+                        float radius = Mathf.Sqrt(dx * dx + dy * dy), angle = Mathf.Atan2(dy, dx);
+                        float petal = .16f + .075f * Mathf.Cos(angle * 6);
+                        color = radius < petal ? secondary : primary;
+                        if (radius < .055f) color = accent;
+                        if (Mathf.Abs(dx + .08f * Mathf.Sin(dy * 13)) < .015f && dy < -.15f) color = accent;
+                        break;
+                    }
+                    case "geometric": {
+                        float dx = Mathf.Abs(x % 64 - 32), dy = Mathf.Abs(y % 64 - 32);
+                        color = dx + dy < 24 ? secondary : primary;
+                        if (Mathf.Abs(dx + dy - 27) < 2) color = accent;
+                        break;
+                    }
+                    case "brick": {
+                        int row = y / 48, bx = (x + (row % 2) * 64) % 128;
+                        color = y % 48 < 4 || bx < 4 ? accent : Color.Lerp(primary, secondary, Mathf.PerlinNoise(row * 7 + bx / 128f, row * 3 + 8) * .65f);
+                        break;
+                    }
+                    case "panel": {
+                        int px = x % 128, py = y % 128;
+                        color = px < 8 || px > 120 || py < 8 || py > 120 ? secondary : primary;
+                        if ((px > 16 && px < 22 && py > 16 && py < 112) || (py > 16 && py < 22 && px > 16 && px < 112)) color = accent;
+                        color *= .94f + .06f * Mathf.PerlinNoise(x * .018f, y * .21f);
+                        break;
+                    }
+                    case "scallop": {
+                        int row = y / 64;
+                        float dx = ((x + (row % 2) * 32) % 64 - 32) / 64f, dy = (y % 64) / 64f;
+                        float radius = Mathf.Sqrt(dx * dx + dy * dy);
+                        color = radius < .56f ? primary : secondary;
+                        if (Mathf.Abs(radius - .52f) < .025f) color = accent;
+                        break;
+                    }
+                    case "checker": color = ((x / 128 + y / 128) % 2) == 0 ? primary : secondary; if (x % 128 < 2 || y % 128 < 2) color = accent; break;
+                    case "wood": {
+                        int bx = x % 64, by = (y + ((x / 64) % 2) * 128) % 256;
+                        color = Color.Lerp(primary, secondary, Mathf.PerlinNoise(x * .025f, y * .25f) * .65f);
+                        if (bx < 2 || by < 2) color = accent;
+                        break;
+                    }
+                    case "ceramic": {
+                        int tx = x % 128, ty = y % 128;
+                        color = tx < 5 || ty < 5 ? accent : primary;
+                        if (tx > 16 && tx < 112 && ty > 16 && ty < 112) color = Color.Lerp(primary, secondary, .18f + broad * .2f);
+                        if ((tx > 10 && tx < 13) || (ty > 10 && ty < 13)) color = secondary;
+                        break;
+                    }
+                    case "terrazzo": {
+                        color = primary;
+                        int cx = x / 16, cy = y / 16;
+                        uint hash = unchecked((uint)(cx * 73856093 ^ cy * 19349663));
+                        float dx = x % 16 - (3 + hash % 9), dy = y % 16 - (3 + (hash / 11) % 9);
+                        if (Mathf.Abs(dx) + Mathf.Abs(dy * 1.4f) < 3 + hash % 4) color = hash % 2 == 0 ? secondary : accent;
+                        break;
+                    }
+                    case "parquet": {
+                        int diagonalX = (x + y) % 256, diagonalY = (y - x + 256) % 256;
+                        int sx = diagonalX / 32, sy = diagonalY / 32, weave = (sx + sy) % 4;
+                        bool horizontal = weave < 2;
+                        float fiber = horizontal ? Mathf.PerlinNoise(diagonalX * .3f, diagonalY * .028f) : Mathf.PerlinNoise(diagonalX * .028f, diagonalY * .3f);
+                        color = Color.Lerp(primary, secondary, fiber * .7f + (horizontal ? 0 : .15f));
+                        if ((horizontal ? diagonalY % 32 : diagonalX % 32) < 2 || (horizontal ? weave == 0 && diagonalX % 32 < 2 : weave == 2 && diagonalY % 32 < 2)) color = accent;
+                        break;
+                    }
+                    case "mosaic": {
+                        float dx = (x % 128 - 64) / 128f, dy = (y % 128 - 64) / 128f;
+                        float angle = Mathf.Atan2(dy, dx), radius = Mathf.Sqrt(dx * dx + dy * dy);
+                        color = radius < .21f + .11f * Mathf.Cos(angle * 8) ? secondary : primary;
+                        if (radius < .055f || x % 32 < 2 || y % 32 < 2) color = accent;
+                        break;
+                    }
+                    case "marble": {
+                        float vein = Mathf.Abs(Mathf.Sin((u + v * .6f + broad * .19f) * 28));
+                        color = Color.Lerp(primary, secondary, broad * .18f);
+                        if (vein < .085f) color = Color.Lerp(secondary, accent, .32f);
+                        break;
+                    }
+                    case "slate": {
+                        color = Color.Lerp(primary, secondary, broad * .7f);
+                        if (x % 128 < 3 || (y + (x / 128) * 64) % 128 < 3) color = accent;
+                        break;
+                    }
+                }
+                pixels[y * size + x] = color * (.965f + grain * .035f);
+            }
+            texture.SetPixels(pixels); texture.Apply(); finishTextures[id] = texture; return texture;
+        }
+
+        public static Material FinishMaterial(string id) {
+            var definition = FinishCatalog.Find(id);
+            if (definition == null) return null;
+            string key = "Finish_" + id;
+            if (materials.TryGetValue(key, out var material) && material) return material;
+            material = Mat(key, Color.white);
+            material.mainTexture = FinishSwatch(id);
+            material.mainTextureScale = Vector2.one;
+            material.SetFloat("_Smoothness", definition.Pattern == "marble" ? .55f : definition.Pattern == "ceramic" ? .38f : .14f);
+            return material;
+        }
+
+        // UVs measure metres, so a one-metre patch matches the underlying full-room finish.
+        static Mesh FinishPlane(string key, float width, float height, Vector2 offset, bool floor) {
+            if (meshes.TryGetValue(key, out var cached) && cached) return cached;
+            var vertices = floor ? new[] { new Vector3(-width / 2,0,-height / 2), new Vector3(-width / 2,0,height / 2), new Vector3(width / 2,0,height / 2), new Vector3(width / 2,0,-height / 2) }
+                : new[] { new Vector3(-width / 2,-height / 2,0), new Vector3(width / 2,-height / 2,0), new Vector3(width / 2,height / 2,0), new Vector3(-width / 2,height / 2,0) };
+            var uv = floor ? new[] {offset, offset + new Vector2(0,height), offset + new Vector2(width,height), offset + new Vector2(width,0)}
+                : new[] {offset, offset + new Vector2(width,0), offset + new Vector2(width,height), offset + new Vector2(0,height)};
+            var mesh = new Mesh { name = "Original_" + key, vertices = vertices, uv = uv, triangles = new[] {0,1,2,0,2,3} };
+            mesh.RecalculateNormals(); mesh.RecalculateBounds(); meshes[key] = mesh; return mesh;
+        }
+
+        static void FinishBaseUV(MeshRenderer renderer, bool floor) {
+            var filter = renderer.GetComponent<MeshFilter>();
+            if (!filter) return;
+            string key = floor ? "finish_base_floor_uv" : "finish_base_wall_uv_" + renderer.name;
+            if (!meshes.TryGetValue(key, out var mesh) || !mesh) {
+                mesh = Object.Instantiate(filter.sharedMesh); mesh.name = "Original_" + key;
+                var uv = mesh.uv; var vertices = mesh.vertices;
+                for (int i = 0; i < uv.Length; i++) {
+                    var vertex = vertices[i];
+                    uv[i] = floor ? new Vector2((vertex.x + .5f) * 13,(vertex.z + .5f) * 13)
+                        : new Vector2(((renderer.name.EndsWith("Back") ? vertex.x : vertex.z) + .5f) * 13,(vertex.y + .5f) * 3.8f);
+                }
+                mesh.uv = uv; meshes[key] = mesh;
+            }
+            filter.sharedMesh = mesh;
+        }
+
+        public static void RenderSurfaceFinishes(GameObject room, RestaurantState data) {
+            if (!room || data == null) return;
+            var old = room.transform.Find("SurfaceFinishes");
+            if (old) { old.gameObject.SetActive(false); old.name = "RetiredSurfaceFinishes"; Object.Destroy(old.gameObject); }
+            var root = Group("SurfaceFinishes", room.transform).transform;
+            if (data.SurfaceFinishes == null) return;
+            foreach (var record in data.SurfaceFinishes) {
+                if (record == null) continue;
+                var definition = FinishCatalog.Find(record.CatalogId);
+                if (definition == null || !FinishCatalog.ValidSurfaceKey(record.Key, definition.IsWall)) continue;
+                var parts = record.Key.Split(':');
+                GameObject patch;
+                if (!definition.IsWall) {
+                    int x = int.Parse(parts[1]), z = int.Parse(parts[2]);
+                    float width = 13f / 12, depth = 13f / 10;
+                    patch = Shape("FinishPatch_" + record.Key, root, FinishPlane("floor_patch_" + x + "_" + z,width,depth,new Vector2(x * width,z * depth),true), new Vector3(-16.5f + (x + .5f) * width,.084f,-22 + (z + .5f) * depth), Vector3.one, FinishMaterial(record.CatalogId));
+                } else {
+                    int section = int.Parse(parts[2]); float width = 13f / 12;
+                    string side = parts[1];
+                    float along = -16.5f + width * (section + .5f);
+                    var position = side == "back" ? new Vector3(along,1.9f,-21.848f) : new Vector3(side == "left" ? -16.348f : -3.652f,1.9f,-22 + width * (section + .5f));
+                    patch = Shape("FinishPatch_" + record.Key,root,FinishPlane("wall_patch_" + section,width,3.8f,new Vector2(section * width,0),false),position,Vector3.one,FinishMaterial(record.CatalogId));
+                    patch.transform.localRotation = Quaternion.Euler(0,side == "left" ? 90 : side == "right" ? -90 : 0,0);
+                }
+                patch.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+        }
+    }
+}

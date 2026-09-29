@@ -84,7 +84,7 @@ namespace RestaurantCity {
         public StaffDefinition(string id,string name,StaffJob role,int fluxCost,int customerType,int serves,string description) {Id=id;Name=name;Role=role;FluxCost=fluxCost;CustomerType=customerType;RequiredServes=serves;ModelType=customerType;Description=description;}
     }
     public static class RestaurantCatalog {
-        public static readonly CatalogItem[] Items = {
+        public static readonly CatalogItem[] Items = new CatalogItem[] {
             new CatalogItem("pantry","Ingredient pantry",CatalogCategory.Kitchen,25,1,1,0,0,"Take protein, greens, buns or midnight sauce ingredients."),
             new CatalogItem("plate_rack","Plate rack",CatalogCategory.Kitchen,18,1,1,0,0,"Six shared reusable plates. Return dirty plates to the sink."),
             new CatalogItem("assembly","Assembly station",CatalogCategory.Kitchen,25,2,1,0,0,"Place a clean plate, then add prepared ingredients."),
@@ -101,11 +101,6 @@ namespace RestaurantCity {
             new CatalogItem("booth_teal","Teal diner booth",CatalogCategory.Seating,65,3,2,4,4,"Four seats; a proper neighborhood hangout."),
             new CatalogItem("booth_coral","Coral diner booth",CatalogCategory.Seating,65,3,2,4,4,"Four seats with warm coral upholstery."),
             new CatalogItem("communal_table","Community table",CatalogCategory.Seating,90,4,2,6,3,"Six seats; makes rushes busier and more profitable."),
-            new CatalogItem("wall_cream","Cream plaster",CatalogCategory.Finishes,18,1,1,0,2,"Repaints all interior walls; replaces the current paint."),
-            new CatalogItem("wall_teal","Lagoon walls",CatalogCategory.Finishes,24,1,1,0,3,"Repaints all interior walls in saturated teal."),
-            new CatalogItem("wall_rose","Rose walls",CatalogCategory.Finishes,24,1,1,0,3,"Repaints all interior walls in dusty rose."),
-            new CatalogItem("floor_checker","Diner checkerboard",CatalogCategory.Finishes,25,1,1,0,3,"Replaces the worn floor with crisp diner tiles."),
-            new CatalogItem("floor_wood","Honey wood floor",CatalogCategory.Finishes,30,1,1,0,4,"Replaces the worn floor with warm wood planks."),
             new CatalogItem("pendant_amber","Amber pendant",CatalogCategory.Lighting,16,1,1,0,2,"Warm overhead light; can hang over furniture."),
             new CatalogItem("globe_lamp","Lunar floor lamp",CatalogCategory.Lighting,22,1,1,0,3,"Soft globe lighting for a cozy dining corner."),
             new CatalogItem("neon_moon","Crescent neon",CatalogCategory.Lighting,42,1,1,0,4,"A glowing moon sculpture for late-night diners."),
@@ -125,7 +120,7 @@ namespace RestaurantCity {
             new CatalogItem("jukebox","Rocket jukebox",CatalogCategory.Decor,110,1,1,0,6,"TWO STARS: the district's most coveted statement piece.",2),
             new CatalogItem("awning_coral","Coral street awning",CatalogCategory.Exterior,35,1,1,0,3,"Transforms the restaurant frontage with striped canvas."),
             new CatalogItem("sign_neon","Orbit Cafe neon sign",CatalogCategory.Exterior,85,1,1,0,5,"TWO STARS: your restaurant becomes a glowing local landmark.",2)
-        };
+        }.Concat(FinishCatalog.ShopItems()).ToArray();
         public static readonly DishDefinition[] Dishes = {
             new DishDefinition("burger","Comet burger",14,1,1,9,"grill",1,false,"The reliable favorite. Uses 1 protein + 1 produce."),
             new DishDefinition("salad","Garden galaxy",11,0,2,5,"prep_bench",1,false,"Quick vegetarian salad. Uses 2 produce."),
@@ -165,7 +160,7 @@ namespace RestaurantCity {
     }
     [Serializable] public class RestaurantReview { public string Customer,Comment; public float Score; public string DishId; }
     [Serializable] public class WorkerState { public string Id; public StaffJob Job; public int TasksCompleted; public float Energy=100; }
-    [Serializable] public class RestaurantState {
+    [Serializable] public partial class RestaurantState {
         public bool Owned,Open,PhysicalKitInstalled,CounterInstalled,TrashInstalled;
         public int Produce,Protein; // retired: migrated into Pantry on load
         public int Served,Lost,Earnings,Rank=1,NextInstanceId=1,NextOrderId=1;[NonSerialized]public List<RepGain> PendingRep=new List<RepGain>();
@@ -181,7 +176,7 @@ namespace RestaurantCity {
         public bool CanCustomize => Owned && !Open && Orders.Count==0;
         public int Seats => Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.Seats??0);
         [NonSerialized]public int PlayerRank;public string SiteId="oddtable";public int SiteAmbience=>SiteId=="bayside"?4:0;
-        public int Ambience => Math.Min(40,SiteAmbience+Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.Ambience??0));
+        public int Ambience => Math.Min(40,SiteAmbience+FinishAmbience+Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.IsFinish==true?0:RestaurantCatalog.Find(p.CatalogId)?.Ambience??0));
         public int CookSlots => Math.Max(1,Layout.Count(p=>p.CatalogId=="grill"||p.CatalogId=="stove"||p.CatalogId=="oven"));
         public int StockLimit => HasEquipment("fridge")?48:24;
         // One shared pantry (stand and restaurant) with a count per ingredient; the limit applies to each ingredient.
@@ -265,11 +260,12 @@ namespace RestaurantCity {
             if(!CanCustomize)return Fail("Close service and wait for customers to leave before renovating.",out message);
             if(!CanPlace(id,x,z,rotation,-1,out message))return false;
             var item=RestaurantCatalog.Find(id);
-            if(wallet.Cash<item.Price)return Fail($"You need ${item.Price} for {item.Name}.",out message);
+            int price=item.IsFinish?FinishCatalog.WholeRoomPrice(id):item.Price;
+            if(wallet.Cash<price)return Fail($"You need ${price} for {item.Name}.",out message);
             if((item.IsFinish||item.IsExterior)&&HasEquipment(id))return Fail("This improvement is already installed.",out message);
-            wallet.Cash-=item.Price;
-            if(item.IsFinish){string prefix=id.StartsWith("wall_")?"wall_":"floor_";Layout.RemoveAll(p=>p.CatalogId.StartsWith(prefix));}
-            AddPlaced(id,x,z,rotation,item.Price);UpdateRank();message=$"Installed {item.Name}. {item.Description}";return true;
+            wallet.Cash-=price;
+            if(item.IsFinish){string prefix=id.StartsWith("wall_")?"wall_":"floor_";Layout.RemoveAll(p=>p.CatalogId.StartsWith(prefix));SurfaceFinishes?.RemoveAll(p=>p!=null&&p.Key!=null&&p.Key.StartsWith(prefix=="wall_"?"wall:":"floor:"));}
+            AddPlaced(id,x,z,rotation,price);UpdateRank();message=$"Installed {item.Name}. {item.Description}";return true;
         }
         public bool Move(int instanceId,int x,int z,int rotation,out string message) {
             if(!CanCustomize)return Fail("Close service and wait for customers to leave before moving furnishings.",out message);
@@ -408,8 +404,9 @@ namespace RestaurantCity {
             Layout.RemoveAll(p=>p==null||RestaurantCatalog.Find(p.CatalogId)==null);Workers.RemoveAll(w=>w==null||RestaurantCatalog.Worker(w.Id)==null);
             var incoming=Layout;Layout=new List<PlacedItem>();var seenIds=new HashSet<int>();
             NextInstanceId=Math.Max(1,NextInstanceId);
-            foreach(var p in incoming){p.Paid=Math.Max(0,Math.Min(p.Paid,RestaurantCatalog.Find(p.CatalogId).Price));p.Rotation=(p.Rotation%4+4)%4;
-                if(!CanPlace(p.CatalogId,p.X,p.Z,p.Rotation,-1,out _))continue;
+            foreach(var p in incoming){var savedDefinition=RestaurantCatalog.Find(p.CatalogId);p.Paid=Math.Max(0,Math.Min(p.Paid,savedDefinition.IsFinish?FinishCatalog.WholeRoomPrice(p.CatalogId):savedDefinition.Price));p.Rotation=(p.Rotation%4+4)%4;
+                // Finish ownership survives load independently of the nonserialized city rank.
+                if(!savedDefinition.IsFinish&&!CanPlace(p.CatalogId,p.X,p.Z,p.Rotation,-1,out _))continue;
                 var def=RestaurantCatalog.Find(p.CatalogId);
                 if(def.IsFinish){string prefix=p.CatalogId.StartsWith("wall_")?"wall_":"floor_";Layout.RemoveAll(existing=>existing.CatalogId.StartsWith(prefix));}
                 if(def.IsExterior&&HasEquipment(p.CatalogId))continue;
@@ -425,6 +422,7 @@ namespace RestaurantCity {
             Pantry.RemoveAll(l=>l==null||Ingredients.Get(l.Id)==null);foreach(var l in Pantry)l.Count=Math.Max(0,Math.Min(StockLimit,l.Count));
             if(SiteId!="oddtable"&&SiteId!="bayside")SiteId="oddtable";Cleanliness=Clamp(Cleanliness,0,100);Satisfaction=Clamp(Satisfaction,0,100);Rank=Math.Max(1,Math.Min(2,Rank));Served=Math.Max(0,Served);Lost=Math.Max(0,Lost);UpdateRank();
             foreach(var worker in Workers){worker.Energy=Clamp(worker.Energy,0,100);if(worker.Job==StaffJob.Any)worker.Job=RestaurantCatalog.Worker(worker.Id)?.Role??StaffJob.Cook;}
+            SanitizeFinishes();
             EnsurePhysicalKit();
         }
     }

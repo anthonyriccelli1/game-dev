@@ -22,9 +22,13 @@ namespace RestaurantCity {
         Canvas canvas;
         Font font;
         RectTransform hud, modal, footer, cityBadge, serviceBadge;
+        RectTransform finishControls, fillConfirmGroup, fillBeginGroup;
+        Text finishBrushTitle, finishBrushTarget, finishBrushCost, finishFillText;
+        Button finishFillConfirm;
         Text rank, status, cash, hints, notice, stock, orderSummary, cityRank;
         ScrollRect scroll;
         string category = "All", signature = "";
+        string finishFilter = "All finishes";
         readonly List<Action> tickLabels = new List<Action>();
         readonly string[] categories = { "All", "Kitchen", "Seating", "Finishes", "Lighting", "Decor", "Exterior" };
 
@@ -62,6 +66,7 @@ namespace RestaurantCity {
             orderSummary = Label(serviceBadge, "", 15, 12, 338, 82, 16, paper, true, TextAnchor.UpperRight);
             cityBadge = Block(canvas.transform, "Restaurant reputation in the city", 363, 26, 565, 79, ink);
             cityRank = Label(cityBadge, "", 20, 11, 525, 62, 18, paper, true);
+            BuildFinishControls();
             signature = ""; modal = null; tickLabels.Clear();
             Refresh();
         }
@@ -83,7 +88,9 @@ namespace RestaurantCity {
             status.text = "Satisfaction " + s.Satisfaction.ToString("0") + "%    |    " + (s.Open ? "Open for service" : "Closed for arrivals") + "\n" + s.Served + " served    |    Ambience " + s.Ambience + "    |    Cleanliness " + s.Cleanliness.ToString("0") + "%";
             stock.text = "Pantry: " + string.Join(", ", s.Pantry.Where(l => l.Count > 0).Select(l => l.Count + " " + Ingredients.Name(l.Id))) + "\n" + s.Seats + " seats    |    " + s.CookSlots + " cooking stations";
             cash.text = "$" + Owner.Game.State.Cash;
-            hints.text = Owner.PlacementActive ? "Place with left click    /    R Rotate " + (Owner.PreviewRotation * 90) + " degrees    /    Esc Cancel    /    B Return to catalog" : "B  Catalog     /     Tab  Manage restaurant     /     E  Interact     /     Esc  Pause";
+            hints.text = Owner.FinishBrushActive ? "Click one patch    /    F Quote all walls or entire floor    /    Esc, B or right click Return to catalog"
+                : Owner.PlacementActive ? "Place with left click    /    R Rotate " + (Owner.PreviewRotation * 90) + " degrees    /    Esc Cancel    /    B Return to catalog" : "B  Catalog     /     Tab  Manage restaurant     /     E  Interact     /     Esc  Pause";
+            RefreshFinishControls();
             notice.text = Owner.PlacementActive ? Owner.Hint : !string.IsNullOrEmpty(Owner.FocusPrompt) ? Owner.FocusPrompt : Owner.Game.Notice;
             var summary = new StringBuilder(s.Open ? "Service is open\n" : "Doors closed to new guests\n");
             int waiting = 0, cooking = 0, ready = 0;
@@ -103,7 +110,7 @@ namespace RestaurantCity {
 
         string Signature() {
             var s = Owner.Data;
-            var key = new StringBuilder(Owner.Panel).Append('|').Append(category).Append('|').Append(Owner.Game.State.Cash).Append('|').Append(s.Stars).Append('|').Append(s.Open).Append('|').Append(string.Join(",", s.Pantry.Select(l => l.Id + l.Count))).Append(shopCategory).Append(string.Join(",", cart.Select(c => c.Id + c.Count))).Append('|').Append(s.Layout.Count).Append('|').Append(s.Reviews.Count).Append('|').Append(s.Served).Append('|').Append(Owner.SelectedInstanceId).Append('|').Append(Owner.Game.State.RecipeUnlocked).Append('|').Append(Owner.Game.State.Xp).Append('|').Append(s.CanCustomize).Append(Owner.AtSupplier);
+            var key = new StringBuilder(Owner.Panel).Append('|').Append(category).Append('|').Append(finishFilter).Append('|').Append(Owner.Game.State.Cash).Append('|').Append(s.Stars).Append('|').Append(s.Open).Append('|').Append(string.Join(",", s.Pantry.Select(l => l.Id + l.Count))).Append(shopCategory).Append(string.Join(",", cart.Select(c => c.Id + c.Count))).Append('|').Append(s.Layout.Count).Append('|').Append(s.Reviews.Count).Append('|').Append(s.Served).Append('|').Append(Owner.SelectedInstanceId).Append('|').Append(Owner.Game.State.RecipeUnlocked).Append('|').Append(Owner.Game.State.Xp).Append('|').Append(s.CanCustomize).Append(Owner.AtSupplier);
             foreach (var dish in s.ActiveMenu) key.Append(dish);
             key.Append('|').Append(Owner.Game.State.Stock);
             foreach (var order in s.Orders) key.Append('|').Append(order.Id).Append(':').Append(order.Stage);
@@ -153,13 +160,27 @@ namespace RestaurantCity {
                 string cat = categories[i]; bool active = cat == category;
                 Button(sheet, cat, 30 + i * 167, 139, 158, 32, () => { category = cat; signature = ""; if (scroll) scroll.verticalNormalizedPosition = 1; Refresh(); }, active ? ink : pale, active ? paper : ink);
             }
-            int count = 0;
-            foreach (var item in RestaurantCatalog.Items) if (category == "All" || category == item.Category.ToString()) count++;
-            var content = Scroller(sheet, 30, 186, 1160, 466, Mathf.CeilToInt(count / 3f) * 232);
+            if (category == "Finishes") {
+                string[] filters = { "All finishes", "Walls", "Floors" };
+                for (int i = 0; i < filters.Length; i++) {
+                    string filter = filters[i]; bool active = filter == finishFilter;
+                    Button(sheet, filter, 30 + i * 164, 181, 154, 28, () => { finishFilter = filter; signature = ""; if (scroll) scroll.verticalNormalizedPosition = 1; Refresh(); }, active ? teal : pale, active ? white : ink);
+                }
+                Label(sheet, "Brush one section from $1. Fill shows its total before purchase.", 535, 184, 650, 22, 14, muted);
+            }
+            bool Visible(CatalogItem item) {
+                if (category != "All" && item.Category.ToString() != category) return false;
+                var finish = FinishCatalog.Find(item.Id);
+                return category != "Finishes" || finishFilter == "All finishes" || finish != null && (finishFilter == "Walls" ? finish.IsWall : !finish.IsWall);
+            }
+            int count = RestaurantCatalog.Items.Count(Visible);
+            float top = category == "Finishes" ? 218 : 186;
+            var content = Scroller(sheet, 30, top, 1160, 652 - top, Mathf.CeilToInt(count / 3f) * 232);
             int index = 0;
             foreach (var item in RestaurantCatalog.Items) {
-                if (category != "All" && item.Category.ToString() != category) continue;
+                if (!Visible(item)) continue;
                 var entry = item; int col = index % 3, row = index / 3; index++;
+                var finish = FinishCatalog.Find(entry.Id);
                 var card = Block(content, entry.Name, col * 386, row * 232, 372, 219, white);
                 bool tierLocked = entry.Tier > Owner.Game.State.RankEarned, locked = tierLocked || entry.RequiredStars > Owner.Data.Stars;
                 Block(card, "Swatch", 0, 0, 372, 5, locked ? muted : teal);
@@ -167,14 +188,51 @@ namespace RestaurantCity {
                 var raw = thumbnail.gameObject.AddComponent<RawImage>();
                 raw.texture = Owner.GetCatalogIcon(entry.Id); raw.color = locked ? new Color(.76f,.76f,.76f,1) : Color.white; raw.raycastTarget = false;
                 Label(card, entry.Name, 128, 17, 227, 46, 21, ink, true);
-                Label(card, "$" + entry.Price, 128, 67, 227, 30, 23, locked ? muted : teal, true);
-                Label(card, entry.Category + (entry.Seats > 0 ? "  /  " + entry.Seats + " seats" : "") + (entry.Ambience > 0 ? "  /  +" + entry.Ambience + " ambience" : ""), 128, 103, 230, 28, 12, muted);
+                Label(card, "$" + entry.Price + (finish == null ? "" : finish.IsWall ? " / section" : " / tile"), 128, 67, 227, 30, 23, locked ? muted : teal, true);
+                Label(card, finish != null ? (finish.IsWall ? "Walls" : "Floors") + " / Full coverage: " + finish.Ambience + " ambience"
+                    : entry.Category + (entry.Seats > 0 ? "  /  " + entry.Seats + " seats" : "") + (entry.Ambience > 0 ? "  /  +" + entry.Ambience + " ambience" : ""), 128, 103, 230, 28, 12, muted);
                 Label(card, entry.Description, 14, 134, 344, 43, 14, ink);
-                string action = tierLocked ? "Unlocks at " + Reputation.Titles[entry.Tier] : locked ? "Unlock at " + entry.RequiredStars + " stars" : entry.Category == CatalogCategory.Finishes || entry.Category == CatalogCategory.Exterior ? "Install for $" + entry.Price : "Preview & place";
-                bool can = !locked && Owner.Data.CanCustomize && Owner.Game.State.Cash >= entry.Price;
-                if (!locked && Owner.Game.State.Cash < entry.Price) action = "Save $" + (entry.Price - Owner.Game.State.Cash) + " more";
+                string action = tierLocked ? "Unlocks at " + Reputation.Titles[entry.Tier] : locked ? "Unlock at " + entry.RequiredStars + " stars" : finish != null ? "Preview brush" : entry.Category == CatalogCategory.Exterior ? "Install for $" + entry.Price : "Preview & place";
+                bool can = !locked && Owner.Data.CanCustomize && (finish != null || Owner.Game.State.Cash >= entry.Price);
+                if (finish == null && !locked && Owner.Game.State.Cash < entry.Price) action = "Save $" + (entry.Price - Owner.Game.State.Cash) + " more";
                 Button(card, action, 14, 178, 344, 30, () => Owner.SelectCatalogItem(entry.Id), can ? teal : pale, can ? white : muted, can);
             }
+        }
+
+        void BuildFinishControls() {
+            finishControls = Block(canvas.transform, "Finish brush controls", 1035, 242, 379, 337, paper);
+            // Blank panel space consumes pointer clicks, too.
+            finishControls.GetComponent<Image>().raycastTarget = true;
+            Block(finishControls, "Brush accent", 0, 0, 379, 6, teal);
+            var swatch = Box(finishControls, "Selected material swatch", 18, 20, 74, 74).gameObject.AddComponent<RawImage>();
+            swatch.raycastTarget = false;
+            if (Owner.FinishBrushActive) swatch.texture = RestaurantArt.FinishSwatch(Owner.SelectedCatalogId);
+            finishBrushTitle = Label(finishControls, "", 107, 21, 250, 62, 22, ink, true);
+            finishBrushTarget = Label(finishControls, "", 18, 108, 343, 48, 18, ink, true);
+            finishBrushCost = Label(finishControls, "", 18, 159, 343, 32, 18, teal, true);
+            fillBeginGroup = Box(finishControls, "Fill request", 18, 200, 343, 76);
+            Button(fillBeginGroup, "Quote all walls / entire floor  [F]", 0, 0, 343, 36, () => Owner.RequestFinishFill(), teal, white);
+            Label(fillBeginGroup, "Click a patch to buy. Keep painting with the same brush.", 0, 44, 343, 35, 13, muted);
+            fillConfirmGroup = Box(finishControls, "Fill confirmation", 18, 196, 343, 81);
+            finishFillText = Label(fillConfirmGroup, "", 0, 0, 343, 38, 17, ink, true);
+            Button(fillConfirmGroup, "Confirm fill", 0, 44, 214, 34, () => Owner.ConfirmFinishFill(), coral, white);
+            finishFillConfirm = fillConfirmGroup.GetComponentInChildren<Button>();
+            Button(fillConfirmGroup, "Back", 224, 44, 119, 34, () => Owner.CancelFinishFill(), pale, ink);
+            Button(finishControls, "Return to catalog  [Esc]", 18, 288, 343, 32, () => Owner.CancelPlacement(), ink, paper);
+            finishControls.gameObject.SetActive(Owner.FinishBrushActive);
+        }
+        void RefreshFinishControls() {
+            if (!finishControls) return;
+            finishControls.gameObject.SetActive(Owner.FinishBrushActive);
+            if (!Owner.FinishBrushActive) return;
+            var finish = FinishCatalog.Find(Owner.SelectedCatalogId); if (finish == null) return;
+            finishBrushTitle.text = finish.Name + "\n" + (finish.IsWall ? "Wall section brush" : "Floor tile brush");
+            finishBrushTarget.text = Owner.FinishTargetLabel;
+            int price = Owner.Data.FinishPrice(Owner.SelectedCatalogId, Owner.FinishSurfaceKey, false);
+            finishBrushCost.text = price < 0 ? "Choose a surface to preview" : price == 0 ? "Already applied / $0" : "$" + price + " for this patch";
+            fillConfirmGroup.gameObject.SetActive(Owner.FinishFillPending); fillBeginGroup.gameObject.SetActive(!Owner.FinishFillPending);
+            finishFillText.text = "Fill " + (finish.IsWall ? "all 36 wall sections" : "all 120 floor tiles") + " for $" + Owner.FinishFillQuote + "?";
+            finishFillConfirm.interactable = Owner.Game.State.Cash >= Owner.FinishFillQuote && Owner.Data.CanCustomize;
         }
 
         // Menu: every dish with hands-on steps. Starters (burger, salad) are always known; others are bought or found.

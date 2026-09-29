@@ -153,6 +153,7 @@ namespace RestaurantCity {
         public bool HandleInput(Keyboard keys, Mouse mouse) {
             if (PlacementActive) {
                 if (keys != null && (keys.escapeKey.wasPressedThisFrame || keys.bKey.wasPressedThisFrame) || mouse != null && mouse.rightButton.wasPressedThisFrame) { CancelPlacement(); return true; }
+                if (FinishBrushActive) return HandleFinishBrushInput(keys, mouse);
                 if (keys != null && keys.rKey.wasPressedThisFrame) PreviewRotation = (PreviewRotation + 1) % 4;
                 if (mouse != null) {
                     UpdatePreviewFromPointer(mouse.position.ReadValue());
@@ -169,6 +170,7 @@ namespace RestaurantCity {
         }
         public bool UpdatePreviewFromPointer(Vector2 screenPosition) {
             if (!PlacementActive) return false;
+            if (FinishBrushActive) return UpdateFinishFromPointer(screenPosition);
             var ray = Game.Player.View.ScreenPointToRay(screenPosition);
             var plane = new Plane(Vector3.up, Vector3.zero);
             if (!plane.Raycast(ray, out float distance)) return false;
@@ -207,6 +209,7 @@ namespace RestaurantCity {
         public void ClearFocus() { FocusPrompt = ""; }
         public void SelectCatalogItem(string id) {
             if (!Data.CanCustomize) { Feedback("Close service and finish your remaining guests before remodeling."); return; }
+            if (FinishCatalog.Find(id) != null) { BeginFinishBrush(id); return; }
             var item = RestaurantCatalog.Find(id); if (item == null) return;
             if (item.Tier > Game.State.RankEarned) { Feedback(item.Name + " unlocks at " + Reputation.Titles[item.Tier] + ". Better gear arrives with each district."); return; }
             if (Data.Stars < item.RequiredStars) { Feedback("Earn two stars to unlock " + item.Name + "."); return; }
@@ -220,17 +223,7 @@ namespace RestaurantCity {
         }
         void BeginPlacement(string id, int instanceId, int rotation) {
             SelectedCatalogId = id; movingId = instanceId; PreviewRotation = rotation;
-            PanelOpen = false; PlacementActive = true;
-            savedPosition = Game.Player.transform.position; savedViewLocal = Game.Player.View.transform.localPosition;
-            savedViewRotation = Game.Player.View.transform.localRotation;
-            savedPlacementMask = Game.Player.View.cullingMask;
-            savedLook = Game.Player.View.transform.position + Game.Player.View.transform.forward * 10;
-            Game.Player.View.transform.position = W(-10, 14, -15.5f);
-            Game.Player.View.transform.rotation = Quaternion.Euler(90, 0, 0); Game.Player.View.orthographic = true; Game.Player.View.orthographicSize = 8;
-            if (Game.CoOp) Game.CoOp.RefreshViews();
-            Game.Player.View.cullingMask &= ~(1 << 27);
-            Game.Player.Spatula.gameObject.SetActive(false); Game.HandFood.SetActive(false);
-            foreach (var renderer in Room.GetComponentsInChildren<Renderer>()) if (renderer.name.IndexOf("ceiling", StringComparison.OrdinalIgnoreCase) >= 0 || renderer.name.IndexOf("roof", StringComparison.OrdinalIgnoreCase) >= 0) { if (renderer.enabled) { hiddenRoof.Add(renderer); renderer.enabled = false; } }
+            BeginPlacementView();
             preview = CreateFurnishing(id, transform); preview.name = "Placement preview";
             foreach (var collider in preview.GetComponentsInChildren<Collider>()) collider.enabled = false;
             footprint = GameObject.CreatePrimitive(PrimitiveType.Cube); footprint.name = "Placement validity"; Destroy(footprint.GetComponent<Collider>());
@@ -251,6 +244,7 @@ namespace RestaurantCity {
         }
         public bool ConfirmPlacement(int x, int z) {
             if (!PlacementActive) return false;
+            if (FinishBrushActive) return ApplySelectedFinish(false);
             bool result = movingId >= 0 ? Data.Move(movingId, x, z, PreviewRotation, out string reason) : Data.Place(Game.State, SelectedCatalogId, x, z, PreviewRotation, out reason);
             Feedback(reason);
             if (result) { CancelPlacement(false); RebuildLayout(); PlayChime(true); Game.Save(); ShowPanel("Catalog"); }
@@ -258,15 +252,19 @@ namespace RestaurantCity {
         }
         public void CancelPlacement(bool reopen = true) {
             if (!PlacementActive) return;
+            EndFinishBrush();
             if (preview) Destroy(preview); if (footprint) Destroy(footprint);
             foreach (var r in hiddenRoof) if (r) r.enabled = true; hiddenRoof.Clear();
-            Game.Player.View.orthographic = false; Game.Player.View.transform.localPosition = savedViewLocal;
-            Game.Player.View.transform.localRotation = savedViewRotation; Game.Player.Spatula.gameObject.SetActive(true);
-            Game.Player.View.cullingMask = savedPlacementMask;
             if (movingId >= 0 && Furnishings.TryGetValue(movingId, out var original)) original.SetActive(true);
             PlacementActive = false; movingId = -1;
             if (Game.CoOp) Game.CoOp.RefreshViews();
-            if (reopen) ShowPanel("Catalog"); else { Cursor.lockState = Game.SmokeMode ? CursorLockMode.None : CursorLockMode.Locked; Cursor.visible = Game.SmokeMode; UI.Rebuild(); }
+            Game.Player.View.orthographic = savedOrthographic; Game.Player.View.orthographicSize = savedOrthographicSize;
+            Game.Player.View.transform.localPosition = savedViewLocal;
+            Game.Player.View.transform.localRotation = savedViewRotation;
+            if (Game.Player.Spatula) Game.Player.Spatula.gameObject.SetActive(savedSpatulaActive);
+            if (Game.HandFood) Game.HandFood.SetActive(savedFoodActive);
+            Game.Player.View.cullingMask = savedPlacementMask;
+            if (reopen) ShowPanel("Catalog"); else { Cursor.lockState = savedCursorLock; Cursor.visible = savedCursorVisible; UI.Rebuild(); }
         }
         public void MoveItem(int id) {
             if (!Data.CanCustomize) { Feedback("Finish the service before moving furniture."); return; }
@@ -304,9 +302,11 @@ namespace RestaurantCity {
                 Furnishings[p.InstanceId] = obj;
             }
             RestaurantArt.UpdateFinishes(Room, Data.WallId, Data.FloorId, Data.Layout.Any(p => p.CatalogId == "awning_coral"), Data.Layout.Any(p => p.CatalogId == "sign_neon"));
+            RestaurantArt.RenderSurfaceFinishes(Room, Data);
             Game.State.Kitchen.EnsureStations(Data);
         }
         public Texture GetCatalogIcon(string id) {
+            if (FinishCatalog.Find(id) != null) return RestaurantArt.FinishSwatch(id);
             if (thumbnails.TryGetValue(id, out Texture found)) return found;
             var stage = new GameObject("Catalog photo stage"); stage.transform.position = new Vector3(800, 0, 800);
             var obj = CreateFurnishing(id, stage.transform); obj.transform.localPosition = Vector3.zero;
