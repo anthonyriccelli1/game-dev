@@ -153,8 +153,9 @@ namespace RestaurantCity {
                 Box("InsideWindow",p,new Vector3(x,2,-9.23f),new Vector3(3.35f,1.96f,.05f),Mat("BlueGlass",C("83B6B1"),.1f,true));
                 Box("InsideMullion",p,new Vector3(x,2,-9.28f),new Vector3(.1f,2.02f,.06f),Cream);
             }
-            Box("HeaderBacking",p,new Vector3(-10,3.48f,-8.73f),new Vector3(11.8f,.68f,.27f),Teal);
-            Label(RestaurantName,p,new Vector3(-10,3.48f,-8.53f),.19f,White);
+            // A modest name on the fascia leaves the shop windows and the pack's brickwork in view.
+            Box("HeaderBacking",p,new Vector3(-10,3.48f,-8.73f),new Vector3(4.8f,.48f,.12f),Teal);
+            Label(RestaurantName,p,new Vector3(-10,3.48f,-8.62f),.22f,White);
             // Layered storefront, a shallow parapet, brick courses, pilasters, and period lamps.
             Box("FacadeCornice",p,new Vector3(-10,3.95f,-8.96f),new Vector3(13.35f,.2f,.7f),Cream);
             Box("FacadeParapet",p,new Vector3(-10,4.17f,-9.1f),new Vector3(13.15f,.34f,.28f),Wood);
@@ -172,7 +173,6 @@ namespace RestaurantCity {
                 Round("FacadeBulb",p,new Vector3(x,2.8f,-8.24f),Vector3.one*.13f,Cream);LightAt("FacadeSconce",p,new Vector3(x,2.71f,-8.18f),C("FFE1AB"),.8f,4);
             }
             foreach(float edge in new[]{-16.05f,-4.02f})for(int row=0;row<6;row++)Box("ExposedBrick",p,new Vector3(edge+(row%2)*.07f,.92f+row*.31f,-8.817f),new Vector3(.44f,.14f,.035f),C("BF8066"));
-            var address=Box("AddressPlaque",p,new Vector3(-11.9f,1.62f,-8.48f),new Vector3(.27f,.36f,.05f),Ink);Label("17",p,new Vector3(-11.9f,1.62f,-8.445f),.085f,Cream);
             Rod("FacadeDownpipe",p,new Vector3(-16.66f,.15f,-8.93f),new Vector3(-16.66f,3.89f,-8.93f),.08f,Ink);
             foreach(float x in new[]{-11.53f,-8.47f})Box("DoorTrim",p,new Vector3(x,1.5f,-8.79f),new Vector3(.14f,3,.25f),Brass);
             Box("Threshold",p,new Vector3(-10,.06f,-8.94f),new Vector3(2.8f,.05f,.6f),Brass);
@@ -180,7 +180,7 @@ namespace RestaurantCity {
             for(int i=0;i<14;i++){var panel=Box("CanvasStripe",awning.transform,new Vector3(-15.5f+i*.85f,3.07f,-8.19f),new Vector3(.84f,.1f,1.3f),i%2==0?Coral:Cream);panel.transform.localRotation=Quaternion.Euler(-12,0,0);Box("ScallopedHem",awning.transform,new Vector3(-15.5f+i*.85f,2.89f,-7.58f),new Vector3(.84f,.25f,.07f),i%2==0?Coral:Cream);}awning.SetActive(false);
             var neon=Group("UpgradeNeon",p);Box("NeonPlate",neon.transform,new Vector3(-10,4.28f,-8.8f),new Vector3(5.2f,.65f,.16f),Ink);Label("ODD FOOD / GOOD MOOD",neon.transform,new Vector3(-10,4.28f,-8.65f),.095f,C("FFCC86"));LightAt("SignGlow",neon.transform,new Vector3(-10,4,-8),Coral,2,6);neon.SetActive(false);
             // Exposed pipes, decorative rafters and warm pools make the starter room an actual place.
-            foreach(float z in new[]{-12f,-17f,-21f}) {Box("Rafter",p,new Vector3(-10,3.62f,z),new Vector3(12.6f,.22f,.18f),Wood);LightAt("WarmRoomLight",p,new Vector3(-10,3.2f,z),C("FFE1AD"),1.05f,8);}
+            foreach(float z in new[]{-12f,-17f,-21f}) {Box("Rafter",p,new Vector3(-10,3.62f,z),new Vector3(12.6f,.22f,.18f),Wood);LightAt("WarmRoomLight",p,new Vector3(-10,3.2f,z),C("FFE1AD"),1.45f,8);}
             Rod("CopperWaterPipe",p,new Vector3(-16.16f,.3f,-21.64f),new Vector3(-16.16f,3.5f,-21.64f),.075f,Brass);
             Rod("CopperCeilingPipe",p,new Vector3(-16.16f,3.45f,-21.64f),new Vector3(-4,3.45f,-21.64f),.075f,Brass);
             Box("OldMenuBoard",p,new Vector3(-10,2.45f,-21.72f),new Vector3(2.8f,1.3f,.12f),Wood);Box("Slate",p,new Vector3(-10,2.45f,-21.62f),new Vector3(2.55f,1.09f,.05f),Ink);
@@ -190,21 +190,27 @@ namespace RestaurantCity {
         }
         static Material ShabbyWall()=>PackFinish("shabby_wall")??Mat("OldWallpaper",C("C9BA95"),0,false,"wallpaper");
         static Material ShabbyFloor()=>PackFinish("shabby_floor")??Mat("OldTile",C("B6AA87"),0,false,"worn");
-        // With the POLYGON Shops pack: a real storefront, interior mouldings and pack awnings replace the code-built
+        // With the POLYGON Shops pack: its storefront, mouldings and awnings replace the code-built
         // look. Our own colliders (walls, doorway) stay exactly where they were; only renderers are swapped.
         static readonly HashSet<string> packShellReplaces=new HashSet<string>{"FrontLeft","FrontRight","DoorLintel","WindowRecess","WindowAmber","WindowCross","WindowSill",
             "InsideWindowFrame","InsideWindow","InsideMullion","FacadeCornice","FacadeParapet","FacadeCoping","FacadePilaster","PilasterFoot","PilasterCapital",
-            "FacadeLowerPanel","FacadePanelInset","ExposedBrick","DoorTrim","Baseboard","ChairRail","Crown","BackBaseboard","BackRail"};
+            "FacadeLowerPanel","FacadePanelInset","ExposedBrick","DoorTrim","Baseboard","ChairRail","Crown","BackBaseboard","BackRail",
+            "HeaderBacking","SconceArm","FacadeShade","FacadeBulb"};
         static void ApplyPackShell(GameObject room) {
             var facade=ArtOverrides.Find("Shell","facade");if(!facade)return;
             var p=room.transform;
             foreach(Transform child in p) if(packShellReplaces.Contains(child.name)){var r=child.GetComponent<Renderer>();if(r)r.enabled=false;}
             PackPiece(facade,p,"Pack storefront");
+            // The lettering sits directly on the pack's brick fascia. Keep the name readable without
+            // covering the architectural detail with another slab.
+            var sign=p.Find("Sign_"+RestaurantName);if(sign)sign.localPosition=new Vector3(-10,3.48f,-8.75f);
+            // The old code-built menu board is illegible beside the pack architecture. Players can
+            // furnish the wall with the catalog's proper menu screen or their own decorations.
+            foreach(Transform child in p) if(child.name=="OldMenuBoard"||child.name=="Slate"||child.name.StartsWith("Sign_TODAY AT "))child.gameObject.SetActive(false);
             var trim=ArtOverrides.Find("Shell","interior_trim");if(trim)PackPiece(trim,p,"Pack interior trim");
             var awning=p.Find("UpgradeAwning");var packAwning=ArtOverrides.Find("Shell","awning");
             if(awning&&packAwning){foreach(var r in awning.GetComponentsInChildren<Renderer>(true))r.enabled=false;PackPiece(packAwning,awning,"Pack awning");}
-            // Lamps reach the new storefront face; the neon upgrade becomes a rooftop sign above the cornice.
-            foreach(Transform child in p) if(child.name=="SconceArm"){var s=child.localScale;child.localScale=new Vector3(s.x,s.y+.2f,s.z);child.localPosition+=new Vector3(0,0,-.1f);}
+            // The neon upgrade becomes a rooftop sign above the cornice.
             var neon=p.Find("UpgradeNeon");if(neon)neon.localPosition=new Vector3(0,.72f,0);
         }
         static void PackPiece(GameObject prefab,Transform parent,string name) {
@@ -226,8 +232,8 @@ namespace RestaurantCity {
                     else if(meshes.TryGetValue("flat_architecture",out var originalFloor))r.GetComponent<MeshFilter>().sharedMesh=originalFloor;
                 }
             }
-            var wallWear=room.transform.Find("ShabbyWallWear");if(wallWear)wallWear.gameObject.SetActive(shabbyWall);
-            var floorWear=room.transform.Find("ShabbyFloorWear");if(floorWear)floorWear.gameObject.SetActive(shabbyFloor);
+            var wallWear=room.transform.Find("ShabbyWallWear");if(wallWear)wallWear.gameObject.SetActive(shabbyWall&&!PackFinish("shabby_wall"));
+            var floorWear=room.transform.Find("ShabbyFloorWear");if(floorWear)floorWear.gameObject.SetActive(shabbyFloor&&!PackFinish("shabby_floor"));
             var a=room.transform.Find("UpgradeAwning");if(a)a.gameObject.SetActive(awning);var n=room.transform.Find("UpgradeNeon");if(n)n.gameObject.SetActive(neon);
         }
         static void Feet(Transform p,float width,float depth,float height,Color c) {foreach(float x in new[]{-width*.4f,width*.4f})foreach(float z in new[]{-depth*.4f,depth*.4f})Box("TaperedFoot",p,new Vector3(x,height*.5f,z),new Vector3(.1f,height,.1f),c);}

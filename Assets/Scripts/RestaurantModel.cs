@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace RestaurantCity {
-    public enum CatalogCategory { Kitchen, Seating, Finishes, Lighting, Decor, Exterior }
+    public enum CatalogCategory { Kitchen, Seating, Finishes, Lighting, Decor, Exterior, Architecture }
     public enum RestaurantOrderStage { Waiting, Cooking, Ready, Eating, Leaving }
     public enum StaffJob { Off, Cook, Serve, Clean, Stand, Any }
 
@@ -125,6 +125,9 @@ namespace RestaurantCity {
             new CatalogItem("art_abstract","Abstract canvas",CatalogCategory.Decor,28,1,1,0,3,"Big bold colour in a black frame. Mounts on the wall."),
             new CatalogItem("flower_stand","Flower stand",CatalogCategory.Decor,34,2,1,0,4,"Tiered buckets of fresh bouquets by the door."),
             new CatalogItem("cafe_divider","Slatted divider",CatalogCategory.Decor,25,2,1,0,2,"A wooden screen that makes a dining nook."),
+            new CatalogItem("partition_wall","Partition wall",CatalogCategory.Architecture,32,2,1,0,1,"Build a kitchen back wall or divide the dining room. Rotate and join sections."),
+            new CatalogItem("service_window","Service window",CatalogCategory.Architecture,48,2,1,0,2,"An open serving hatch for a kitchen wall. Place alongside partition sections."),
+            new CatalogItem("service_counter","Service counter",CatalogCategory.Architecture,38,2,1,0,2,"A low modular counter for the kitchen pass or a stand-style front."),
             new CatalogItem("menu_screen","Digital menu board",CatalogCategory.Decor,55,2,1,0,4,"A lit menu over the pass. Customers love knowing what's good.",2),
             new CatalogItem("wall_tv","Wall TV",CatalogCategory.Decor,70,2,1,0,4,"The game is on. Guests linger happily.",2),
             new CatalogItem("sign_burger","BURGER neon letters",CatalogCategory.Decor,95,3,1,0,6,"TWO STARS: giant red letters that tell the whole block what you cook.",2),

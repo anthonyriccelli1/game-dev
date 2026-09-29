@@ -27,7 +27,7 @@ namespace RestaurantCity {
    return "Building "+RestaurantCatalog.Dish(target.DishId).Name+": "+string.Join("  ",parts);
   }
   static string ComponentDisplay(string id)=>id=="bun"?"bun":id=="cooked_patty"?"cooked patty":id=="chopped_greens"?"chopped greens":id=="midnight_sauce"?"midnight sauce":id;
-  GameObject CreateFurnishing(string id,Transform parent)=>ArtOverrides.Apply(id=="counter"||id=="trash"?KitchenArt.CreateStation(id,parent):new[]{"pantry","plate_rack","sink","assembly"}.Contains(id)?KitchenArt.CreateStation(id,parent):RestaurantArt.CreateFurniture(id,parent),"Furniture",id);
+  GameObject CreateFurnishing(string id,Transform parent)=>ArtOverrides.Apply(ArchitectureArt.IsPiece(id)?ArchitectureArt.Create(id,parent):id=="counter"||id=="trash"?KitchenArt.CreateStation(id,parent):new[]{"pantry","plate_rack","sink","assembly"}.Contains(id)?KitchenArt.CreateStation(id,parent):RestaurantArt.CreateFurniture(id,parent),"Furniture",id);
   GameObject menuBoard;
   void PhysicalSetup(){Game.State.Kitchen.EnsureStations(Data);RebuildLayout();BuildStreetKitchen();BuildRivalInterior();Atmosphere.Install(Game,transform);KitchenArt.DecorateStreet(transform);RefreshMenuBoard();}
   // A4: a wall board prop showing the active-menu recipes, alongside the Cookbook management tab.

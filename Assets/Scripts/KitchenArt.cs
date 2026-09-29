@@ -233,10 +233,7 @@ namespace RestaurantCity {
             // Produce rests above the existing supplier crates; the pavement and counter interaction remain clear.
             if(!walkIn)for(int i=0;i<3;i++){var food=CreateItem(i==1?"RawProtein":"RawGreens",root.transform);food.transform.localPosition=new Vector3(-13+i,1.59f,9);food.transform.localScale=Vector3.one*1.8f;}
             if(!walkIn){Crate(root.transform,new Vector3(-14.75f,.05f,10.35f),"greens");Crate(root.transform,new Vector3(-14.75f,.36f,10.35f),"buns");}
-            // Narrow herb planter sits against the restaurant facade, outside its doorway.
-            var herbs=G("Window herb trough",root.transform,new Vector3(-13.2f,1.55f,-8.82f));
-            Box("Terracotta trough",herbs.transform,Vector3.zero,new Vector3(1.5f,.24f,.32f),"D96555");Box("Trough soil",herbs.transform,new Vector3(0,.13f,0),new Vector3(1.35f,.015f,.23f),"514234");
-            for(int i=0;i<5;i++)Greens(herbs.transform,new Vector3(-.52f+i*.26f,.14f,0),false);
+            // Leave the restaurant window clear. The player can choose and place planters from the catalog.
         }
     }
 }

@@ -25,3 +25,7 @@ The chopping, grill, washing and bin feedback uses original procedural tools, fo
 # Prep-table chopping pass (September 28, 2026)
 
 The chopping knife, intermediate food presentation and procedural station animation are original project-generated art and code. Cutting sounds use the existing synthesized SoundFx.Chop clip. This pass adds no downloaded models, textures, skeletal animations or third-party licenses. Character assets and earlier environment packs retain their own existing licensing requirements.
+
+## POLYGON Shops restaurant architecture (September 29, 2026)
+
+The current restaurant storefront, finish materials, furnishings and the placeable partition wall, open service window, and service counter use the user's imported Synty Studios **POLYGON - Shops Pack** under `Assets/Synty/PolygonShops`. `Assets/Editor/ArtPackDressing.cs` generates scaled runtime override prefabs from those sources. The original pack files and their materials remain in the project; the generated overrides are derivative arrangements of pack assets. The pack's specific license grant is not recorded in this repository, so do not treat the earlier procedural-art/no-external-assets statement as applying to this architecture pass. Confirm the purchased entitlement and distribution terms before shipping the game or sharing source assets.

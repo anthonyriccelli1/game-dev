@@ -1,4 +1,5 @@
 using RestaurantCity;
+using System.Text.Json;
 
 int failed = 0, total = 0;
 void Test(string name, Action action) {
@@ -72,6 +73,36 @@ Test("rival territory excludes warehouse and street", () => {
     Check(!EncounterRules.InTerritory(16, 15.9f), "warehouse front is unsafe");
     Check(!EncounterRules.InTerritory(11.6f, 11), "street is unsafe");
     Check(EncounterRules.InTerritory(11.6f, 18), "marked alley is safe");
+});
+Test("architecture pieces place, move, save, and sell without blocking access", () => {
+    var wallet = new GameState { Cash = 1200 };
+    var room = wallet.Restaurant;
+    Check(room.BuyRestaurant(wallet, out _), "restaurant purchase failed");
+    int PlacePiece(string id) {
+        for (int z = 0; z < 10; z++) for (int x = 0; x < 12; x++) {
+            if (!room.CanPlace(id, x, z, 0, -1, out _)) continue;
+            Check(room.Place(wallet, id, x, z, 0, out _), id + " purchase failed");
+            return room.Layout.Last().InstanceId;
+        }
+        throw new Exception("no accessible space for " + id);
+    }
+    int wall = PlacePiece("partition_wall");
+    int window = PlacePiece("service_window");
+    int counter = PlacePiece("service_counter");
+    var original = room.Layout.Single(p => p.InstanceId == wall);
+    Check(!room.CanPlace("partition_wall", original.X, original.Z, 0, -1, out _), "overlapping wall accepted");
+    bool moved = false;
+    for (int z = 0; z < 10 && !moved; z++) for (int x = 0; x < 12 && !moved; x++) {
+        if (x == original.X && z == original.Z || !room.CanPlace("partition_wall", x, z, 1, wall, out _)) continue;
+        moved = room.Move(wall, x, z, 1, out _);
+    }
+    Check(moved && room.Layout.Single(p => p.InstanceId == wall).Rotation == 1, "wall could not rotate and move");
+    var options = new JsonSerializerOptions { IncludeFields = true };
+    var loaded = JsonSerializer.Deserialize<GameState>(JsonSerializer.Serialize(wallet, options), options);
+    loaded.SanitizeAfterLoad();
+    Check(new[] { wall, window, counter }.All(id => loaded.Restaurant.Layout.Any(p => p.InstanceId == id)), "architecture layout lost on load");
+    int beforeSale = loaded.Cash;
+    Check(loaded.Restaurant.Sell(loaded, window, out _) && loaded.Cash == beforeSale + RestaurantCatalog.Find("service_window").Price / 2, "window resale failed");
 });
 Console.WriteLine($"RESULT: {total - failed}/{total} passed");
 return failed == 0 ? 0 : 1;

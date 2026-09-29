@@ -17,7 +17,12 @@ namespace RestaurantCity {
             Application.logMessageReceived += OnLog;
             yield return null;
                 Game.State.Cash = 300;
-                Require(R.Data.BuyRestaurant(Game.State, out _), "isolated restaurant acquired");
+                Require(R.BuyRestaurant(P), "isolated restaurant acquired through the real lease interaction");
+                Check(GameObject.Find("Future restaurant sign") == null, "owned restaurant removes the lease board interaction");
+                P.Teleport(new Vector3(-10, .15f, 2.5f)); P.LookAt(new Vector3(-10, 2, -9));
+                System.IO.Directory.CreateDirectory("InteractionEvidence"); CapturePlacement("architecture-front.png");
+                P.Teleport(new Vector3(-10, .15f, -10.7f)); P.LookAt(new Vector3(-10, 1.5f, -18));
+                CapturePlacement("architecture-starter.png");
                 // Buying now gives an empty room: install the kitchen the way a player would.
                 Game.State.Cash = 2000;
                 foreach (var (id, x, z) in new[] { ("pantry", 0, 0), ("plate_rack", 2, 0), ("prep_bench", 4, 0), ("assembly", 8, 0), ("grill", 0, 4), ("sink", 9, 4), ("cafe_table", 8, 7) })
@@ -216,12 +221,33 @@ namespace RestaurantCity {
                 Check(second && second.gameObject.layer == 29 && second.OwnBodyMask == 1 << 29,
                     "second player's controller uses its own excluded interaction layer");
             RunFinishChecks();
+            RunArchitectureChecks();
             Debug.Log("INTERACTION_RUNTIME_" + (failures == 0 ? "PASS " : "FAIL ") + checks + " checks, " + failures + " failures");
             Application.logMessageReceived -= OnLog;
             Application.Quit(failures == 0 ? 0 : 1);
         }
         void InstallFirstFree(string id) {
             for (int z = 0; z < 10; z++) for (int x = 0; x < 12; x++) if (R.Data.CanPlace(id, x, z, 0, -1, out _)) { R.Data.Place(Game.State, id, x, z, 0, out _); return; }
+        }
+        void RunArchitectureChecks() {
+            R.ClosePanel(); R.Data.Open = false; Game.State.Cash = 2000;
+            foreach (var id in new[] { "partition_wall", "service_window", "service_counter" }) {
+                int before = R.Data.Layout.Count;
+                InstallFirstFree(id);
+                Check(R.Data.Layout.Count == before + 1, id + " can be placed through the catalog layout rules");
+            }
+            R.RebuildLayout();
+            Physics.SyncTransforms();
+            foreach (var id in new[] { "partition_wall", "service_window", "service_counter" }) {
+                var placed = R.Data.Layout.LastOrDefault(x => x.CatalogId == id);
+                Check(placed != null && R.Furnishings.ContainsKey(placed.InstanceId) &&
+                    R.Furnishings[placed.InstanceId].GetComponentsInChildren<Renderer>().Any(r => r.enabled),
+                    id + " has a visible, saved room object");
+            }
+            P.Teleport(new Vector3(-10, .15f, -10.7f));
+            P.LookAt(new Vector3(-10, 1.5f, -18));
+            System.IO.Directory.CreateDirectory("InteractionEvidence");
+            CapturePlacement("architecture-room.png");
         }
         void RunChoppingChecks(int prep) {
             var type = typeof(RestaurantController).Assembly.GetType("RestaurantCity.ChoppingFeedback");

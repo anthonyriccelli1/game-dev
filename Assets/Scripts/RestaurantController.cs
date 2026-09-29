@@ -108,8 +108,21 @@ namespace RestaurantCity {
                 }
             }
             RestaurantArt.RestaurantName = RestaurantSites.Get(Data.SiteId).Sign;
-            // The scene's original lease sign belongs to The Odd Table.
-            foreach (var it in FindObjectsByType<Interactable>(FindObjectsSortMode.None)) if (it.Kind == InteractionKind.FutureRestaurant && it.name == "Future restaurant sign") it.Site = "oddtable";
+            // The scene's original lease board belongs to The Odd Table. Retire both its
+            // hitbox and its separate text once that property is owned.
+            foreach (var it in FindObjectsByType<Interactable>(FindObjectsSortMode.None)) {
+                if (it.Kind != InteractionKind.FutureRestaurant || it.name != "Future restaurant sign") continue;
+                it.Site = "oddtable";
+                if (Data.Owned && Data.SiteId == "oddtable") it.gameObject.SetActive(false);
+            }
+            RefreshLeaseBoard();
+        }
+        void RefreshLeaseBoard() {
+            if (!Data.Owned || Data.SiteId != "oddtable") return;
+            foreach (var sign in FindObjectsByType<Interactable>(FindObjectsSortMode.None))
+                if (sign.Kind == InteractionKind.FutureRestaurant && sign.name == "Future restaurant sign") sign.gameObject.SetActive(false);
+            foreach (var label in FindObjectsByType<TextMesh>(FindObjectsSortMode.None))
+                if (label.text != null && label.text.Contains("THE ODD TABLE") && label.text.Contains("FOR LEASE")) label.gameObject.SetActive(false);
         }
         void Update() {
             if (!Game || !Room) return;
@@ -132,7 +145,7 @@ namespace RestaurantCity {
             bool result = Data.BuyRestaurant(Game.State, out string message);
             Feedback(message);
             if (!result) return false;
-            RebuildLayout(); PlayChime(true); Game.Save(); buyer.Teleport(W(-10, .15f, -10.7f)); buyer.LookAt(W(-10, 1.5f, -18)); ShowPanel("Service");
+            RefreshLeaseBoard(); RebuildLayout(); PlayChime(true); Game.Save(); buyer.Teleport(W(-10, .15f, -10.7f)); buyer.LookAt(W(-10, 1.5f, -18)); ShowPanel("Service");
             return true;
         }
         public void ShowPanel(string panel) {

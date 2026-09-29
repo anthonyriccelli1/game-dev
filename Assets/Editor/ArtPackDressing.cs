@@ -133,6 +133,7 @@ public static class ArtPackDressing {
         }
         GenerateFinishes();
         GenerateShell();
+        GenerateArchitecture();
         AssetDatabase.SaveAssets();
     }
 
@@ -194,6 +195,35 @@ public static class ArtPackDressing {
         return go;
     }
     static Bounds Measure(GameObject go) { var rs = go.GetComponentsInChildren<Renderer>(); var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); return b; }
+
+    // Placeable 2x1-tile room modules. Their roots sit at floor centre; the code-built modules own collision.
+    // The wall meshes are 2.5m wide in the pack and the cafe counter is 2.07m wide, so fit the art to
+    // the shared 2m span without changing the collision footprint or creating a lip across the aisle.
+    static void GenerateArchitecture() {
+        MakeArchitecture("partition_wall", Bld + "SM_Bld_Base_Wall_01.prefab", new Vector3(2f, 3f, .225f), false);
+        MakeArchitecture("service_window", Bld + "SM_Bld_Base_Wall_Window_Double_01.prefab", new Vector3(2f, 3f, .256f), true);
+        MakeArchitecture("service_counter", Shops + "Props/SM_Prop_Cafe_Counter_Outdoor_02.prefab", new Vector3(2f, .98f, .5f), false);
+    }
+    static void MakeArchitecture(string id, string source, Vector3 size, bool openWindow) {
+        const string dir = "Assets/Resources/ArtOverrides/Furniture";
+        string path = dir + "/" + id + ".prefab";
+        if (!AssetDatabase.LoadAssetAtPath<GameObject>(source)) {
+            if (File.Exists(path)) AssetDatabase.DeleteAsset(path);
+            return;
+        }
+        Directory.CreateDirectory(dir);
+        var root = new GameObject(id);
+        var model = FitBox(root.transform, source, 0, new Vector3(-size.x * .5f, 0, -size.z * .5f),
+            new Vector3(size.x * .5f, size.y, size.z * .5f), Vector3.one, Vector3.zero);
+        if (openWindow) {
+            // A solid glass pane would make the serving opening look closed even though the gameplay
+            // collider deliberately blocks walking through it. Keep the frame and sill, remove only glass.
+            foreach (var renderer in model.GetComponentsInChildren<Renderer>(true))
+                if (renderer.gameObject.name.EndsWith("_Glass")) Object.DestroyImmediate(renderer.gameObject);
+        }
+        PrefabUtility.SaveAsPrefabAsset(root, path);
+        Object.DestroyImmediate(root);
+    }
     // Repeats a trim strip along one wall: `count` equal pieces between a and b (world X or Z), at height y.
     static void Run(Transform root, string src, int count, bool alongX, float a, float b, float y, float wall, float yaw, bool towardMax) {
         float step = (b - a) / count;

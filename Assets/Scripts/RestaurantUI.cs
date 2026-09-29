@@ -30,7 +30,7 @@ namespace RestaurantCity {
         string category = "All", signature = "";
         string finishFilter = "All finishes";
         readonly List<Action> tickLabels = new List<Action>();
-        readonly string[] categories = { "All", "Kitchen", "Seating", "Finishes", "Lighting", "Decor", "Exterior" };
+        readonly string[] categories = { "All", "Kitchen", "Seating", "Finishes", "Lighting", "Decor", "Architecture", "Exterior" };
 
         public void Rebuild() {
             if (!Owner || !Owner.Game || !Owner.Game.Player || !Owner.Game.Player.View) return;
@@ -158,7 +158,7 @@ namespace RestaurantCity {
         void BuildCatalog(RectTransform sheet) {
             for (int i = 0; i < categories.Length; i++) {
                 string cat = categories[i]; bool active = cat == category;
-                Button(sheet, cat, 30 + i * 167, 139, 158, 32, () => { category = cat; signature = ""; if (scroll) scroll.verticalNormalizedPosition = 1; Refresh(); }, active ? ink : pale, active ? paper : ink);
+                Button(sheet, cat, 30 + i * 146, 139, 142, 32, () => { category = cat; signature = ""; if (scroll) scroll.verticalNormalizedPosition = 1; Refresh(); }, active ? ink : pale, active ? paper : ink);
             }
             if (category == "Finishes") {
                 string[] filters = { "All finishes", "Walls", "Floors" };
@@ -383,7 +383,7 @@ namespace RestaurantCity {
             else Label(sheet,"A shift takes arrivals for two minutes, then lets you finish remaining guests.\nUse the door sign to end arrivals early. Tab opens management between shifts.\nController Start joins player two. Management is a shared screen while closed.",30,523,1157,110,18,muted);
         }
         void BuildFurniture(RectTransform sheet) {
-            Label(sheet, "Choose an owned furnishing to move. This list includes stations hidden behind other furniture.", 30, 137, 1150, 28, 16, ink);
+            Label(sheet, "Choose an owned furnishing or building piece to move. This list includes stations hidden behind other furniture.", 30, 137, 1150, 28, 16, ink);
             var owned = Owner.Data.Layout.FindAll(p => { var item = RestaurantCatalog.Find(p.CatalogId); return item != null && !item.IsFinish && !item.IsExterior; });
             var content = Scroller(sheet, 30, 175, 365, 465, Mathf.Max(465, owned.Count * 58));
             for (int i = 0; i < owned.Count; i++) {
