@@ -86,7 +86,7 @@ namespace RestaurantCity {
     public static class RestaurantCatalog {
         public static readonly CatalogItem[] Items = new CatalogItem[] {
             new CatalogItem("pantry","Ingredient pantry",CatalogCategory.Kitchen,25,1,1,0,0,"Take protein, greens, buns or midnight sauce ingredients."),
-            new CatalogItem("plate_rack","Plate rack",CatalogCategory.Kitchen,18,1,1,0,0,"Six shared reusable plates. Return dirty plates to the sink."),
+            new CatalogItem("plate_rack","Plate rack",CatalogCategory.Kitchen,18,1,1,0,0,"Holds 4 more reusable plates. More seats need more plates: return dirty ones to the sink."),
             new CatalogItem("assembly","Assembly station",CatalogCategory.Kitchen,25,2,1,0,0,"Place a clean plate, then add prepared ingredients."),
             new CatalogItem("counter","Pass counter",CatalogCategory.Kitchen,15,1,1,0,0,"Set anything down here: plates, patties, buns, sauce. Build dishes on it."),
             new CatalogItem("trash","Trash can",CatalogCategory.Kitchen,10,1,1,0,0,"Throw away burnt or unwanted food. Plates keep; food scraps go."),

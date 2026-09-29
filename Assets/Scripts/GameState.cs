@@ -128,7 +128,7 @@ namespace RestaurantCity {
             StandClean--; front.Stage = 2; front.EatLeft = StandEatSeconds; SyncStandFront();
         }
         // Two cafe tables x two chairs = four seats. StandTableDirty and StandOrder.Table are per SEAT (seat / 2 = table).
-        public const int StandQueueMax = 5, StandPlates = 6, StandTables = 2, StandSeats = 4;
+        public const int StandQueueMax = 5, StandPlates = 4, StandTables = 2, StandSeats = 4;
         public const float StandEatSeconds = 12, StandPatience = 75, StandFirstPatience = 100;
         public List<bool> StandTableDirty = new List<bool> { false, false, false, false };
         // The stand has a lunch rush and a (bigger-paying) night rush: guests arrive twice as fast.
