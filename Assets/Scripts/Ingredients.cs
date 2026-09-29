@@ -7,6 +7,8 @@ namespace RestaurantCity {
         public string Id, Name, Unit, Category, Source, Recipe, Blurb, Shelf;
         public int PackSize, PackPrice, RequiredStars;
         public float UnitCost => PackSize > 0 ? PackPrice / (float)PackSize : 0;
+        // Kept cold: lives in the fridge once the restaurant has one (meat, eggs, dairy, produce). Dry goods stay in the pantry.
+        public bool Cold => Shelf == "protein" || Shelf == "greens" || Shelf == "soup";
     }
     [Serializable] public class StockLine { public string Id; public int Count; }
     public static class Ingredients {
@@ -22,6 +24,7 @@ namespace RestaurantCity {
         };
         public static IngredientDef Get(string id) => Array.Find(All, i => i.Id == id);
         public static IngredientDef ForShelf(string shelf) => Array.Find(All, i => i.Shelf == shelf);
+        public static readonly string[] ColdShelves = { "protein", "greens", "soup" }, DryShelves = { "bun", "sauce" };
         // What one portion of each dish uses from the pantry.
         public static string[] For(string dish) =>
             dish == "burger" ? new[] { "patty", "bun" } : dish == "salad" ? new[] { "greens" } : dish == "soup" ? new[] { "soup_veg" } :

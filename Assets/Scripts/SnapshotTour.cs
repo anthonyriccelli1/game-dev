@@ -75,6 +75,7 @@ namespace RestaurantCity {
             ("71_storefront_night", new Vector3(-10f, 0, -2.6f), 180, -10, 190),
             ("72_walls_snap", new Vector3(-7.2f, 0, -10.3f), 215, 12, 70),
             ("73_walls_front_row", new Vector3(-10f, 0, -17.2f), 0, 8, 70),
+            ("74_fridge_pantry", new Vector3(-9.9f, 0, -18.9f), 180, 16, 70),
             ("62_restaurant_dressed", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
             ("63_restaurant_dressed_back", new Vector3(-5.6f, 0, -19.4f), -40, 12, 70),
             ("64_upgrade_panel", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
@@ -143,6 +144,13 @@ namespace RestaurantCity {
                     // Plates left on the sidewalk tables, to check they sit on the wooden tabletops.
                     var dirty = Game.State.StandTableDirty; while (dirty.Count < 4) dirty.Add(false); for (int i = 0; i < 4; i++) dirty[i] = true;
                     rc.Advance(.02f); for (int i = 0; i < 5; i++) yield return null;
+                }
+                if (rc && shot.name.Contains("fridge_pantry")) {
+                    // Dry goods in the pantry, cold food behind the fridge's glass door (it opens as you step up).
+                    var gs = Game.State; gs.Cash = 20000; var d = gs.Restaurant; d.Owned = true; d.Layout.Clear(); gs.Learn("soup");
+                    Debug.LogWarning("FRIDGE place pantry=" + d.Place(gs, "pantry", 3, 0, 0, out var w1) + " " + w1 + " fridge=" + d.Place(gs, "fridge", 5, 0, 0, out var w2) + " " + w2);
+                    foreach (var (id, n) in new[] { ("patty", 14), ("greens", 9), ("soup_veg", 6), ("bun", 18), ("midnight_sauce", 3) }) d.AddStock(id, n);
+                    rc.RebuildLayout(); for (int i = 0; i < 40; i++) { p.transform.position = shot.pos; rc.Advance(.02f); yield return null; }
                 }
                 if (rc && shot.name.Contains("walls_snap")) {
                     // A kitchen wall across the room (with a doorway gap), a service window, a T-joint wall, and

@@ -58,6 +58,15 @@ namespace RestaurantCity {
        "sold partition cannot retain an active finish target");
    pieceState.SanitizeFinishes();
    Check(pieceState.SurfaceFinishes.Count==0,"sold partition finish is removed during sanitization");
+   // Storage split: without a fridge the pantry holds everything; with one, cold food lives in the fridge only.
+   var coldWallet=new GameState{Cash=1000};var cold=coldWallet.Restaurant;cold.Owned=true;
+   Check(cold.Place(coldWallet,"pantry",0,0,0,out _),"pantry can be placed for the storage split");
+   int pantryId=cold.Layout.Last(p=>p.CatalogId=="pantry").InstanceId;cold.AddStock("patty",4);cold.AddStock("bun",4);
+   Check(coldWallet.Kitchen.Preview(coldWallet,"p1",pantryId,"protein").Kind==KitchenActionKind.Tap,"without a fridge the pantry still gives patties");
+   Check(cold.Place(coldWallet,"fridge",3,0,0,out _),"fridge can be placed");
+   int fridgeId=cold.Layout.Last(p=>p.CatalogId=="fridge").InstanceId;
+   Check(coldWallet.Kitchen.Preview(coldWallet,"p1",pantryId,"protein").Kind!=KitchenActionKind.Tap&&coldWallet.Kitchen.Preview(coldWallet,"p1",fridgeId,"protein").Kind==KitchenActionKind.Tap,"with a fridge, patties come from the fridge, not the pantry");
+   Check(coldWallet.Kitchen.Preview(coldWallet,"p1",pantryId,"bun").Kind==KitchenActionKind.Tap&&coldWallet.Kitchen.Preview(coldWallet,"p1",fridgeId,"bun").Kind!=KitchenActionKind.Tap,"buns stay in the pantry");
    wallet.Cash=10000;wallet.RankEarned=5;data.Rank=2;
    Check(Paint(Id(premium),Id(premium).StartsWith("wall_")?"wall:back:0":"floor:0:1"),"earned rank and stars unlock premium finish purchases");
 

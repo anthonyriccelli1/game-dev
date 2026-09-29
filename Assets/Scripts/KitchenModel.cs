@@ -70,16 +70,24 @@ namespace RestaurantCity {
   // Each pantry shelf holds one real ingredient; stock is counted and runs out per ingredient.
   static KitchenItemKind ShelfKind(string shelf)=>shelf=="soup"?KitchenItemKind.SoupVeg:shelf=="protein"?KitchenItemKind.RawProtein:shelf=="greens"?KitchenItemKind.RawGreens:shelf=="bun"?KitchenItemKind.Bun:KitchenItemKind.RawSauce;
   static string OutOf(IngredientDef ing)=>ing.Source==Ingredients.Stash?"Out of "+ing.Name.ToLower()+". Call Zeeb on your phone (P).":"Out of "+ing.Name.ToLower()+". Buy more at Milo's.";
-  KitchenAction PreviewPantry(GameState game,string actor,KitchenItem hand,string subId){
-   var r=game.Restaurant;
+  // Which shelves a storage station holds: the fridge keeps cold food; a restaurant pantry keeps dry goods once there is
+  // a fridge (until then it holds everything); the street stand's cart pantry always holds everything.
+  public static string[] ShelvesOf(RestaurantState r,int instanceId,string catalogId){
+   if(catalogId=="fridge")return Ingredients.ColdShelves;
+   if(IsStandStation(instanceId)||r==null||!r.HasEquipment("fridge"))return Ingredients.ColdShelves.Concat(Ingredients.DryShelves).ToArray();
+   return Ingredients.DryShelves;
+  }
+  KitchenAction PreviewPantry(GameState game,string actor,KitchenItem hand,string subId,KitchenStation station){
+   var r=game.Restaurant;var shelves=ShelvesOf(r,station.InstanceId,station.CatalogId);
    // Groceries from Milo's are unpacked into the pantry with one press, whichever shelf you look at.
    if(hand!=null&&hand.Kind==KitchenItemKind.GroceryBag){
     var bag=hand;int fits=bag.Components.Count(id=>r.Room(id)>0);
     if(fits==0)return Blocked("The pantry is full for what's in this bag. Cook some of it first.");
     return Tap("Unpack groceries ("+bag.Components.Count+" items)",()=>{var left=new List<string>();foreach(var id in bag.Components)if(r.AddStock(id,1)==0)left.Add(id);bag.Components=left;if(left.Count==0)Items.Remove(bag);return left.Count==0?"Groceries unpacked.":"Unpacked what fits; "+left.Count+" items stay in the bag.";});
    }
-   string choice=string.IsNullOrEmpty(subId)?"protein":subId;
+   string choice=string.IsNullOrEmpty(subId)?shelves[0]:subId;
    var ing=Ingredients.ForShelf(choice);
+   if(ing!=null&&!shelves.Contains(choice))return Blocked(ing.Name+(ing.Cold?" are kept in the fridge.":" are kept in the pantry."));
    if(ing==null)return Blocked("Look at a shelf: patties, greens, buns, sauce or soup veg.");
    if(choice=="sauce"&&!game.Knows("midnight"))return Blocked("Needs the midnight recipe.");
    if(choice=="soup"&&!game.Knows("soup"))return Blocked("Buy the Planet soup recipe in the Cookbook first.");
@@ -135,7 +143,7 @@ namespace RestaurantCity {
    if(s==null)return Blocked("Station unavailable.");
    if(!string.IsNullOrEmpty(s.WorkOwner)&&s.WorkOwner!=actor)return Blocked("Someone is working here.");
    var hand=Hold(actor);var item=At(stationId);
-   if(s.CatalogId=="pantry")return PreviewPantry(game,actor,hand,subId);
+   if(s.CatalogId=="pantry"||s.CatalogId=="fridge")return PreviewPantry(game,actor,hand,subId,s);
    if(s.CatalogId=="trash"){
     if(hand==null){
      if(s.WasteCount>0)return Tap("Empty trash",()=>{s.WasteCount=0;game.Emit("emptybin:"+s.InstanceId);return "Trash emptied.";});

@@ -61,6 +61,29 @@ public static class EditorTools {
     // Regenerates the art-pack overrides (models, finishes, restaurant shell) without a full build.
     public static string GenerateArt() { ArtPackDressing.GenerateOverrides(); return "art overrides generated"; }
     public static string GenerateStreetStandArt() { StreetStandArt.Generate(); return "street stand art generated"; }
+    // Lists the heights of upward-facing surfaces (shelves, worktops) in each render-list prefab, with their materials,
+    // so code can put stock on a pack model's own shelves.
+    public static string DumpShelfHeights() {
+        var sb = new StringBuilder();
+        foreach (var line in File.ReadAllLines("EditorOutput/render-list.txt").Select(l => l.Trim().Split(' ')[0]).Where(l => l.Length > 0)) {
+            var src = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath(line)); if (!src) continue;
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(src); sb.AppendLine(Path.GetFileName(line));
+            foreach (var mf in go.GetComponentsInChildren<MeshFilter>()) {
+                var m = mf.sharedMesh; var mats = mf.GetComponent<Renderer>().sharedMaterials; var v = m.vertices;
+                for (int sm = 0; sm < m.subMeshCount; sm++) {
+                    var t = m.GetTriangles(sm); var heights = new System.Collections.Generic.SortedDictionary<float, float>();
+                    for (int i = 0; i < t.Length; i += 3) {
+                        Vector3 a = mf.transform.TransformPoint(v[t[i]]), b = mf.transform.TransformPoint(v[t[i + 1]]), c = mf.transform.TransformPoint(v[t[i + 2]]);
+                        var n = Vector3.Cross(b - a, c - a); float area = n.magnitude * .5f; if (area < .0001f || n.normalized.y < .9f) continue;
+                        float y = Mathf.Round((a.y + b.y + c.y) / 3 * 50) / 50; heights[y] = (heights.TryGetValue(y, out var s0) ? s0 : 0) + area;
+                    }
+                    sb.AppendLine("  " + mf.name + " sub" + sm + " mat=" + (sm < mats.Length && mats[sm] ? mats[sm].name + " shader=" + mats[sm].shader.name + " queue=" + mats[sm].renderQueue : "?") + "  up: " + string.Join(" ", heights.Where(h => h.Value > .02f).Select(h => h.Key.ToString("0.00") + "(" + h.Value.ToString("0.00") + ")")));
+                }
+            }
+            Object.DestroyImmediate(go);
+        }
+        File.WriteAllText("EditorOutput/shelf-heights.txt", sb.ToString()); return "shelves written";
+    }
     public static string DumpPrefabSizes() {
         var sb = new StringBuilder();
         foreach (var line in File.ReadAllLines("EditorOutput/render-list.txt").Select(l => l.Trim().Split(' ')[0]).Where(l => l.Length > 0)) {

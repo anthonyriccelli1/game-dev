@@ -237,6 +237,11 @@ namespace RestaurantCity {
             var floorWear=room.transform.Find("ShabbyFloorWear");if(floorWear)floorWear.gameObject.SetActive(shabbyFloor);
             var a=room.transform.Find("UpgradeAwning");if(a)a.gameObject.SetActive(awning);var n=room.transform.Find("UpgradeNeon");if(n)n.gameObject.SetActive(neon);
         }
+        static void FridgeShelf(Transform p,string subId,float yLow,float yHigh) {
+            var zone=Group("Pantry shelf "+subId,p,new Vector3(0,(yLow+yHigh)*.5f,.32f));
+            var box=zone.AddComponent<BoxCollider>();box.size=new Vector3(.8f,yHigh-yLow,.4f);
+            var target=zone.AddComponent<RestaurantTarget>();target.Kind="Furniture";target.SubId=subId;
+        }
         static void Feet(Transform p,float width,float depth,float height,Color c) {foreach(float x in new[]{-width*.4f,width*.4f})foreach(float z in new[]{-depth*.4f,depth*.4f})Box("TaperedFoot",p,new Vector3(x,height*.5f,z),new Vector3(.1f,height,.1f),c);}
         static void Seat(Transform parent,int index,Vector3 pos,float yaw) {var seat=Group("Seat_"+index,parent,pos);seat.transform.localRotation=Quaternion.Euler(0,yaw,0);}
         static void Chair(Transform p,Vector3 pos,float yaw,bool stool=false) {
@@ -277,7 +282,9 @@ namespace RestaurantCity {
                 w=2;h=1.75f;Feet(p,1.75f,.78f,.24f,Ink);Box("OvenBody",p,new Vector3(0,.95f,0),new Vector3(1.8f,1.45f,.84f),Coral);Box("SteelCrown",p,new Vector3(0,1.7f,0),new Vector3(1.92f,.12f,.93f),steel);
                 foreach(float y in new[]{.61f,1.23f}){Box("OvenFrame",p,new Vector3(-.1f,y,.441f),new Vector3(1.4f,.53f,.055f),Brass);Box("OvenWindow",p,new Vector3(-.1f,y,.48f),new Vector3(1.15f,.32f,.04f),Ink);Box("OvenBar",p,new Vector3(-.1f,y+.2f,.57f),new Vector3(.91f,.06f,.07f),Cream);Round("Dial",p,new Vector3(.74f,y,.47f),new Vector3(.13f,.13f,.08f),Ink);}break;
             case "fridge":
-                h=2;Box("RetroFridge",p,new Vector3(0,.99f,0),new Vector3(.91f,1.96f,.83f),Teal);Box("FridgeDoor",p,new Vector3(0,.78f,.43f),new Vector3(.84f,1.35f,.08f),Cream);Box("FreezerDoor",p,new Vector3(0,1.72f,.43f),new Vector3(.84f,.45f,.08f),Cream);Box("Handle",p,new Vector3(.3f,1.05f,.53f),new Vector3(.05f,.45f,.06f),Brass);Box("Magnet",p,new Vector3(-.16f,1.14f,.49f),new Vector3(.21f,.27f,.01f),Coral);Label("COLD",p,new Vector3(0,1.74f,.49f),.052f,Teal);break;
+                h=2;Box("RetroFridge",p,new Vector3(0,.99f,0),new Vector3(.91f,1.96f,.83f),Teal);Box("FridgeDoor",p,new Vector3(0,.78f,.43f),new Vector3(.84f,1.35f,.08f),Cream);Box("FreezerDoor",p,new Vector3(0,1.72f,.43f),new Vector3(.84f,.45f,.08f),Cream);Box("Handle",p,new Vector3(.3f,1.05f,.53f),new Vector3(.05f,.45f,.06f),Brass);Box("Magnet",p,new Vector3(-.16f,1.14f,.49f),new Vector3(.21f,.27f,.01f),Coral);Label("COLD",p,new Vector3(0,1.74f,.49f),.052f,Teal);
+                // Aimable cold shelves (patties, greens, soup veg) at the glass-door fridge's shelf heights; stock is drawn by PantryDisplay.
+                FridgeShelf(p,"protein",.56f,.9f);FridgeShelf(p,"greens",.9f,1.24f);FridgeShelf(p,"soup",1.24f,1.6f);break;
             case "stool_pair":case "cafe_table":case "bistro_table":case "patio_table":
                 w=2;d=2;Table(p,Vector3.zero,.82f,.77f);Chair(p,new Vector3(0,0,-.65f),0,id=="stool_pair");Chair(p,new Vector3(0,0,.65f),180,id=="stool_pair");Seat(p,0,new Vector3(0,0,-.65f),0);Seat(p,1,new Vector3(0,0,.65f),180);break;
             case "booth_teal":case "booth_coral":

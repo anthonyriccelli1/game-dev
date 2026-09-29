@@ -96,7 +96,7 @@ namespace RestaurantCity {
             new CatalogItem("grill","Comet grill",CatalogCategory.Kitchen,45,2,1,0,1,"Burgers and midnight buns. Extra grills add a cooking slot."),
             new CatalogItem("stove","Little red stove",CatalogCategory.Kitchen,55,1,1,0,1,"Simmers Planet soup. Stir it or it scorches.",1,0),
             new CatalogItem("oven","Starlight oven",CatalogCategory.Kitchen,100,2,1,0,2,"LINE COOK gear: cooks patties in six seconds instead of eight.",2,1),
-            new CatalogItem("fridge","Mint refrigerator",CatalogCategory.Kitchen,40,1,1,0,1,"Raises each stock limit from 24 to 48; keeps ready dishes fresh longer."),
+            new CatalogItem("fridge","Mint refrigerator",CatalogCategory.Kitchen,40,1,1,0,1,"Glass-door fridge: patties, greens and soup veg live here, where you can see them. Doubles stock limits; keeps ready dishes fresh longer."),
             new CatalogItem("stool_pair","Counter stools",CatalogCategory.Seating,20,2,2,2,1,"Two inexpensive customer seats."),
             new CatalogItem("cafe_table","Daisy cafe table",CatalogCategory.Seating,30,2,2,2,2,"Two seats and a cheery tabletop."),
             new CatalogItem("patio_table","Wooden patio set",CatalogCategory.Seating,26,2,2,2,2,"Slatted folding table and chairs, like the ones outside the stand."),

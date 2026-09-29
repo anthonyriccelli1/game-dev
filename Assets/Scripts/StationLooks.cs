@@ -15,6 +15,7 @@ namespace RestaurantCity {
                 var shared = r.sharedMaterials; var mats = new Material[shared.Length];
                 for (int i = 0; i < shared.Length; i++) {
                     if (!shared[i]) continue;
+                    if (shared[i].renderQueue >= 3000) { mats[i] = shared[i]; continue; }   // glass stays clear
                     var m = new Material(shared[i]);
                     var tint = level <= 1 ? new Color(.66f, .55f, .42f) : level >= 3 ? new Color(1.05f, 1.05f, 1.1f) : Color.white;
                     if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", m.GetColor("_BaseColor") * tint);
@@ -25,7 +26,12 @@ namespace RestaurantCity {
             }
             var b = Bounds(station, dress); var lb = new Bounds(station.transform.InverseTransformPoint(b.center), Vector3.Scale(b.size, Inv(station.transform.lossyScale)));
             float top = lb.max.y, front = lb.max.z;
-            if (level <= 1) {
+            // A glass-front fridge keeps its grime on the kick plate so you can still see the stock.
+            bool glassFront = station.name.Contains("fridge");
+            if (level <= 1 && glassFront) {
+                var grime = FoodLooks.Mat(new Color(.26f, .19f, .12f));
+                for (int i = 0; i < 3; i++) Blob(dress, new Vector3(lb.min.x + lb.size.x * (.22f + i * .26f), lb.min.y + .1f + (i % 2) * .05f, front + .004f), new Vector3(.03f, .07f, .008f), grime, PrimitiveType.Capsule);
+            } else if (level <= 1) {
                 // Flats hand-me-down: grease drips running down the front and a scorched, stained patch.
                 var grease = FoodLooks.Mat(new Color(.26f, .19f, .12f)); var stain = FoodLooks.Mat(new Color(.42f, .33f, .22f));
                 for (int i = 0; i < 4; i++) {

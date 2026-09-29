@@ -86,13 +86,15 @@ public static class ArtPackDressing {
         ("Furniture", "menu_screen", new[] { R("Props/SM_Prop_Kitchen_Menu_Screen_01", 0, 2.4f, -.45f, 180) }),
         ("Furniture", "wall_tv", new[] { R("Props/SM_Prop_Computer_TV_Wall_01", 0, 2.1f, -.45f, 180) }),
         ("Furniture", "sign_burger", new[] { R("Signs/SM_Sign_3dText_Burger_01", 0, 2.55f, -.44f, 180, .95f) }),
+        // Glass-door reach-in fridge: you can see the stock on its shelves (PantryDisplay uses these shelf heights).
+        ("Furniture", "fridge", new[] { R("Props/SM_Prop_Market_Drinks_Fridge_02", 0, 0, 0) }),
         ("Furniture", "oven", new[] { R("Props/SM_Prop_Kitchen_Stove_Oven_01", 0, 0, 0, 0, 1.05f) }),
         ("Furniture", "plate_rack", new[] { RS("Props/SM_Prop_Kitchen_ServingShelf_01", 0, 0, 0, new Vector3(.64f, 1f, .85f)),
             R("Food/SM_Prop_Food_Plate_01", -.2f, 1.16f, 0, 0, .8f), R("Food/SM_Prop_Food_Plate_01", -.2f, 1.185f, 0, 0, .8f), R("Food/SM_Prop_Food_Plate_01", -.2f, 1.21f, 0, 0, .8f),
             R("Food/SM_Prop_Food_Plate_01", .2f, 1.16f, 0, 0, .8f), R("Food/SM_Prop_Food_Plate_01", .2f, 1.185f, 0, 0, .8f) }),
     };
     // Slots we deliberately went back to the code-built (grimy-levelled) look for.
-    static readonly string[] Retired = { "Furniture/pantry", "Furniture/fridge", "Furniture/partition_wall", "Furniture/service_window" };
+    static readonly string[] Retired = { "Furniture/pantry", "Furniture/partition_wall", "Furniture/service_window" };
     public static void GenerateOverrides() {
         foreach (var r in Retired) { string path = "Assets/Resources/ArtOverrides/" + r + ".prefab"; if (AssetDatabase.LoadAssetAtPath<GameObject>(path)) AssetDatabase.DeleteAsset(path); }
         foreach (var slot in Slots) {

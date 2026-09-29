@@ -10,16 +10,46 @@ namespace RestaurantCity {
             ("bun", "bun", "Bun", -.48f, .805f, "Buns"), ("sauce", "midnight_sauce", "RawSauce", .48f, .805f, "Sauce"),
             ("soup", "soup_veg", "SoupVeg", -.48f, 1.345f, "Soup veg"),
         };
+        // The glass-door fridge: one shelf per cold ingredient, at the pack fridge's own shelf heights.
+        static readonly (string shelf, string ingredient, string kind, float x, float y, string title)[] FridgeSpots = {
+            ("protein", "patty", "RawProtein", 0f, .565f, "Patties"), ("greens", "greens", "RawGreens", 0f, .905f, "Greens"),
+            ("soup", "soup_veg", "SoupVeg", 0f, 1.245f, "Soup veg"),
+        };
         readonly Dictionary<GameObject, Dictionary<string, ShelfView>> pantryViews = new Dictionary<GameObject, Dictionary<string, ShelfView>>();
-        IEnumerable<GameObject> PantryObjects() {
-            foreach (var p in Data.Layout) if (p.CatalogId == "pantry" && Furnishings.TryGetValue(p.InstanceId, out var o) && o) yield return o;
-            if (standObjects.TryGetValue(KitchenState.StandBase + 1, out var stand) && stand) yield return stand;
+        IEnumerable<(GameObject obj, int id, string catalogId)> PantryObjects() {
+            foreach (var p in Data.Layout) if ((p.CatalogId == "pantry" || p.CatalogId == "fridge") && Furnishings.TryGetValue(p.InstanceId, out var o) && o) yield return (o, p.InstanceId, p.CatalogId);
+            if (standObjects.TryGetValue(KitchenState.StandBase + 1, out var stand) && stand) yield return (stand, KitchenState.StandBase + 1, "pantry");
+        }
+        // The fridge door swings open while someone stands in front of it, and closes when they walk away.
+        readonly Dictionary<GameObject, (Transform door, Quaternion shut, float open)> fridgeDoors = new Dictionary<GameObject, (Transform, Quaternion, float)>();
+        void SwingFridgeDoor(GameObject fridge) {
+            if (!fridgeDoors.TryGetValue(fridge, out var d)) {
+                Transform door = null; foreach (var t in fridge.GetComponentsInChildren<Transform>()) if (t.name.EndsWith("_Door_01")) { door = t; break; }
+                fridgeDoors[fridge] = d = (door, door ? door.localRotation : Quaternion.identity, 0f);
+            }
+            if (!d.door) return;
+            bool near = false;
+            foreach (var p in FindObjectsByType<FirstPersonPlayer>(FindObjectsSortMode.None)) {
+                var local = fridge.transform.InverseTransformPoint(p.transform.position);
+                if (local.z > 0 && local.z < 2.8f && Mathf.Abs(local.x) < 1.3f) near = true;
+            }
+            d.open = Mathf.MoveTowards(d.open, near ? 1 : 0, Time.deltaTime * 3f); fridgeDoors[fridge] = d;
+            d.door.localRotation = d.shut * Quaternion.Euler(0, -105f * Mathf.SmoothStep(0, 1, d.open), 0);
         }
         void TickPantryDisplays() {
             foreach (var key in new List<GameObject>(pantryViews.Keys)) if (!key) pantryViews.Remove(key);
-            foreach (var pantry in PantryObjects()) {
+            foreach (var (pantry, pantryId, catalogId) in PantryObjects()) {
                 if (!pantryViews.TryGetValue(pantry, out var views)) pantryViews[pantry] = views = new Dictionary<string, ShelfView>();
-                foreach (var spot in PantrySpots) {
+                var holds = KitchenState.ShelvesOf(Data, pantryId, catalogId);
+                if (catalogId == "fridge") SwingFridgeDoor(pantry);
+                foreach (var spot in catalogId == "fridge" ? FridgeSpots : PantrySpots) {
+                    // Shelves this storage doesn't hold (a pantry's cold shelves once you own a fridge) are emptied and can't be aimed at.
+                    bool held = System.Array.IndexOf(holds, spot.shelf) >= 0;
+                    var zone = pantry.transform.Find("Pantry shelf " + spot.shelf); if (zone) foreach (var c in zone.GetComponents<Collider>()) c.enabled = held;
+                    if (!held) {
+                        if (views.TryGetValue(spot.shelf, out var gone)) { foreach (var o in gone.Items) if (o) Destroy(o); gone.Items.Clear(); gone.Shown = 0; gone.Count = -1; if (gone.Label) gone.Label.gameObject.SetActive(false); }
+                        continue;
+                    }
                     if ((spot.shelf == "sauce" && !Game.State.Knows("midnight") || spot.shelf == "soup" && !Game.State.Knows("soup")) && Data.Stock(spot.ingredient) == 0) continue;
                     if (!views.TryGetValue(spot.shelf, out var v)) views[spot.shelf] = v = new ShelfView();
                     int count = Data.Stock(spot.ingredient); int show = count == 0 ? 0 : Mathf.Clamp(Mathf.CeilToInt(count / 4f), 1, 6);
