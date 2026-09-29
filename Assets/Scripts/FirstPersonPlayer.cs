@@ -184,6 +184,12 @@ namespace RestaurantCity {
             pitch = Mathf.DeltaAngle(0, Quaternion.LookRotation(direction).eulerAngles.x);
             if (Elevated) RefreshCameraPose(); else View.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
         }
-        void OnApplicationFocus(bool focus) { if (PlayerId == 0 && !focus && Game && !Game.SmokeMode) Game.SetPaused(true); }
+        // Alt-tabbing away no longer pauses the game (the pause menu could be hidden behind other screens, which looked
+        // like a freeze). Coming back re-captures the mouse unless a menu, panel or placement is open. Esc still pauses.
+        void OnApplicationFocus(bool focus) {
+            if (PlayerId != 0 || !focus || !Game || Game.SmokeMode || Game.Paused) return;
+            if (Game.Restaurant && (Game.Restaurant.PanelOpen || Game.Restaurant.PlacementActive)) return;
+            Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false;
+        }
     }
 }
