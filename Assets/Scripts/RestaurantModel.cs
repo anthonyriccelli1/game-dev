@@ -61,7 +61,7 @@ namespace RestaurantCity {
         };
         // Recipes you can buy in the Cookbook (cash, and the rank that sells them). Others are starters or found in the city.
         public static readonly (string dish,int price,int rank)[] ForSale = { ("soup",60,0) };
-        public static string HowToGet(string dish)=>dish=="burger"||dish=="salad"?"Starter recipe":dish=="midnight"?"Beat the rival in the alley at night and open his stash":Array.Exists(ForSale,f=>f.dish==dish)?"Buy it in the Cookbook":"Not available yet";
+        public static string HowToGet(string dish)=>DistrictCookbook.Find(dish)?.Hint??"Not available yet";
         public static RecipeDefinition Find(string dishId) => Array.Find(Recipes,r=>r.DishId==dishId);
         public static string Match(List<string> components) {
             if(components==null||components.Count==0)return "";
@@ -137,10 +137,10 @@ namespace RestaurantCity {
             new CatalogItem("sign_neon","Orbit Cafe neon sign",CatalogCategory.Exterior,85,1,1,0,5,"TWO STARS: your restaurant becomes a glowing local landmark.",2)
         }.Concat(FinishCatalog.ShopItems()).ToArray();
         public static readonly DishDefinition[] Dishes = {
-            new DishDefinition("burger","Comet burger",14,1,1,9,"grill",1,false,"The reliable favorite. Uses 1 protein + 1 produce."),
-            new DishDefinition("salad","Garden galaxy",11,0,2,5,"prep_bench",1,false,"Quick vegetarian salad. Uses 2 produce."),
-            new DishDefinition("soup","Planet soup",18,1,1,12,"stove",1,false,"Comfort food for mushroom folk. Needs a stove."),
-            new DishDefinition("midnight","Midnight bun",25,2,1,11,"grill",1,true,"Rare city recipe. Aliens and night owls seek it out."),
+            new DishDefinition("burger","Flats Burger",14,1,1,9,"grill",0,false,"The reliable favorite. Uses 1 protein + 1 produce."),
+            new DishDefinition("salad","Stoop Salad",11,0,2,5,"prep_bench",0,false,"Quick vegetarian salad. Uses 2 produce."),
+            new DishDefinition("soup","Planet Soup",18,1,1,12,"stove",1,false,"Comfort food for mushroom folk. Needs a stove."),
+            new DishDefinition("midnight","Midnight Burger",25,2,1,11,"grill",0,true,"Rare city recipe. Aliens and night owls seek it out."),
             new DishDefinition("dessert","Moonberry tart",24,0,2,13,"oven",2,false,"Two-star showpiece. Needs the Starlight oven.")
         };
         public static readonly CustomerDefinition[] Customers = {
@@ -178,7 +178,7 @@ namespace RestaurantCity {
     [Serializable] public partial class RestaurantState {
         public bool Owned,Open,PhysicalKitInstalled,CounterInstalled,TrashInstalled,ChromeUnlockSeen;
         public int Produce,Protein; // retired: migrated into Pantry on load
-        public int Served,Lost,Earnings,Rank=1,NextInstanceId=1,NextOrderId=1;[NonSerialized]public List<RepGain> PendingRep=new List<RepGain>();
+        public int Served,Lost,Earnings,Rank=0,NextInstanceId=1,NextOrderId=1;[NonSerialized]public List<RepGain> PendingRep=new List<RepGain>();
         public void Rep(string source,int amount){if(amount==0)return;(PendingRep??(PendingRep=new List<RepGain>())).Add(new RepGain{Source=source,Amount=amount});}
         public float Cleanliness=42,Satisfaction=50,ServiceSeconds;
         public List<PlacedItem> Layout=new List<PlacedItem>();
@@ -190,6 +190,8 @@ namespace RestaurantCity {
         // Placement grid: 1 m cells, 12 across and 12 deep (front row stops just short of the front windows).
         public const int GridW=12,GridD=12;
         public int Stars => Rank;
+        // Shop items marked "1 star" are starter items: available from day one, even at zero stars.
+        public int ShopStars => Math.Max(1,Rank);
         public bool CanCustomize => Owned && !Open && Orders.Count==0;
         public int Seats => Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.Seats??0);
         public int ShiftsRun; public int ShiftLevel=>ShiftDifficulty.Level(this);
@@ -209,7 +211,7 @@ namespace RestaurantCity {
         public int WagesPerOrder => Workers.Count(w=>w.Job!=StaffJob.Off);
         public string WallId => Layout.FindLast(p=>p.CatalogId.StartsWith("wall_"))?.CatalogId??"wall_shabby";
         public string FloorId => Layout.FindLast(p=>p.CatalogId.StartsWith("floor_"))?.CatalogId??"floor_shabby";
-        public string StarProgress => Rank>=2?"TWO STARS • faster oven, jukebox & neon sign unlocked":$"Two stars: {Served}/20 served • {Satisfaction:0}/75 satisfaction • {Ambience}/12 ambience";
+        public string StarProgress { get { if(Rank+1>=StarGoals.Length)return StarText.Of(Rank)+"  Top of Old Market for now"; var g=NextStarGoal; return "Next star ("+StarText.Words(Rank+1)+"): "+Served+"/"+g.served+" served • "+Satisfaction.ToString("0")+"/"+g.satisfaction+" satisfaction"+(g.ambience>0?" • "+Ambience+"/"+g.ambience+" ambience":""); } }
         public bool HasEquipment(string id) => Layout.Exists(p=>p.CatalogId==id);
         static bool Fail(string text,out string message) {message=text;return false;}
         public bool BuyRestaurant(GameState wallet,out string message) {
@@ -243,7 +245,7 @@ namespace RestaurantCity {
             var item=RestaurantCatalog.Find(id);
             if(item==null)return Fail("Unknown catalog item.",out message);
             if(rotation<0||rotation>3)return Fail("Rotation must be 0, 1, 2, or 3.",out message);
-            if(item.RequiredStars>Stars)return Fail("Reach two stars to unlock this item.",out message);
+            if(item.RequiredStars>ShopStars)return Fail("Reach "+StarText.Words(item.RequiredStars)+" to unlock this item.",out message);
             if(item.Tier>PlayerRank)return Fail("Unlocks at "+Reputation.Titles[item.Tier]+": better gear arrives with each district.",out message);
             if(item.IsFinish||item.IsExterior){message="Ready to install.";return true;}
             int width=rotation%2==0?item.Width:item.Depth,depth=rotation%2==0?item.Depth:item.Width;
@@ -322,7 +324,7 @@ namespace RestaurantCity {
         public string IngredientLock(GameState wallet,IngredientDef d){
             if(d.Source!=Ingredients.Milo)return "Only from Zeeb (phone)";
             if(!string.IsNullOrEmpty(d.Recipe)&&!wallet.Knows(d.Recipe))return "Learn "+RestaurantCatalog.Dish(d.Recipe).Name+" first";
-            if(Stars<d.RequiredStars)return "Needs a "+d.RequiredStars+"-star restaurant";
+            if(ShopStars<d.RequiredStars)return "Needs "+StarText.Words(d.RequiredStars);
             return null;
         }
         // Anti-softlock: broke and can't cook? Once a day Milo fronts you three of each basic, enough to earn your way back.
@@ -383,7 +385,11 @@ namespace RestaurantCity {
             if(Reviews.Count>12)Reviews.RemoveAt(Reviews.Count-1);Satisfaction=Reviews.Average(r=>r.Score);
         }
         public void RecordQueueLoss(int customerType){Lost++;Rep("Guests who left",Reputation.LostCustomer);AddReview(new RestaurantOrder{CustomerType=customerType,DishId="burger"},20,"No clean table became available. Clear and wash dishes, or add seating.");}
-        void UpdateRank(){if(Rank<2&&Served>=20&&Satisfaction>=75&&Ambience>=12){Rank=2;Rep("New stars",Reputation.NewStar);}}
+        // Stars climb one at a time. The first comes quickly (a couple of good shifts); later ones need more guests,
+        // happier guests and a nicer room. Served is lifetime, so a lost star is won back faster than it was first earned.
+        public static readonly (int served,float satisfaction,int ambience)[] StarGoals={(0,0,0),(8,60,0),(20,75,12),(60,82,22)};
+        public (int served,float satisfaction,int ambience) NextStarGoal=>StarGoals[Math.Min(StarGoals.Length-1,Rank+1)];
+        void UpdateRank(){while(Rank+1<StarGoals.Length){var g=StarGoals[Rank+1];if(Served<g.served||Satisfaction<g.satisfaction||Ambience<g.ambience)break;Rank++;Rep("New stars",Reputation.NewStar);}}
         public bool Clean(out string message) {if(!Owned)return Fail("Buy the restaurant first.",out message);if(Cleanliness>=100)return Fail("The restaurant is already spotless.",out message);Cleanliness=Math.Min(100,Cleanliness+25);message=$"Tables wiped. Cleanliness {Cleanliness:0}%.";return true;}
         public bool Hire(GameState wallet,string id,out string message) {
             var d=RestaurantCatalog.Worker(id);if((!Owned&&!wallet.StandBuilt)||d==null)return Fail("Set up your food stand first.",out message);

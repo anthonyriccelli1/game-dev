@@ -97,7 +97,7 @@ namespace RestaurantCity {
             if(price<0)return Fail("Choose a valid "+(d!=null&&d.IsWall?"wall section":"floor tile")+" for this finish.",out reason);
             if(wallet==null)return Fail("Your wallet is unavailable.",out reason);
             if(price==0){reason="This finish is already applied. No charge.";return true;}
-            if(Stars<d.RequiredStars)return Fail("Requires a "+d.RequiredStars+"-star restaurant.",out reason);
+            if(ShopStars<d.RequiredStars)return Fail("Requires "+StarText.Words(d.RequiredStars)+".",out reason);
             if(wallet.RankEarned<d.Tier)return Fail("Unlocks at "+Reputation.Titles[d.Tier]+" reputation.",out reason);
             if(wallet.Cash<price)return Fail("You need $"+price+" for "+d.Name+".",out reason);
             var keys=(fill?FinishTargets(d.IsWall):new[]{key}).Where(k=>FinishAt(k)!=id).ToArray();

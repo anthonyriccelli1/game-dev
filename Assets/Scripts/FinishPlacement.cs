@@ -59,7 +59,7 @@ namespace RestaurantCity {
             var finish = FinishCatalog.Find(id);
             if (finish == null) return;
             if (finish.Tier > Game.State.RankEarned) { Feedback(finish.Name + " unlocks at " + Reputation.Titles[finish.Tier] + "."); return; }
-            if (finish.RequiredStars > Data.Stars) { Feedback(finish.Name + " unlocks at " + finish.RequiredStars + " stars."); return; }
+            if (finish.RequiredStars > Data.ShopStars) { Feedback(finish.Name + " unlocks at " + finish.RequiredStars + " stars."); return; }
             if (PlacementActive) CancelPlacement(false);
             SelectedCatalogId = id; movingId = -1; PreviewRotation = 0;
             BeginPlacementView(); FinishBrushActive = true;

@@ -19,6 +19,8 @@ namespace RestaurantCity {
         readonly Color coral = new Color(.9f, .34f, .23f);
         readonly Color muted = new Color(.39f, .46f, .45f);
         readonly Color pale = new Color(.88f, .88f, .79f);
+        readonly Color gold = new Color(.86f, .62f, .2f);
+        readonly Color purple = new Color(.45f, .3f, .7f);
         Canvas canvas;
         Font font;
         RectTransform hud, modal, footer, cityBadge, serviceBadge;
@@ -55,7 +57,7 @@ namespace RestaurantCity {
             hud = Block(canvas.transform, "Restaurant status", 24, 22, 1392, 78, ink);
             Block(hud, "Accent", 0, 0, 7, 78, teal);
             Label(hud, "Little Flame", 24, 10, 242, 32, 27, paper, true);
-            rank = Label(hud, "One star / a new beginning", 24, 46, 310, 22, 14, paper);
+            rank = Label(hud, "", 24, 42, 330, 30, 14, paper);
             status = Label(hud, "", 364, 14, 460, 52, 17, paper);
             stock = Label(hud, "", 850, 12, 294, 55, 15, paper);
             cash = Label(hud, "", 1170, 10, 194, 52, 32, paper, true, TextAnchor.MiddleRight);
@@ -80,11 +82,11 @@ namespace RestaurantCity {
             canvas.enabled = Owner.PanelOpen || Owner.PlacementActive;
             hud.gameObject.SetActive(visible && full);
             cityBadge.gameObject.SetActive(visible && !full);
-            cityRank.text = "Little Flame  /  " + (s.Stars >= 2 ? "Two stars" : "One star") + "\n" + s.Satisfaction.ToString("0") + "% satisfaction   /   " + s.Served + " happy memories served";
+            cityRank.text = "Little Flame  <color=#F2C27A>" + StarText.Of(s.Stars) + "</color>\n" + s.Satisfaction.ToString("0") + "% satisfaction   /   " + s.Served + " happy memories served";
             footer.gameObject.SetActive(visible && full);
             notice.gameObject.SetActive(visible && full && !Owner.PanelOpen);
             serviceBadge.gameObject.SetActive(visible && Owner.Inside && !Owner.PanelOpen && !Owner.PlacementActive);
-            rank.text = s.Stars >= 2 ? "Two stars / neighborhood favorite" : "One star / a new beginning";
+            rank.text = "<size=19><color=#F2C27A>" + StarText.Of(s.Stars) + "</color></size>  " + StarText.Title(s.Stars);
             status.text = "Satisfaction " + s.Satisfaction.ToString("0") + "%    |    " + (s.Open ? "Open for service" : "Closed for arrivals") + "\n" + s.Served + " served    |    Ambience " + s.Ambience + "    |    Cleanliness " + s.Cleanliness.ToString("0") + "%";
             stock.text = "Pantry: " + string.Join(", ", s.Pantry.Where(l => l.Count > 0).Select(l => l.Count + " " + Ingredients.Name(l.Id))) + "\n" + s.Seats + " seats    |    " + s.CookSlots + " cooking stations";
             cash.text = "$" + Owner.Game.State.Cash;
@@ -182,7 +184,7 @@ namespace RestaurantCity {
                 var entry = item; int col = index % 3, row = index / 3; index++;
                 var finish = FinishCatalog.Find(entry.Id);
                 var card = Block(content, entry.Name, col * 386, row * 232, 372, 219, white);
-                bool tierLocked = entry.Tier > Owner.Game.State.RankEarned, locked = tierLocked || entry.RequiredStars > Owner.Data.Stars;
+                bool tierLocked = entry.Tier > Owner.Game.State.RankEarned, locked = tierLocked || entry.RequiredStars > Owner.Data.ShopStars;
                 Block(card, "Swatch", 0, 0, 372, 5, locked ? muted : teal);
                 var thumbnail = Box(card, "Product picture", 12, 17, 105, 106);
                 var raw = thumbnail.gameObject.AddComponent<RawImage>();
@@ -247,14 +249,19 @@ namespace RestaurantCity {
                 bool known = st.Knows(entry.Id), hasGear = string.IsNullOrEmpty(entry.Equipment) || Owner.Data.HasEquipment(entry.Equipment);
                 bool available = Owner.Data.IsDishAvailable(st, entry.Id), active = Owner.Data.ActiveMenu.Contains(entry.Id);
                 var card = Block(content, entry.Name, col * 580, row * 155, 562, 142, known ? white : new Color(.92f, .91f, .86f));
-                Label(card, entry.Name, 18, 13, 300, 30, 23, known ? ink : muted, true);
-                string badge = entry.Id == "burger" || entry.Id == "salad" ? "STARTER" : !known ? "LOCKED" : entry.Id == "midnight" ? "FOUND" : "BOUGHT";
-                Label(card, badge, 318, 19, 110, 22, 13, known ? teal : coral, true, TextAnchor.MiddleRight);
-                Label(card, "$" + entry.Price, 441, 13, 101, 30, 23, teal, true, TextAnchor.MiddleRight);
-                Label(card, "Uses " + string.Join(" + ", Ingredients.For(entry.Id).Select(Ingredients.Name)) + "   /   " + (string.IsNullOrEmpty(entry.Equipment) ? "" : "on the " + EquipmentName(entry.Equipment)), 18, 50, 521, 25, 15, muted);
-                string help = !known ? RecipeBook.HowToGet(entry.Id) + "." : !hasGear ? "You know it. Now buy a " + EquipmentName(entry.Equipment) + " in the Shop." : entry.RequiredStars > Owner.Data.Stars ? "Reach " + entry.RequiredStars + " stars to serve it." : active ? "Guests can order this dish." : "Add it so guests can order it.";
-                Label(card, help, 18, 85, 335, 43, 14, known ? ink : coral);
-                Button(card, !available ? (known ? "Needs gear" : "Locked") : active ? "On menu" : "Add to menu", 372, 87, 171, 35, () => Owner.ToggleDish(entry.Id), available && active ? teal : pale, available && active ? white : available ? ink : muted, available);
+                // The dish itself, plated (blacked out until you know it).
+                if (known) { var pic = Box(card, "Dish picture", 10, 11, 120, 120).gameObject.AddComponent<RawImage>(); pic.texture = Owner.GetDishIcon(entry.Id); pic.raycastTarget = false; pic.color = available ? Color.white : new Color(.65f, .65f, .65f); }
+                else Block(card, "Blacked out", 10, 11, 120, 120, new Color(.1f, .1f, .12f));
+                var cook = DistrictCookbook.Find(entry.Id);
+                Label(card, entry.Name, 142, 11, 250, 30, 22, known ? ink : muted, true);
+                string badge = !known ? "LOCKED" : cook != null ? DistrictCookbook.SourceLabel(cook.Source) : "";
+                Label(card, badge, 330, 17, 110, 22, 12, known ? teal : coral, true, TextAnchor.MiddleRight);
+                Label(card, "$" + entry.Price, 441, 11, 101, 30, 23, teal, true, TextAnchor.MiddleRight);
+                Label(card, "Uses " + string.Join(" + ", Ingredients.For(entry.Id).Select(Ingredients.Name)) + (string.IsNullOrEmpty(entry.Equipment) ? "" : "  /  " + EquipmentName(entry.Equipment)), 142, 44, 400, 25, 14, muted);
+                bool starLocked = cook != null && cook.StarGated && Owner.Data.Stars < cook.Stars;
+                string help = !known ? RecipeBook.HowToGet(entry.Id) : !hasGear ? "Now buy a " + EquipmentName(entry.Equipment) + " in the Shop." : starLocked ? "Needs " + StarText.Words(cook.Stars) + " to serve." : active ? "Guests can order this dish." : "Add it so guests can order it.";
+                Label(card, help, 142, 76, 220, 56, 14, known && !starLocked ? ink : coral);
+                Button(card, !available ? (known ? (starLocked ? "Needs stars" : "Needs gear") : "Locked") : active ? "On menu" : "Add to menu", 372, 87, 171, 35, () => Owner.ToggleDish(entry.Id), available && active ? teal : pale, available && active ? white : available ? ink : muted, available);
             }
             var pantry = Block(sheet, "Pantry", 30, 589, 1160, 61, ink);
             Label(pantry, "Pantry: " + string.Join("   ", Ingredients.All.Where(i => Owner.Data.Stock(i.Id) > 0 || i.Source == Ingredients.Milo && i.Recipe == null).Select(i => Ingredients.Name(i.Id) + " " + Owner.Data.Stock(i.Id))), 16, 16, 760, 33, 17, paper, true);
@@ -262,20 +269,31 @@ namespace RestaurantCity {
         }
 
         // Cookbook: how every dish is built, and where new recipes come from (bought here, or found in the city).
+        // One cookbook per district, laid out like the People book: every recipe shows its name; locked ones show a
+        // blacked-out picture and a hint about how to get them.
         void BuildCookbook(RectTransform sheet) {
-            var st = Owner.Game.State;
-            Label(sheet, "Buy new recipes here. Rare ones can't be bought: they're hidden in the city.", 30, 141, 1148, 29, 16, ink);
-            var content = Scroller(sheet, 30, 182, 1160, 466, RecipeBook.Recipes.Length * 165);
-            for (int i = 0; i < RecipeBook.Recipes.Length; i++) {
-                var recipe = RecipeBook.Recipes[i]; var dish = RestaurantCatalog.Dish(recipe.DishId); string id = dish.Id;
-                bool known = st.Knows(id); var offer = Array.Find(RecipeBook.ForSale, f => f.dish == id);
-                var card = Block(content, dish.Name, 0, i * 165, 1141, 152, known ? white : new Color(.92f, .91f, .86f));
-                Label(card, dish.Name + (known ? "" : "  (not learned)"), 18, 12, 700, 30, 22, known ? ink : muted, true);
-                Label(card, "Needs: " + string.Join(" + ", recipe.Components.Select(ComponentName)) + "   /   sells for $" + dish.Price, 18, 44, 800, 24, 15, teal, true);
-                Label(card, known ? string.Join("   >   ", recipe.Steps) : RecipeBook.HowToGet(id) + ".", 18, 70, offer.dish != null && !known ? 820 : 1100, 76, 14, muted);
-                if (offer.dish != null && !known) {
-                    bool rankOk = st.RankEarned >= offer.rank, cash = st.Cash >= offer.price;
-                    Button(card, !rankOk ? "Needs " + Reputation.Titles[offer.rank] : "Buy recipe  /  $" + offer.price, 870, 50, 250, 44, () => Owner.BuyRecipe(id), rankOk && cash ? teal : pale, rankOk && cash ? white : muted, rankOk && cash);
+            var st = Owner.Game.State; var book = DistrictCookbook.OldMarket;
+            Label(sheet, DistrictCookbook.District.ToUpper() + " COOKBOOK  /  " + DistrictCookbook.Known(st) + " of " + book.Length + " recipes", 30, 136, 760, 34, 22, ink, true);
+            Label(sheet, "Your restaurant  <size=24>" + StarText.Of(Owner.Data.Stars) + "</size>", 760, 134, 428, 36, 18, gold, true, TextAnchor.MiddleRight);
+            var content = Scroller(sheet, 30, 180, 1160, 470, Mathf.CeilToInt(book.Length / 2f) * 168);
+            for (int i = 0; i < book.Length; i++) {
+                var e = book[i]; string id = e.DishId; bool known = st.Knows(id); var dish = RestaurantCatalog.Dish(id);
+                bool greyed = known && e.StarGated && Owner.Data.Stars < e.Stars;
+                var card = Block(content, e.Name, (i % 2) * 580, (i / 2) * 168, 562, 156, known ? white : new Color(.9f, .89f, .84f));
+                if (known) { var pic = Box(card, "Dish picture", 12, 14, 128, 128).gameObject.AddComponent<RawImage>(); pic.texture = Owner.GetDishIcon(id); pic.raycastTarget = false; pic.color = greyed ? new Color(.6f, .6f, .6f) : Color.white; }
+                else Block(card, "Blacked out", 12, 14, 128, 128, new Color(.1f, .1f, .12f));
+                Label(card, e.Name, 156, 12, 290, 32, 23, known ? ink : muted, true);
+                Label(card, DistrictCookbook.SourceLabel(e.Source), 440, 18, 108, 22, 12, e.Source == RecipeSource.Found ? purple : e.Source == RecipeSource.Raid ? coral : teal, true, TextAnchor.MiddleRight);
+                if (known) {
+                    Label(card, (dish != null ? "Sells for $" + dish.Price + "   /   " : "") + e.Blurb, 156, 48, 392, 44, 14, muted);
+                    Label(card, greyed ? "Win back " + StarText.Words(e.Stars) + " to cook it again." : Owner.Data.ActiveMenu.Contains(id) ? "On your menu." : "Learned. Add it on the Menu tab.", 156, 100, 392, 40, 15, greyed ? coral : teal, true);
+                } else {
+                    Label(card, e.Hint, 156, 48, 392, 44, 15, ink);
+                    if (e.Source == RecipeSource.Cookbook) {
+                        bool starsOk = Owner.Data.Stars >= e.Stars, cash = st.Cash >= e.Price, can = e.Ready && starsOk && cash;
+                        string label = !e.Ready ? "Coming soon" : !starsOk ? "Needs " + StarText.Of(e.Stars).Substring(0, e.Stars) : "Buy recipe  /  $" + e.Price;
+                        Button(card, label, 156, 102, 250, 38, () => Owner.BuyRecipe(id), can ? teal : pale, can ? white : muted, can);
+                    } else if (!e.Ready) Label(card, "Coming soon", 156, 106, 250, 30, 14, muted, true);
                 }
             }
         }
@@ -471,7 +489,7 @@ namespace RestaurantCity {
                     var r = book[i]; bool known = gs.HasMet(r.Id);
                     var card = Block(content, r.Name, (i % 4) * 285, bookTop + 60 + (i / 4) * 300, 270, 285, known ? new Color(1f, .96f, .86f) : pale);
                     var pic = Box(card, "Portrait", 65, 12, 140, 140).gameObject.AddComponent<RawImage>(); pic.texture = ResidentIcons.Get(r, !known); pic.raycastTarget = false;
-                    Label(card, known ? r.Name : "???", 10, 158, 250, 30, 21, ink, true, TextAnchor.MiddleCenter);
+                    Label(card, r.Name, 10, 158, 250, 30, 21, known ? ink : muted, true, TextAnchor.MiddleCenter);
                     Label(card, known ? r.Rarity + "  /  " + r.Job : r.Rarity + (r.NightOnly ? "  /  night only" : "") + (r.MinAmbience > 0 ? "  /  needs ambience " + r.MinAmbience : ""), 5, 188, 260, 24, 13, muted, false, TextAnchor.MiddleCenter);
                     string id = r.Id;
                     if (known) Button(card, "Recruit  /  " + r.FluxCost + " Flux", 15, 222, 240, 46, () => Owner.Hire(id), teal, white, gs.Flux >= r.FluxCost);
@@ -486,7 +504,7 @@ namespace RestaurantCity {
                 Label(card, parts[0], 25, 24, 495, 45, 26, paper, true);
                 Label(card, parts[1], 25, 78, 507, 70, 17, paper);
                 Label(card, "25 Flux    /    Rival exclusive", 25, 172, 520, 28, 16, paper, true);
-                Button(card, "Locked: they only work at a four-star restaurant", 25, 233, 508, 43, () => { }, pale, ink, false);
+                Button(card, "Locked: they only work for a three-star restaurant", 25, 233, 508, 43, () => { }, pale, ink, false);
             }
         }
 
@@ -583,8 +601,9 @@ namespace RestaurantCity {
         void BuildReviews(RectTransform sheet) {
             var s = Owner.Data;
             var banner = Block(sheet, "Next star", 30, 141, 1160, 133, ink);
-            Label(banner, s.Stars >= 2 ? "Two stars. The neighborhood noticed." : "The road to two stars", 20, 15, 1096, 36, 27, paper, true);
-            Label(banner, "Serve 20 guests    " + Mathf.Min(s.Served, 20) + "/20          Satisfaction    " + s.Satisfaction.ToString("0") + "/75          Ambience    " + s.Ambience + "/12", 20, 62, 1097, 28, 19, paper);
+            Label(banner, StarText.Of(s.Stars) + "   " + (s.Stars + 1 < RestaurantState.StarGoals.Length ? "The road to " + StarText.Words(s.Stars + 1) : "Top of " + DistrictCookbook.District), 20, 15, 1096, 36, 27, gold, true);
+            var goal = s.NextStarGoal;
+            Label(banner, "Serve " + goal.served + " guests    " + Mathf.Min(s.Served, goal.served) + "/" + goal.served + "          Satisfaction    " + s.Satisfaction.ToString("0") + "/" + goal.satisfaction + (goal.ambience > 0 ? "          Ambience    " + s.Ambience + "/" + goal.ambience : ""), 20, 62, 1097, 28, 19, paper);
             Label(banner, "Your next star unlocks premium furnishings and a new dish. Food, speed, cleanliness and atmosphere all matter.", 20, 99, 1117, 25, 14, paper);
             int guestStart = Mathf.Max(244, s.Reviews.Count * 105 + 16);
             var content = Scroller(sheet, 30, 292, 1160, 357, guestStart + 354);

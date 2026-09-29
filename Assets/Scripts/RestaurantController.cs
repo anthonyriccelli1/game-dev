@@ -244,7 +244,7 @@ namespace RestaurantCity {
             if (FinishCatalog.Find(id) != null) { BeginFinishBrush(id); return; }
             var item = RestaurantCatalog.Find(id); if (item == null) return;
             if (item.Tier > Game.State.RankEarned) { Feedback(item.Name + " unlocks at " + Reputation.Titles[item.Tier] + ". Better gear arrives with each district."); return; }
-            if (Data.Stars < item.RequiredStars) { Feedback("Earn two stars to unlock " + item.Name + "."); return; }
+            if (Data.ShopStars < item.RequiredStars) { Feedback("Earn " + StarText.Words(item.RequiredStars) + " to unlock " + item.Name + "."); return; }
             if (item.IsFinish || item.IsExterior) {
                 bool bought = Data.Place(Game.State, id, 0, 0, 0, out string reason); Feedback(reason);
                 if (bought) { RebuildLayout(); PlayChime(true); Game.Save(); UI.Rebuild(); }
@@ -364,6 +364,25 @@ namespace RestaurantCity {
             cam.transform.position = bounds.center + new Vector3(5, 4, 6); cam.transform.LookAt(bounds.center); cam.nearClipPlane = .05f; cam.farClipPlane = 30;
             var fill = new GameObject("Catalog light").AddComponent<Light>(); fill.type = LightType.Directional; fill.cullingMask = 1 << 30; fill.intensity = 1.3f; fill.transform.rotation = Quaternion.Euler(35, -30, 0);
             var texture = new RenderTexture(320, 240, 24); texture.Create();
+            RenderPipeline.SubmitRenderRequest(cam, new UniversalRenderPipeline.SingleCameraRequest { destination = texture });
+            thumbnails[key] = texture; stage.SetActive(false); Destroy(stage); Destroy(cam.gameObject); Destroy(fill.gameObject); return texture;
+        }
+        // A photo of the plated dish (menu and cookbook pictures).
+        public Texture GetDishIcon(string dishId) {
+            string key = "dish:" + dishId;
+            if (thumbnails.TryGetValue(key, out Texture found)) return found;
+            var recipe = RecipeBook.Find(dishId);
+            var stage = new GameObject("Dish photo stage"); stage.transform.position = new Vector3(820, 0, 800);
+            var plate = KitchenArt.CreateItem("Plate", recipe != null ? new List<string>(recipe.Components) : new List<string>(), stage.transform); plate.transform.localPosition = Vector3.zero;
+            foreach (var t in stage.GetComponentsInChildren<Transform>()) t.gameObject.layer = 30;
+            var cam = new GameObject("Dish camera").AddComponent<Camera>(); cam.enabled = false; cam.cullingMask = 1 << 30;
+            cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(.93f, .9f, .8f); cam.orthographic = true;
+            var renderers = plate.GetComponentsInChildren<Renderer>(); Bounds bounds = renderers.Length > 0 ? renderers[0].bounds : new Bounds(plate.transform.position, Vector3.one * .3f);
+            foreach (var r in renderers) bounds.Encapsulate(r.bounds);
+            cam.orthographicSize = Mathf.Max(.12f, Mathf.Max(bounds.size.x, bounds.size.z) * .62f);
+            cam.transform.position = bounds.center + new Vector3(0, 1.2f, 1.1f); cam.transform.LookAt(bounds.center); cam.nearClipPlane = .02f; cam.farClipPlane = 10;
+            var fill = new GameObject("Dish light").AddComponent<Light>(); fill.type = LightType.Directional; fill.cullingMask = 1 << 30; fill.intensity = 1.35f; fill.transform.rotation = Quaternion.Euler(50, -30, 0);
+            var texture = new RenderTexture(256, 256, 24); texture.Create();
             RenderPipeline.SubmitRenderRequest(cam, new UniversalRenderPipeline.SingleCameraRequest { destination = texture });
             thumbnails[key] = texture; stage.SetActive(false); Destroy(stage); Destroy(cam.gameObject); Destroy(fill.gameObject); return texture;
         }

@@ -63,7 +63,7 @@ namespace RestaurantCity {
     // Planet soup: buy the recipe, simmer with a stir, ladle onto a plate. An unstirred pot scorches.
     Check(!st.Knows("soup")&&!Game.Restaurant.Data.IsDishAvailable(st,"soup"),"soup starts unknown");
     Check(InstallFirstFree("stove"),"install a stove");st.Kitchen.EnsureStations(Game.Restaurant.Data);Game.Restaurant.RebuildLayout();
-    Check(st.BuyRecipe("soup",out var bm),"buy Planet soup in the Cookbook: "+bm);Check(Game.Restaurant.Data.IsDishAvailable(st,"soup"),"soup can go on the menu once bought with a stove");
+    Check(!st.BuyRecipe("soup",out var zm)&&Game.Restaurant.Data.Stars==0,"Planet Soup is a 1-star cookbook recipe (new restaurants start at 0 stars): "+zm);Game.Restaurant.Data.Rank=Math.Max(1,Game.Restaurant.Data.Rank);Check(st.BuyRecipe("soup",out var bm),"buy Planet soup in the Cookbook: "+bm);Check(Game.Restaurant.Data.IsDishAvailable(st,"soup"),"soup can go on the menu once bought with a stove");
     st.Restaurant.AddStock("soup_veg",4);var stove=Station("stove");
     Act("pantry","soup");Act("stove");st.Kitchen.Tick(st,6);Act("stove");st.Kitchen.Tick(st,8.1f);Check(st.Kitchen.At(stove)?.Kind==KitchenItemKind.Soup,"a stirred pot becomes soup");
     Act("plate_rack");Act("stove");Check(st.Kitchen.RecipeOf(st.Kitchen.Hold("player:0"))=="soup"&&st.Kitchen.At(stove)==null,"ladle the soup onto a plate");

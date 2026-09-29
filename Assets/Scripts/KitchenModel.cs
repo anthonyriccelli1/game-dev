@@ -336,7 +336,7 @@ namespace RestaurantCity {
    if(!ShiftActive)return LastReport;ShiftActive=false;var r=game.Restaurant;
    LastReport=new ShiftReport{GrossSales=ShiftGross,IngredientCosts=ShiftCosts,Wages=ShiftWages,Net=(int)Math.Round(ShiftGross-ShiftWages-ShiftCosts),Served=r.Served-ShiftServed,Lost=r.Lost-ShiftLost,Satisfaction=r.Satisfaction,StarsBefore=ShiftStars,StarsAfter=r.Stars,StaffSummary=string.Join(" • ",r.Workers.Select(w=>w.Id+": "+w.TasksCompleted+" tasks, "+(int)w.Energy+" energy"))};
    if(LastReport.Served+LastReport.Lost>0){int lvl=r.ShiftLevel;r.ShiftsRun++;LastReport.Comments.Add("Shift "+r.ShiftsRun+" done (difficulty "+lvl+"). Word is spreading: next shift brings "+ShiftDifficulty.Describe(r.ShiftLevel,false)+".");}
-   if(LastReport.Served+LastReport.Lost>0){PoorShifts=r.Satisfaction<45?PoorShifts+1:0;if(PoorShifts>=2&&r.Rank>1){r.Rank--;PoorShifts=0;LastReport.Comments.Add("Lost a star after two consecutive shifts below 45% satisfaction. Improve waits, food and cleanliness.");}}
+   if(LastReport.Served+LastReport.Lost>0){PoorShifts=r.Satisfaction<45?PoorShifts+1:0;if(PoorShifts>=2&&r.Rank>0){r.Rank--;PoorShifts=0;LastReport.Comments.Add("Lost a star after two shifts below 45% satisfaction. Dishes that need it are greyed out until you win it back.");}else if(PoorShifts==1&&r.Rank>0)LastReport.Comments.Add("Your "+StarText.Words(r.Rank)+" rating is at risk: one more shift below 45% satisfaction loses a star.");}
    LastReport.StarsAfter=r.Stars;LastReport.Comments.AddRange(r.Reviews.Take(3).Select(x=>x.Comment));if(LastReport.Comments.Count==0)LastReport.Comments.Add("No guests served. Open the doors and prepare the first orders.");return LastReport;
   }
   public void SanitizeAfterLoad(GameState game){
