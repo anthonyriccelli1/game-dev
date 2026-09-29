@@ -139,6 +139,11 @@ namespace RestaurantCity {
                     if (shot.name.Contains("chase")) { insp.Mode = RestaurantController.InspectorMode.Chase; insp.Target = p; insp.Root.transform.position = shot.pos + new Vector3(12, 0, 0);
                         for (int i = 0; i < 25; i++) { g.Clock = 160; p.transform.position = shot.pos; insp.Lost = 0; rc.Advance(.04f); yield return null; } }
                 }
+                if (rc && shot.name.Contains("stand_tables")) {
+                    // Plates left on the sidewalk tables, to check they sit on the wooden tabletops.
+                    var dirty = Game.State.StandTableDirty; while (dirty.Count < 4) dirty.Add(false); for (int i = 0; i < 4; i++) dirty[i] = true;
+                    rc.Advance(.02f); for (int i = 0; i < 5; i++) yield return null;
+                }
                 if (rc && shot.name.Contains("walls_snap")) {
                     // A kitchen wall across the room (with a doorway gap), a service window, a T-joint wall, and
                     // furniture in the front row by the windows.
@@ -185,7 +190,7 @@ namespace RestaurantCity {
                     // Pack seating sets with residents actually sitting on their seats, to check chair height and facing.
                     var old = GameObject.Find("Style lineup"); if (old) Destroy(old);
                     var line = new GameObject("Style lineup").transform; Game.State.StandOpen = false;
-                    string[] sets = { "cafe_table", "stool_pair", "booth_teal", "communal_table", "fern", "trash" };
+                    string[] sets = { "patio_table", "stool_pair", "booth_teal", "communal_table", "fern", "trash" };
                     float x = -15f; int who = 0;
                     foreach (var id in sets) {
                         var f = RestaurantArt.CreateFurniture(id, line); ArtOverrides.Apply(f, "Furniture", id);

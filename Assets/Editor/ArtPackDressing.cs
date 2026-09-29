@@ -65,6 +65,8 @@ public static class ArtPackDressing {
     static (string src, Vector3 pos, Vector3 scale, float yaw) RS(string src, float x, float y, float z, Vector3 scale, float yaw = 0) => (Shops + src + ".prefab", new Vector3(x, y, z), scale, yaw);
     static readonly (string cat, string id, (string src, Vector3 pos, Vector3 scale, float yaw)[] parts)[] Sets = {
         ("Furniture", "cafe_table", new[] { R("Props/SM_Prop_Cafe_Table_Small_01", 0, 0, 0, 0, .85f), R("Props/SM_Prop_Cafe_Chair_02", 0, 0, -.65f), R("Props/SM_Prop_Cafe_Chair_02", 0, 0, .65f, 180) }),
+        // Wooden folding bistro set for the sidewalk (the stand's tables) and patios.
+        ("Furniture", "patio_table", new[] { R("Props/SM_Prop_Cafe_Table_Folding_01", 0, 0, 0, 0, 1.12f), R("Props/SM_Prop_Cafe_Chair_Folding_01", 0, 0, -.62f), R("Props/SM_Prop_Cafe_Chair_Folding_01", 0, 0, .62f, 180) }),
         ("Furniture", "stool_pair", new[] { R("Props/SM_Prop_Cafe_Table_Small_03", 0, 0, 0, 0, .78f), RS("Props/SM_Prop_Bar_Stool_01", 0, 0, -.62f, new Vector3(1.1f, .62f, 1.1f)), RS("Props/SM_Prop_Bar_Stool_01", 0, 0, .62f, new Vector3(1.1f, .62f, 1.1f), 180) }),
         ("Furniture", "booth_coral", new[] { R("Props/SM_Prop_Cafe_Booth_Seat_01", 0, 0, -.8f), R("Props/SM_Prop_Cafe_Booth_Seat_01", 0, 0, .8f, 180), RS("Props/SM_Prop_Cafe_Table_Large_01", 0, 0, 0, new Vector3(.85f, .7f, .5f)) }),
         ("Furniture", "booth_teal", new[] { R("Props/SM_Prop_Cafe_Booth_Seat_01", 0, 0, -.8f), R("Props/SM_Prop_Cafe_Booth_Seat_01", 0, 0, .8f, 180), RS("Props/SM_Prop_Cafe_Table_Large_01", 0, 0, 0, new Vector3(.85f, .7f, .5f)) }),

@@ -99,6 +99,7 @@ namespace RestaurantCity {
             new CatalogItem("fridge","Mint refrigerator",CatalogCategory.Kitchen,40,1,1,0,1,"Raises each stock limit from 24 to 48; keeps ready dishes fresh longer."),
             new CatalogItem("stool_pair","Counter stools",CatalogCategory.Seating,20,2,2,2,1,"Two inexpensive customer seats."),
             new CatalogItem("cafe_table","Daisy cafe table",CatalogCategory.Seating,30,2,2,2,2,"Two seats and a cheery tabletop."),
+            new CatalogItem("patio_table","Wooden patio set",CatalogCategory.Seating,26,2,2,2,2,"Slatted folding table and chairs, like the ones outside the stand."),
             new CatalogItem("booth_teal","Teal diner booth",CatalogCategory.Seating,65,3,2,4,4,"Four seats; a proper neighborhood hangout."),
             new CatalogItem("booth_coral","Coral diner booth",CatalogCategory.Seating,65,3,2,4,4,"Four seats with warm coral upholstery."),
             new CatalogItem("communal_table","Community table",CatalogCategory.Seating,90,4,2,6,3,"Six seats; makes rushes busier and more profitable."),

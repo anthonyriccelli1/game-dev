@@ -278,7 +278,7 @@ namespace RestaurantCity {
                 foreach(float y in new[]{.61f,1.23f}){Box("OvenFrame",p,new Vector3(-.1f,y,.441f),new Vector3(1.4f,.53f,.055f),Brass);Box("OvenWindow",p,new Vector3(-.1f,y,.48f),new Vector3(1.15f,.32f,.04f),Ink);Box("OvenBar",p,new Vector3(-.1f,y+.2f,.57f),new Vector3(.91f,.06f,.07f),Cream);Round("Dial",p,new Vector3(.74f,y,.47f),new Vector3(.13f,.13f,.08f),Ink);}break;
             case "fridge":
                 h=2;Box("RetroFridge",p,new Vector3(0,.99f,0),new Vector3(.91f,1.96f,.83f),Teal);Box("FridgeDoor",p,new Vector3(0,.78f,.43f),new Vector3(.84f,1.35f,.08f),Cream);Box("FreezerDoor",p,new Vector3(0,1.72f,.43f),new Vector3(.84f,.45f,.08f),Cream);Box("Handle",p,new Vector3(.3f,1.05f,.53f),new Vector3(.05f,.45f,.06f),Brass);Box("Magnet",p,new Vector3(-.16f,1.14f,.49f),new Vector3(.21f,.27f,.01f),Coral);Label("COLD",p,new Vector3(0,1.74f,.49f),.052f,Teal);break;
-            case "stool_pair":case "cafe_table":case "bistro_table":
+            case "stool_pair":case "cafe_table":case "bistro_table":case "patio_table":
                 w=2;d=2;Table(p,Vector3.zero,.82f,.77f);Chair(p,new Vector3(0,0,-.65f),0,id=="stool_pair");Chair(p,new Vector3(0,0,.65f),180,id=="stool_pair");Seat(p,0,new Vector3(0,0,-.65f),0);Seat(p,1,new Vector3(0,0,.65f),180);break;
             case "booth_teal":case "booth_coral":
                 w=3;d=2;h=1.22f;Color upholstery=id=="booth_teal"?Teal:Coral;

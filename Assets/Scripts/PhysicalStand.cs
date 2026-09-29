@@ -67,6 +67,7 @@ namespace RestaurantCity {
         static readonly Vector3[] StandTablePositions = { new Vector3(-5.2f, 0, 10.6f), new Vector3(-8.2f, 0, 10.6f) };
         readonly List<Transform> standSeats = new List<Transform>();          // four seats: seat / 2 = table, seat % 2 = near/far chair
         readonly List<Vector3> standTableSpots = new List<Vector3>();
+        readonly List<Transform> standTables = new List<Transform>();
         readonly Dictionary<int, GameObject> tablePlates = new Dictionary<int, GameObject>();
         readonly Dictionary<int, string> tablePlateState = new Dictionary<int, string>();   // per seat: "", "dirty" or the dish being eaten
         readonly Dictionary<int, int> guestLeg = new Dictionary<int, int>();   // how far along the walk to their seat each guest is
@@ -74,11 +75,11 @@ namespace RestaurantCity {
         void BuildStandTables(Transform world) {
             if (standTableSpots.Count > 0 || !world) return;
             for (int t = 0; t < GameState.StandTables; t++) {
-                var table = CreateFurnishing("cafe_table", world); table.name = "Stand table " + t;
+                var table = CreateFurnishing("patio_table", world); table.name = "Stand table " + t;
                 table.transform.SetPositionAndRotation(StandTablePositions[t], Quaternion.identity);
                 if (table.GetComponentsInChildren<Collider>().Length == 0) { var box = table.AddComponent<BoxCollider>(); box.center = new Vector3(0, .45f, 0); box.size = new Vector3(1.2f, .9f, 1.9f); }
                 var it = table.AddComponent<Interactable>(); it.Kind = InteractionKind.StandTable; it.Index = t;
-                standTableSpots.Add(StandTablePositions[t]);
+                standTableSpots.Add(StandTablePositions[t]); standTables.Add(table.transform);
                 standSeats.Add(table.transform.Find("Seat_0")); standSeats.Add(table.transform.Find("Seat_1"));
             }
         }
@@ -99,7 +100,10 @@ namespace RestaurantCity {
             // The plate shows the dish they actually ordered (salad, burger or midnight burger).
             var recipe = RecipeBook.Find(state);
             var plate = state == "dirty" ? KitchenArt.CreateItem("DirtyPlate", transform) : KitchenArt.CreateItem("Plate", recipe != null ? new List<string>(recipe.Components) : new List<string> { "bun", "cooked_patty" }, transform);
-            plate.transform.position = standTableSpots[seat / 2] + new Vector3(0, .84f, seat % 2 == 0 ? -.28f : .28f); plate.transform.localScale = Vector3.one * .8f;
+            // Plates rest on the real tabletop (the wooden patio table is lower than the old cafe table).
+            var local = new Vector3(0, 0, seat % 2 == 0 ? -.2f : .2f); var t = seat / 2 < standTables.Count ? standTables[seat / 2] : null;
+            float top = t ? SurfaceY(t, local, .84f) + .005f : .84f;
+            plate.transform.position = standTableSpots[seat / 2] + new Vector3(0, top, local.z); plate.transform.localScale = Vector3.one * .8f;
             tablePlates[seat] = plate;
         }
 
