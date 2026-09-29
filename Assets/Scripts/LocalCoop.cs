@@ -50,6 +50,14 @@ namespace RestaurantCity {
         void Update() {
             if (!game) return;
             if (Keyboard.current != null && Keyboard.current.f2Key.wasPressedThisFrame && !SecondPlayer) Join();
+            // Dev shortcuts for trying night features: F8 skips to nightfall, F9 puts 3 bottles of Zeeb's sauce in your hands.
+            if (Keyboard.current != null && Keyboard.current.f8Key.wasPressedThisFrame) { game.State.Clock = 151; game.Notify("DEV: skipped to nightfall.", 4); }
+            if (Keyboard.current != null && Keyboard.current.f9Key.wasPressedThisFrame) {
+                var st = game.State; st.DropBottles = 3; st.DropPlaced = true; st.StashSpot = 0;
+                bool ok = st.Kitchen.CollectStash(st, game.Player.ActorId, out var m);
+                if (!ok) { st.DropBottles = 0; st.DropPlaced = false; st.StashSpot = -1; }
+                game.Notify(ok ? "DEV: you're carrying 3 bottles of Zeeb's sauce. Watch out for inspectors." : "DEV: free your hands first.", 5);
+            }
             foreach (var pad in Gamepad.all) {
                 if (!pad.startButton.wasPressedThisFrame) continue;
                 bool assigned = false;
