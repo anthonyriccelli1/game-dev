@@ -22,7 +22,7 @@ namespace RestaurantCity {
             var model = Object.Instantiate(prefab, root.transform, false); model.name = "Art override: " + id;
             var s = root.transform.localScale;   // undo the code-built root's squash (pantry/sink are scaled on X)
             model.transform.localScale = new Vector3(Div(prefab.transform.localScale.x, s.x), Div(prefab.transform.localScale.y, s.y), Div(prefab.transform.localScale.z, s.z));
-            foreach (var c in model.GetComponentsInChildren<Collider>(true)) c.enabled = false;   // gameplay colliders stay on the root
+            foreach (var c in model.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);   // gameplay colliders stay on the root
             return root;
         }
         static float Div(float a, float b) => Mathf.Abs(b) < .0001f ? a : a / b;

@@ -21,7 +21,7 @@ namespace RestaurantCity {
   static KitchenAction Tap(string label,Func<string> apply)=>new KitchenAction{Allowed=true,Kind=KitchenActionKind.Tap,Label=label,FailReason="",Apply=apply};
   public const float WashSeconds=3.5f;
   // Restaurant plates: 4 per plate rack you own. Dirty plates stack beside the sink and are washed one at a time.
-  public static int PlateCapacity(RestaurantState r)=>Math.Max(1,r.Layout.Count(p=>p.CatalogId=="plate_rack"))*4;
+  public static int PlateCapacity(RestaurantState r){int n=r.Layout.Where(p=>p.CatalogId=="plate_rack").Sum(p=>StationUpgrades.Plates(Math.Max(1,p.Level)));return Math.Max(4,n);}
   int PlatesInPlay=>Items.Count(i=>!i.Disposable&&!i.StandPlate&&(i.Kind==KitchenItemKind.Plate||i.Kind==KitchenItemKind.DirtyPlate));
   void BalancePlates(RestaurantState r){if(!r.Owned)return;int missing=PlateCapacity(r)-(CleanPlates+SinkPile+PlatesInPlay);if(missing>0)CleanPlates+=missing;else if(missing<0)CleanPlates=Math.Max(0,CleanPlates+missing);}
   // The street food stand is a small fixed kitchen that uses the same stations and rules as the restaurant.
@@ -216,7 +216,7 @@ namespace RestaurantCity {
    bool prep=s.CatalogId=="prep_bench"&&Raw(item.Kind),wash=s.CatalogId=="sink"&&item.Kind==KitchenItemKind.DirtyPlate;
    if(!prep&&!wash)return Fail("Nothing to prepare.",out message);
    if(!string.IsNullOrEmpty(s.WorkOwner)&&s.WorkOwner!=actor)return Fail("Someone else is working here.",out message);
-   s.WorkOwner=actor;s.Progress+=seconds;game.Emit(wash?"wash:"+stationId:"chop:"+stationId);float duration=wash?WashSeconds:item.Kind==KitchenItemKind.RawSauce?4:3;if(prep&&game.FluxResearch)duration*=.65f;
+   s.WorkOwner=actor;s.Progress+=seconds;game.Emit(wash?"wash:"+stationId:"chop:"+stationId);float duration=wash?WashSeconds:item.Kind==KitchenItemKind.RawSauce?4:3;if(prep&&game.FluxResearch)duration*=.65f;duration*=StationUpgrades.WorkScale(game.Restaurant.LevelOf(stationId));
    if(s.Progress<duration){message=(wash?"Washing ":"Preparing ")+(int)(s.Progress/duration*100)+"%";return true;}
    if(wash){Items.Remove(item);if(item.StandPlate){game.StandClean++;message="Clean plate back on the stand stack.";}else{CleanPlates++;game.Restaurant.Cleanliness=Math.Min(100,game.Restaurant.Cleanliness+5);message="Clean plate returned to rack.";}}
    else{item.Kind=item.Kind==KitchenItemKind.RawGreens?KitchenItemKind.ChoppedGreens:KitchenItemKind.MidnightSauce;message=Label(item)+" ready.";}
@@ -313,8 +313,8 @@ namespace RestaurantCity {
   public void Tick(GameState game,float seconds){
    if(seconds<=0||float.IsNaN(seconds)||float.IsInfinity(seconds))return;
    BalancePlates(game.Restaurant);
-   foreach(var s in Stations){if(s.CatalogId!="stove")continue;var pot=At(s.InstanceId);if(pot!=null)TickStove(game,s,pot,seconds);}
-   foreach(var s in Stations){var item=At(s.InstanceId);if((s.CatalogId!="grill"&&s.CatalogId!="oven")||item==null)continue;if(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.CookedPatty){s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=24){if(item.Kind!=KitchenItemKind.BurntPatty)game.Emit("burn:"+s.InstanceId);item.Kind=KitchenItemKind.BurntPatty;item.Quality=0;}else if(s.Progress>=(s.CatalogId=="oven"?6:8))item.Kind=KitchenItemKind.CookedPatty;}}
+   foreach(var s in Stations){if(s.CatalogId!="stove")continue;var pot=At(s.InstanceId);if(pot!=null)TickStove(game,s,pot,seconds*StationUpgrades.SoupSpeed(game.Restaurant.LevelOf(s.InstanceId)));}
+   foreach(var s in Stations){var item=At(s.InstanceId);if((s.CatalogId!="grill"&&s.CatalogId!="oven")||item==null)continue;if(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.CookedPatty){int lvl=game.Restaurant.LevelOf(s.InstanceId);s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=StationUpgrades.BurnSeconds(lvl)){if(item.Kind!=KitchenItemKind.BurntPatty)game.Emit("burn:"+s.InstanceId);item.Kind=KitchenItemKind.BurntPatty;item.Quality=0;}else if(s.Progress>=StationUpgrades.CookSeconds(s.CatalogId,lvl))item.Kind=KitchenItemKind.CookedPatty;}}
    foreach(var item in Items){if(!item.Holder.StartsWith("table:"))continue;int id;if(!int.TryParse(item.Holder.Substring(6),out id))continue;var order=game.Restaurant.Orders.Find(o=>o.Id==id);if(order==null||order.Stage==RestaurantOrderStage.Leaving){item.Kind=KitchenItemKind.DirtyPlate;item.Components.Clear();}}
    foreach(var item in Items)if(!item.Holder.StartsWith("station:")&&(item.Kind==KitchenItemKind.CookedPatty||item.Kind==KitchenItemKind.Plate&&item.Components.Count>0)){item.Age+=seconds;item.Quality=Math.Min(item.Quality,Math.Max(.4f,1-Math.Max(0,item.Age-40)*.008f));}
    foreach(var worker in game.Restaurant.Workers)if(worker.Job==StaffJob.Off||(!game.Restaurant.Open&&worker.Job!=StaffJob.Stand))worker.Energy=Math.Min(100,worker.Energy+seconds*.6f);

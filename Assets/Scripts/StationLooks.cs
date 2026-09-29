@@ -51,7 +51,7 @@ namespace RestaurantCity {
             return b;
         }
         static GameObject Blob(Transform p, Vector3 pos, Vector3 size, Material m, PrimitiveType type = PrimitiveType.Cube) {
-            var go = GameObject.CreatePrimitive(type); Object.Destroy(go.GetComponent<Collider>()); go.transform.SetParent(p, false);
+            var go = GameObject.CreatePrimitive(type); Object.DestroyImmediate(go.GetComponent<Collider>()); go.transform.SetParent(p, false);
             go.transform.localPosition = pos; go.transform.localScale = size; go.GetComponent<Renderer>().sharedMaterial = m; return go;
         }
     }

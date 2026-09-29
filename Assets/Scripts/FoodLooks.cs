@@ -14,7 +14,7 @@ namespace RestaurantCity {
             var go = Object.Instantiate(prefab, p, false); go.name = name;
             go.transform.localPosition = new Vector3(0, y, 0) + (offset ?? Vector3.zero); go.transform.localRotation = Quaternion.Euler(0, yaw, 0);
             go.transform.localScale = prefab.transform.localScale * scale;
-            foreach (var c in go.GetComponentsInChildren<Collider>(true)) c.enabled = false;
+            foreach (var c in go.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
             float top = y;
             foreach (var r in go.GetComponentsInChildren<Renderer>()) top = Mathf.Max(top, p.InverseTransformPoint(r.bounds.max).y);
             return top;
@@ -30,7 +30,7 @@ namespace RestaurantCity {
             mats[key] = m; return m;
         }
         static GameObject Shape(PrimitiveType type, string name, Transform p, Vector3 pos, Vector3 scale, Material m, Vector3? euler = null) {
-            var go = GameObject.CreatePrimitive(type); go.name = name; Object.Destroy(go.GetComponent<Collider>());
+            var go = GameObject.CreatePrimitive(type); go.name = name; Object.DestroyImmediate(go.GetComponent<Collider>());
             go.transform.SetParent(p, false); go.transform.localPosition = pos; go.transform.localScale = scale;
             if (euler.HasValue) go.transform.localRotation = Quaternion.Euler(euler.Value);
             go.GetComponent<Renderer>().sharedMaterial = m; return go;

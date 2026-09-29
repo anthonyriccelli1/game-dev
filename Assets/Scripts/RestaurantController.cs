@@ -279,6 +279,10 @@ namespace RestaurantCity {
             if (Panel != "Furniture" || !PanelOpen) ShowPanel("Furniture");
             else UI.Refresh();
         }
+        public void UpgradeItem(int id) {
+            bool ok = Data.Upgrade(Game.State, id, out string message); Feedback(message);
+            if (ok) { RebuildLayout(); PlayChime(true); Game.Save(); }
+        }
         public void SellItem(int id) {
             if (Game.State.Kitchen.At(id) != null) { Feedback("Clear this station before selling it."); return; }
             bool sold = Data.Sell(Game.State, id, out string reason); Feedback(reason);
@@ -294,6 +298,7 @@ namespace RestaurantCity {
                 var item = RestaurantCatalog.Find(p.CatalogId);
                 if (item == null || item.IsFinish || item.IsExterior) continue;
                 var obj = CreateFurnishing(p.CatalogId, Room.transform);
+                if (StationUpgrades.CanUpgrade(p.CatalogId)) StationLooks.ApplyLevel(obj, Data.LevelOf(p.InstanceId));
                 int w = p.Rotation % 2 == 0 ? item.Width : item.Depth, d = p.Rotation % 2 == 0 ? item.Depth : item.Width;
                 obj.transform.position = CellCenter(p.X, p.Z, w, d); obj.transform.rotation = Quaternion.Euler(0, p.Rotation * 90, 0);
                 var target = obj.AddComponent<RestaurantTarget>(); target.InstanceId = p.InstanceId;

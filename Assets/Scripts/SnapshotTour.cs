@@ -69,6 +69,11 @@ namespace RestaurantCity {
             ("49_cast_oldmarket_a", new Vector3(-9.5f, 0, 5.2f), 180, 6, 70),
             ("50_cast_oldmarket_b", new Vector3(-9.5f, 0, 5.2f), 180, 6, 70),
             ("51_cast_closeup_anim", new Vector3(-12.6f, 0, 1.4f), 180, 10, 70),
+            ("62_restaurant_dressed", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
+            ("63_restaurant_dressed_back", new Vector3(-5.6f, 0, -19.4f), -40, 12, 70),
+            ("64_upgrade_panel", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
+            ("60_dining_sets", new Vector3(-9f, 0, 4.2f), 180, 22, 70),
+            ("61_dining_close", new Vector3(-12.2f, 0, 1.6f), 180, 28, 70),
             ("57_food_showcase", new Vector3(-10.1f, 0, .75f), 180, 30, 70),
             ("58_grill_levels", new Vector3(-11f, 0, 3.4f), 180, 16, 70),
             ("59_grill_levels_night", new Vector3(-11f, 0, 3.4f), 180, 16, 190),
@@ -78,6 +83,7 @@ namespace RestaurantCity {
             ("53_people_book_top", new Vector3(0, 0, 3), 0, 0, 60),
         };
 
+        static bool dressed;
         IEnumerator Start() {
             var dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "..", "Snapshots"));
             if (Application.isEditor) dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Snapshots"));
@@ -123,6 +129,42 @@ namespace RestaurantCity {
                     for (int i = 0; i < 40; i++) { g.Clock = 160; p.transform.position = shot.pos; rc.Advance(.05f); if (insp.Mode == RestaurantController.InspectorMode.Stop) break; yield return null; }
                     if (shot.name.Contains("chase")) { insp.Mode = RestaurantController.InspectorMode.Chase; insp.Target = p; insp.Root.transform.position = shot.pos + new Vector3(12, 0, 0);
                         for (int i = 0; i < 25; i++) { g.Clock = 160; p.transform.position = shot.pos; insp.Lost = 0; rc.Advance(.04f); yield return null; } }
+                }
+                if (rc && shot.name.Contains("restaurant_dressed") && !dressed) {
+                    dressed = true;
+                    // A fully dressed Odd Table: buy it, then place a pack-furnished dining room and level-2/3 gear.
+                    var gs = Game.State; gs.Cash = 20000; var d = gs.Restaurant; d.Owned = true; d.Rank = 2; d.Layout.Clear();
+                    string[] wants = { "grill", "stove", "prep_bench", "assembly", "sink", "pantry", "counter", "trash", "booth_teal", "bistro_table", "cafe_table", "booth_coral", "communal_table", "stool_pair", "flower_stand", "fern", "cafe_divider",
+                                       "sign_burger", "menu_screen", "wall_tv", "art_abstract", "poster_wall", "wall_sconce", "wall_sconce", "industrial_pendant", "industrial_pendant", "pendant_amber", "pendant_amber", "plate_rack" };
+                    foreach (var id in wants) {
+                        bool done = false;
+                        for (int z = 0; z < 10 && !done; z++) for (int x = 0; x < 12 && !done; x++) done = d.Place(gs, id, x, z, id.StartsWith("sign") || id.StartsWith("menu") || id.StartsWith("wall") || id.StartsWith("art") || id.StartsWith("poster") ? 2 : 0, out _);
+                        Debug.LogWarning("DRESS " + id + " placed=" + done);
+                    }
+                    foreach (var item in d.Layout) if (StationUpgrades.CanUpgrade(item.CatalogId)) item.Level = item.CatalogId == "grill" ? 3 : 2;
+                    rc.RebuildLayout(); for (int i = 0; i < 10; i++) yield return null;
+                }
+                if (rc && shot.name.Contains("upgrade_panel")) {
+                    var sink = Game.State.Restaurant.Layout.Find(x => x.CatalogId == "sink"); if (sink != null) { sink.Level = 1; Game.State.Cash = 400; rc.SelectFurnitureItem(sink.InstanceId); }
+                    for (int i = 0; i < 5; i++) yield return null;
+                }
+                if (shot.name.Contains("dining_")) {
+                    // Pack seating sets with residents actually sitting on their seats, to check chair height and facing.
+                    var old = GameObject.Find("Style lineup"); if (old) Destroy(old);
+                    var line = new GameObject("Style lineup").transform; Game.State.StandOpen = false;
+                    string[] sets = { "cafe_table", "stool_pair", "booth_teal", "communal_table", "fern", "trash" };
+                    float x = -15f; int who = 0;
+                    foreach (var id in sets) {
+                        var f = RestaurantArt.CreateFurniture(id, line); ArtOverrides.Apply(f, "Furniture", id);
+                        var item = RestaurantCatalog.Find(id); float w = item != null ? item.Width : 1;
+                        f.transform.position = new Vector3(x + w * .5f, 0, -1.2f); x += w + .4f;
+                        for (int sIdx = 0; sIdx < 6; sIdx++) {
+                            var seat = f.transform.Find("Seat_" + sIdx); if (!seat || sIdx % 2 == 1 && id == "communal_table") continue;
+                            var r = ResidentModels.Create(ResidentCast.OldMarket[(who++ * 5) % ResidentCast.OldMarket.Length], line);
+                            r.transform.SetPositionAndRotation(seat.position, seat.rotation); var m = r.GetComponent<CharacterMotion>(); if (m) m.Seated = true;
+                        }
+                    }
+                    for (int i = 0; i < 30; i++) yield return null;
                 }
                 if (shot.name.Contains("food_showcase") || shot.name.Contains("grill_levels")) {
                     var old = GameObject.Find("Style lineup"); if (old) Destroy(old);

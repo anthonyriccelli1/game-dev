@@ -82,6 +82,7 @@ namespace RestaurantCity {
                         if (tag.Def == def) { Pop(tag.transform.position + Vector3.up * 2.95f, "NEW! " + def.Name + " added to your People book", "F2C94C", .03f); break; }
                     break;
                 }
+                case "upgrade": Fx(SoundFx.Tip, 1f); Fx(SoundFx.Register, .6f); break;
                 case "queue_walkout": case "stand_walkout": Fx(SoundFx.Huff, .8f); break;
                 case "arrive": Fx(SoundFx.Doorbell, .45f); break;
                 case "chop": AcceptedChop(A(1)); break;

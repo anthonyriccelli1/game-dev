@@ -247,7 +247,7 @@ namespace RestaurantCity {
                 foreach(float y in new[]{.61f,1.23f}){Box("OvenFrame",p,new Vector3(-.1f,y,.441f),new Vector3(1.4f,.53f,.055f),Brass);Box("OvenWindow",p,new Vector3(-.1f,y,.48f),new Vector3(1.15f,.32f,.04f),Ink);Box("OvenBar",p,new Vector3(-.1f,y+.2f,.57f),new Vector3(.91f,.06f,.07f),Cream);Round("Dial",p,new Vector3(.74f,y,.47f),new Vector3(.13f,.13f,.08f),Ink);}break;
             case "fridge":
                 h=2;Box("RetroFridge",p,new Vector3(0,.99f,0),new Vector3(.91f,1.96f,.83f),Teal);Box("FridgeDoor",p,new Vector3(0,.78f,.43f),new Vector3(.84f,1.35f,.08f),Cream);Box("FreezerDoor",p,new Vector3(0,1.72f,.43f),new Vector3(.84f,.45f,.08f),Cream);Box("Handle",p,new Vector3(.3f,1.05f,.53f),new Vector3(.05f,.45f,.06f),Brass);Box("Magnet",p,new Vector3(-.16f,1.14f,.49f),new Vector3(.21f,.27f,.01f),Coral);Label("COLD",p,new Vector3(0,1.74f,.49f),.052f,Teal);break;
-            case "stool_pair":case "cafe_table":
+            case "stool_pair":case "cafe_table":case "bistro_table":
                 w=2;d=2;Table(p,Vector3.zero,.82f,.77f);Chair(p,new Vector3(0,0,-.65f),0,id=="stool_pair");Chair(p,new Vector3(0,0,.65f),180,id=="stool_pair");Seat(p,0,new Vector3(0,0,-.65f),0);Seat(p,1,new Vector3(0,0,.65f),180);break;
             case "booth_teal":case "booth_coral":
                 w=3;d=2;h=1.22f;Color upholstery=id=="booth_teal"?Teal:Coral;
@@ -272,6 +272,8 @@ namespace RestaurantCity {
                 h=1.65f;Box("JukeboxBase",p,new Vector3(0,.67f,0),new Vector3(.92f,1.28f,.69f),Wood);Round("RoundedCrown",p,new Vector3(0,1.29f,0),new Vector3(.92f,.71f,.68f),Coral);Box("Speaker",p,new Vector3(0,.55f,.365f),new Vector3(.63f,.67f,.03f),Ink);for(int i=0;i<7;i++)Box("SpeakerGrille",p,new Vector3(-.25f+i*.083f,.55f,.391f),new Vector3(.023f,.65f,.018f),Brass);Box("SongWindow",p,new Vector3(0,1.14f,.36f),new Vector3(.61f,.29f,.04f),Cream);for(int i=0;i<5;i++)Box("SongKey",p,new Vector3(-.24f+i*.12f,.89f,.43f),new Vector3(.065f,.055f,.1f),Teal);LightAt("JukeboxGlow",p,new Vector3(0,1.3f,.45f),Coral,.6f,2);break;
             default:
                 // Finish/exterior IDs can be previewed in a catalog, but their effect is applied through UpdateFinishes.
+                // Pack-only decor (look comes from ArtOverrides) uses its catalog footprint; wall/ceiling pieces don't block walking.
+                {var ci=RestaurantCatalog.Find(id);if(ci!=null){w=ci.Width;d=ci.Depth;if(ci.WallOrCeiling)collide=false;}}
                 Box("FinishSample",p,new Vector3(0,.06f,0),new Vector3(.9f,.12f,.9f),id.Contains("teal")?Teal:id.Contains("rose")||id.Contains("coral")?Coral:Cream);break;
             }
             if(collide){var box=g.AddComponent<BoxCollider>();box.size=elevatedColliderSize??new Vector3(w*.94f,h,d*.92f);box.center=elevatedColliderCenter??new Vector3(0,h*.5f,0);}

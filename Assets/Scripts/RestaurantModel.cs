@@ -13,7 +13,8 @@ namespace RestaurantCity {
         public int Price, Width, Depth, Seats, Ambience, RequiredStars, Tier;   // Tier = reputation rank needed (0 Old Market, 1 Docks, ...)
         public bool IsFinish => Category == CatalogCategory.Finishes;
         public bool IsExterior => Category == CatalogCategory.Exterior;
-        public bool OccupiesFloor => !IsFinish && !IsExterior && Id != "pendant_amber" && Id != "neon_moon" && Id != "art_orbit" && Id != "rug_sunset";
+        public bool OccupiesFloor => !IsFinish && !IsExterior && Id != "pendant_amber" && Id != "neon_moon" && Id != "art_orbit" && Id != "rug_sunset" && !WallOrCeiling;
+        public bool WallOrCeiling => Id == "industrial_pendant" || Id == "wall_sconce" || Id == "poster_wall" || Id == "art_abstract" || Id == "menu_screen" || Id == "wall_tv" || Id == "sign_burger";
         public CatalogItem(string id,string name,CatalogCategory category,int price,int width,int depth,int seats,int ambience,string description,int stars=1,int tier=0) {
             Tier=tier;Id=id;Name=name;Category=category;Price=price;Width=width;Depth=depth;Seats=seats;Ambience=ambience;Description=description;RequiredStars=stars;
         }
@@ -90,7 +91,7 @@ namespace RestaurantCity {
             new CatalogItem("assembly","Assembly station",CatalogCategory.Kitchen,25,2,1,0,0,"Place a clean plate, then add prepared ingredients."),
             new CatalogItem("counter","Pass counter",CatalogCategory.Kitchen,15,1,1,0,0,"Set anything down here: plates, patties, buns, sauce. Build dishes on it."),
             new CatalogItem("trash","Trash can",CatalogCategory.Kitchen,10,1,1,0,0,"Throw away burnt or unwanted food. Plates keep; food scraps go."),
-            new CatalogItem("sink","Deep washing sink",CatalogCategory.Kitchen,30,1,1,0,0,"Wash dirty plates for six seconds to replenish the rack."),
+            new CatalogItem("sink","Deep washing sink",CatalogCategory.Kitchen,30,1,1,0,0,"Wash dirty plates to refill the rack. Upgrade it to wash faster."),
             new CatalogItem("prep_bench","Steel prep bench",CatalogCategory.Kitchen,28,2,1,0,0,"Prepare one ingredient at a time. Extra benches let partners prep together."),
             new CatalogItem("grill","Comet grill",CatalogCategory.Kitchen,45,2,1,0,1,"Burgers and midnight buns. Extra grills add a cooking slot."),
             new CatalogItem("stove","Little red stove",CatalogCategory.Kitchen,55,1,1,0,1,"Simmers Planet soup. Stir it or it scorches.",1,0),
@@ -117,6 +118,16 @@ namespace RestaurantCity {
             new CatalogItem("oak_barrel","Oak barrel",CatalogCategory.Decor,9,1,1,0,1,"A rustic barrel in the corner."),
             new CatalogItem("lounge_couch","Waiting couch",CatalogCategory.Decor,40,2,1,0,3,"Somewhere comfy for the line to wait."),
             new CatalogItem("statue","Odd little statue",CatalogCategory.Decor,35,1,1,0,3,"Nobody knows who it is. Everyone loves it."),
+            new CatalogItem("bistro_table","Checkered bistro table",CatalogCategory.Seating,45,2,2,2,4,"Two seats at a red-checkered tablecloth. Old-school charm."),
+            new CatalogItem("industrial_pendant","Edison bulb pendant",CatalogCategory.Lighting,24,1,1,0,3,"A bare filament bulb on a long cord; warm and a little hip."),
+            new CatalogItem("wall_sconce","Wall sconce",CatalogCategory.Lighting,18,1,1,0,2,"A slim wall light; mounts on the wall behind its tile."),
+            new CatalogItem("poster_wall","Gig poster",CatalogCategory.Decor,10,1,1,0,1,"A band poster from last summer. Mounts on the wall."),
+            new CatalogItem("art_abstract","Abstract canvas",CatalogCategory.Decor,28,1,1,0,3,"Big bold colour in a black frame. Mounts on the wall."),
+            new CatalogItem("flower_stand","Flower stand",CatalogCategory.Decor,34,2,1,0,4,"Tiered buckets of fresh bouquets by the door."),
+            new CatalogItem("cafe_divider","Slatted divider",CatalogCategory.Decor,25,2,1,0,2,"A wooden screen that makes a dining nook."),
+            new CatalogItem("menu_screen","Digital menu board",CatalogCategory.Decor,55,2,1,0,4,"A lit menu over the pass. Customers love knowing what's good.",2),
+            new CatalogItem("wall_tv","Wall TV",CatalogCategory.Decor,70,2,1,0,4,"The game is on. Guests linger happily.",2),
+            new CatalogItem("sign_burger","BURGER neon letters",CatalogCategory.Decor,95,3,1,0,6,"TWO STARS: giant red letters that tell the whole block what you cook.",2),
             new CatalogItem("jukebox","Rocket jukebox",CatalogCategory.Decor,110,1,1,0,6,"TWO STARS: the district's most coveted statement piece.",2),
             new CatalogItem("awning_coral","Coral street awning",CatalogCategory.Exterior,35,1,1,0,3,"Transforms the restaurant frontage with striped canvas."),
             new CatalogItem("sign_neon","Orbit Cafe neon sign",CatalogCategory.Exterior,85,1,1,0,5,"TWO STARS: your restaurant becomes a glowing local landmark.",2)
@@ -153,7 +164,7 @@ namespace RestaurantCity {
         public static StaffDefinition Worker(string id) => Array.Find(Staff,i=>i.Id==id)??ResidentCast.Staff(id);
     }
 
-    [Serializable] public class PlacedItem { public int InstanceId,X,Z,Rotation,Paid; public string CatalogId; }
+    [Serializable] public class PlacedItem { public int InstanceId,X,Z,Rotation,Paid,Level=1; public string CatalogId; }
     [Serializable] public class RestaurantOrder {
         public int Id,CustomerType,SeatInstanceId,SeatNumber; public string DishId,ResidentId=""; public float Patience; // SeatNumber is one-based; zero means an older save. Patience 0 = older save (use the customer default).
         public RestaurantOrderStage Stage; public float Wait,CookProgress,Quality=1,StageTime;
@@ -275,6 +286,16 @@ namespace RestaurantCity {
             if(RestaurantCatalog.Find(p.CatalogId).IsFinish||RestaurantCatalog.Find(p.CatalogId).IsExterior)return Fail("This improvement applies to the whole building.",out message);
             if(!CanPlace(p.CatalogId,x,z,rotation,instanceId,out message))return false;
             p.X=x;p.Z=z;p.Rotation=rotation;message="Furnishing moved.";return true;
+        }
+        public int LevelOf(int instanceId){var p=Layout.Find(x=>x.InstanceId==instanceId);return p==null?1:Math.Max(1,Math.Min(StationUpgrades.MaxLevel,p.Level));}
+        public bool Upgrade(GameState wallet,int instanceId,out string message){
+            var p=Layout.Find(x=>x.InstanceId==instanceId);var c=p==null?null:RestaurantCatalog.Find(p.CatalogId);
+            if(c==null||!StationUpgrades.CanUpgrade(c.Id))return Fail("This can't be upgraded.",out message);
+            int next=Math.Max(1,p.Level)+1;if(next>StationUpgrades.MaxLevel)return Fail(c.Name+" is already fully upgraded.",out message);
+            if(Stars<StationUpgrades.StarsNeeded(next))return Fail("Level "+next+" needs "+StationUpgrades.StarsNeeded(next)+" stars.",out message);
+            int cost=StationUpgrades.Cost(c,next);if(wallet.Cash<cost)return Fail("Upgrading costs $"+cost+".",out message);
+            wallet.Cash-=cost;p.Level=next;p.Paid+=cost;wallet.Emit("upgrade:"+instanceId+":"+next);
+            message=c.Name+" upgraded to "+StationUpgrades.LevelName(next)+"! "+StationUpgrades.Effect(c.Id,next)+".";return true;
         }
         public bool Sell(GameState wallet,int instanceId,out string message) {
             if(!CanCustomize)return Fail("Close service and let customers leave before selling furnishings.",out message);
