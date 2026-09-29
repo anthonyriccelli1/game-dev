@@ -57,10 +57,13 @@ public static class EditorTools {
     // Renders prefabs listed in EditorOutput/render-list.txt (paths relative to Assets/Synty/, one per line; an optional
     // "back" suffix renders from behind) to EditorOutput/previews/*.png, so art can be checked without opening the Editor.
     // Writes each listed prefab's bounds (size and min/max) so pack models can be fitted to our station footprints.
+    static string PrefabPath(string line) => line.StartsWith("Assets/") ? line + ".prefab" : "Assets/Synty/" + line + ".prefab";
+    // Regenerates the art-pack overrides (models, finishes, restaurant shell) without a full build.
+    public static string GenerateArt() { ArtPackDressing.GenerateOverrides(); return "art overrides generated"; }
     public static string DumpPrefabSizes() {
         var sb = new StringBuilder();
         foreach (var line in File.ReadAllLines("EditorOutput/render-list.txt").Select(l => l.Trim().Split(' ')[0]).Where(l => l.Length > 0)) {
-            var src = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Synty/" + line + ".prefab"); if (!src) { sb.AppendLine(line + " MISSING"); continue; }
+            var src = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath(line)); if (!src) { sb.AppendLine(line + " MISSING"); continue; }
             var go = (GameObject)PrefabUtility.InstantiatePrefab(src); var rs = go.GetComponentsInChildren<Renderer>();
             if (rs.Length > 0) { var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); sb.AppendLine(Path.GetFileName(line) + "\tsize=" + b.size.ToString("F2") + "\tmin=" + b.min.ToString("F2") + "\tmax=" + b.max.ToString("F2")); }
             Object.DestroyImmediate(go);
@@ -78,7 +81,7 @@ public static class EditorTools {
             util.lights[1].intensity = .7f; util.ambientColor = new Color(.45f, .45f, .5f);
             foreach (var line in lines) {
                 var parts = line.Split(' '); bool back = parts.Length > 1 && parts[1] == "back";
-                var src = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Synty/" + parts[0] + ".prefab"); if (!src) continue;
+                var src = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath(parts[0])); if (!src) continue;
                 var go = util.InstantiatePrefabInScene(src);
                 var rs = go.GetComponentsInChildren<Renderer>(); if (rs.Length == 0) continue;
                 var swap = parts.FirstOrDefault(x => x.StartsWith("mat="));

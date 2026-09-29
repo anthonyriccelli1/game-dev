@@ -120,18 +120,18 @@ namespace RestaurantCity {
         public static string RestaurantName = "THE ODD TABLE";
         public static GameObject BuildRoom(Transform parent) {
             var room=Group("RestaurantInterior",parent);var p=room.transform;
-            var wallpaper=Mat("OldWallpaper",C("C9BA95"),0,false,"wallpaper");var worn=Mat("OldTile",C("B6AA87"),0,false,"worn");var brick=Mat("FacadeBrick",C("A36553"));
+            var wallpaper=ShabbyWall();var worn=ShabbyFloor();var brick=Mat("FacadeBrick",C("A36553"));
             Slab("FloorFinish",p,new Vector3(-10,.0f,-15.5f),new Vector3(13,.12f,13),worn,true);
             Slab("WallFinish_Back",p,new Vector3(-10,1.9f,-22),new Vector3(13,3.8f,.25f),wallpaper,true);
             Slab("WallFinish_Left",p,new Vector3(-16.5f,1.9f,-15.5f),new Vector3(.25f,3.8f,13),wallpaper,true);
             Slab("WallFinish_Right",p,new Vector3(-3.5f,1.9f,-15.5f),new Vector3(.25f,3.8f,13),wallpaper,true);
             var wallWear=Group("ShabbyWallWear",p).transform;var floorWear=Group("ShabbyFloorWear",p).transform;
             foreach(var entry in new[]{new Vector3(-14.2f,.8f,-21.86f),new Vector3(-6.2f,2.7f,-21.86f),new Vector3(-12.7f,2.9f,-21.86f)}) {
-                Scar("PeelingPaper",wallWear,entry,new Vector2(1.1f,.66f),C("A49674"),false);
-                Scar("ExposedPlaster",wallWear,entry+new Vector3(.08f,-.03f,.005f),new Vector2(.79f,.47f),C("D3C6A7"),false);
+                Scar("PeelingPaper",wallWear,entry,new Vector2(1.1f,.66f),C("B9AE9A"),false);
+                Scar("ExposedPlaster",wallWear,entry+new Vector3(.08f,-.03f,.005f),new Vector2(.79f,.47f),C("DDD5C6"),false);
             }
             foreach(var entry in new[]{new Vector3(-16.36f,.74f,-12.8f),new Vector3(-16.36f,2.6f,-18f),new Vector3(-3.64f,1.73f,-14f)}) {
-                var scar=Scar("WallWearPatch",wallWear,entry,new Vector2(1.3f,.62f),C("A39476"),false);scar.transform.localRotation=Quaternion.Euler(0,entry.x<-10?90:-90,0);
+                var scar=Scar("WallWearPatch",wallWear,entry,new Vector2(1.3f,.62f),C("CFC6B5"),false);scar.transform.localRotation=Quaternion.Euler(0,entry.x<-10?90:-90,0);
             }
             foreach(var entry in new[]{new Vector3(-10.3f,.069f,-10.8f),new Vector3(-12.8f,.069f,-17.6f),new Vector3(-6.1f,.069f,-20.1f),new Vector3(-14.6f,.069f,-13.7f)}) {
                 Scar("OldFloorStain",floorWear,entry,new Vector2(1.4f,.7f),C("938769"),true);
@@ -185,20 +185,44 @@ namespace RestaurantCity {
             Rod("CopperCeilingPipe",p,new Vector3(-16.16f,3.45f,-21.64f),new Vector3(-4,3.45f,-21.64f),.075f,Brass);
             Box("OldMenuBoard",p,new Vector3(-10,2.45f,-21.72f),new Vector3(2.8f,1.3f,.12f),Wood);Box("Slate",p,new Vector3(-10,2.45f,-21.62f),new Vector3(2.55f,1.09f,.05f),Ink);
             Label("TODAY AT "+RestaurantName+"\nGOOD FOOD. ODD COMPANY.",p,new Vector3(-10,2.45f,-21.57f),.069f,Cream);
+            ApplyPackShell(room);
             return room;
+        }
+        static Material ShabbyWall()=>PackFinish("shabby_wall")??Mat("OldWallpaper",C("C9BA95"),0,false,"wallpaper");
+        static Material ShabbyFloor()=>PackFinish("shabby_floor")??Mat("OldTile",C("B6AA87"),0,false,"worn");
+        // With the POLYGON Shops pack: a real storefront, interior mouldings and pack awnings replace the code-built
+        // look. Our own colliders (walls, doorway) stay exactly where they were; only renderers are swapped.
+        static readonly HashSet<string> packShellReplaces=new HashSet<string>{"FrontLeft","FrontRight","DoorLintel","WindowRecess","WindowAmber","WindowCross","WindowSill",
+            "InsideWindowFrame","InsideWindow","InsideMullion","FacadeCornice","FacadeParapet","FacadeCoping","FacadePilaster","PilasterFoot","PilasterCapital",
+            "FacadeLowerPanel","FacadePanelInset","ExposedBrick","DoorTrim","Baseboard","ChairRail","Crown","BackBaseboard","BackRail"};
+        static void ApplyPackShell(GameObject room) {
+            var facade=ArtOverrides.Find("Shell","facade");if(!facade)return;
+            var p=room.transform;
+            foreach(Transform child in p) if(packShellReplaces.Contains(child.name)){var r=child.GetComponent<Renderer>();if(r)r.enabled=false;}
+            PackPiece(facade,p,"Pack storefront");
+            var trim=ArtOverrides.Find("Shell","interior_trim");if(trim)PackPiece(trim,p,"Pack interior trim");
+            var awning=p.Find("UpgradeAwning");var packAwning=ArtOverrides.Find("Shell","awning");
+            if(awning&&packAwning){foreach(var r in awning.GetComponentsInChildren<Renderer>(true))r.enabled=false;PackPiece(packAwning,awning,"Pack awning");}
+            // Lamps reach the new storefront face; the neon upgrade becomes a rooftop sign above the cornice.
+            foreach(Transform child in p) if(child.name=="SconceArm"){var s=child.localScale;child.localScale=new Vector3(s.x,s.y+.2f,s.z);child.localPosition+=new Vector3(0,0,-.1f);}
+            var neon=p.Find("UpgradeNeon");if(neon)neon.localPosition=new Vector3(0,.72f,0);
+        }
+        static void PackPiece(GameObject prefab,Transform parent,string name) {
+            var go=Object.Instantiate(prefab,parent,false);go.name=name;
+            foreach(var c in go.GetComponentsInChildren<Collider>(true))Object.DestroyImmediate(c);
         }
         public static void UpdateFinishes(GameObject room,string wallId,string floorId,bool awning,bool neon) {
             if(!room)return;
             bool shabbyWall=string.IsNullOrEmpty(wallId)||wallId=="wall_shabby",shabbyFloor=string.IsNullOrEmpty(floorId)||floorId=="floor_shabby";
             foreach(var r in room.GetComponentsInChildren<MeshRenderer>(true)) {
                 if(r.name.StartsWith("WallFinish")) {
-                    r.sharedMaterial=shabbyWall?Mat("OldWallpaper",C("C9BA95"),0,false,"wallpaper"):FinishMaterial(wallId)??FinishMaterial("wall_cream");
-                    if(!shabbyWall)FinishBaseUV(r,false);
+                    r.sharedMaterial=shabbyWall?ShabbyWall():FinishMaterial(wallId)??FinishMaterial("wall_cream");
+                    if(!shabbyWall||PackFinish("shabby_wall"))FinishBaseUV(r,false);
                     else if(meshes.TryGetValue("flat_architecture",out var originalWall))r.GetComponent<MeshFilter>().sharedMesh=originalWall;
                 }
                 if(r.name=="FloorFinish") {
-                    r.sharedMaterial=shabbyFloor?Mat("OldTile",C("B6AA87"),0,false,"worn"):FinishMaterial(floorId)??FinishMaterial("floor_checker");
-                    if(!shabbyFloor)FinishBaseUV(r,true);
+                    r.sharedMaterial=shabbyFloor?ShabbyFloor():FinishMaterial(floorId)??FinishMaterial("floor_checker");
+                    if(!shabbyFloor||PackFinish("shabby_floor"))FinishBaseUV(r,true);
                     else if(meshes.TryGetValue("flat_architecture",out var originalFloor))r.GetComponent<MeshFilter>().sharedMesh=originalFloor;
                 }
             }

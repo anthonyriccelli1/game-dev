@@ -172,7 +172,7 @@ namespace RestaurantCity {
     [Serializable] public class RestaurantReview { public string Customer,Comment; public float Score; public string DishId; }
     [Serializable] public class WorkerState { public string Id; public StaffJob Job; public int TasksCompleted; public float Energy=100; }
     [Serializable] public partial class RestaurantState {
-        public bool Owned,Open,PhysicalKitInstalled,CounterInstalled,TrashInstalled;
+        public bool Owned,Open,PhysicalKitInstalled,CounterInstalled,TrashInstalled,ChromeUnlockSeen;
         public int Produce,Protein; // retired: migrated into Pantry on load
         public int Served,Lost,Earnings,Rank=1,NextInstanceId=1,NextOrderId=1;[NonSerialized]public List<RepGain> PendingRep=new List<RepGain>();
         public void Rep(string source,int amount){if(amount==0)return;(PendingRep??(PendingRep=new List<RepGain>())).Add(new RepGain{Source=source,Amount=amount});}

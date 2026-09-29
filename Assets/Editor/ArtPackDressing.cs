@@ -131,7 +131,126 @@ public static class ArtPackDressing {
             if (any) PrefabUtility.SaveAsPrefabAsset(root, outPath);
             Object.DestroyImmediate(root);
         }
+        GenerateFinishes();
+        GenerateShell();
         AssetDatabase.SaveAssets();
+    }
+
+    // ---- Restaurant shell: pack-textured floors/walls, a real storefront, trims and awnings ----
+    const string Tex = "Assets/Synty/PolygonShops/Textures/PolygonShops_Building_";
+    const string Bld = "Assets/Synty/PolygonShops/Prefabs/Buildings/";
+    const string ShellDir = "Assets/Resources/ArtOverrides/Shell", FinishDir = "Assets/Resources/ArtOverrides/Finishes";
+    // (finish id, pack texture, tint, repeats per metre, smoothness). UVs on our walls/floors are in metres.
+    static readonly (string id, string tex, Color tint, float tiling, float smooth)[] Finishes = {
+        ("floor_checker", "Tile_03", Color.white, .5f, .32f),
+        ("floor_wood", "Wood_02", new Color(1f, .95f, .88f), .8f, .22f),
+        ("floor_ceramic", "Tile_02", Color.white, .75f, .42f),
+        ("floor_clay", "Tile_01", new Color(1f, .7f, .55f), .8f, .25f),
+        ("floor_blue", "Tile_05", new Color(.72f, .88f, 1f), .5f, .42f),
+        ("floor_parquet", "Wood_01", Color.white, .8f, .28f),
+        ("floor_marble", "Marble_01", Color.white, .5f, .6f),
+        ("floor_slate", "Tile_04", new Color(.85f, .95f, 1f), .8f, .3f),
+        ("floor_stone", "Tile_01", Color.white, .8f, .25f),
+        ("wall_brick", "Brick_Coloured_01", new Color(1f, .72f, .6f), .8f, .05f),
+        ("wall_whitebrick", "Brick_White_01", Color.white, .8f, .05f),
+        ("wall_panel", "Wood_01", new Color(.8f, .65f, .55f), .8f, .2f),
+        ("wall_midnight", "Tile_04", new Color(.6f, .72f, 1f), .8f, .4f),
+        // The starter room before you renovate: grubby stone floor, tired whitewashed brick.
+        ("shabby_floor", "Tile_01", new Color(.8f, .74f, .62f), .8f, .1f),
+        ("shabby_wall", "Brick_White_01", new Color(.84f, .78f, .68f), .8f, .02f),
+    };
+    static Material SaveMat(string path, Texture tex, Color tint, Vector2 tiling, float smooth) {
+        var m = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        m.SetTexture("_BaseMap", tex); m.SetTextureScale("_BaseMap", tiling); m.mainTexture = tex; m.mainTextureScale = tiling;
+        m.SetColor("_BaseColor", tint); m.color = tint; m.SetFloat("_Smoothness", smooth);
+        var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (existing) { existing.shader = m.shader; existing.CopyPropertiesFromMaterial(m); EditorUtility.SetDirty(existing); Object.DestroyImmediate(m); return existing; }
+        AssetDatabase.CreateAsset(m, path); return m;
+    }
+    static void GenerateFinishes() {
+        bool pack = AssetDatabase.IsValidFolder("Assets/Synty/PolygonShops");
+        Directory.CreateDirectory(FinishDir);
+        foreach (var f in Finishes) {
+            string path = FinishDir + "/" + f.id + ".mat";
+            var tex = pack ? AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + f.tex + ".png") : null;
+            if (!tex) { if (File.Exists(path)) AssetDatabase.DeleteAsset(path); continue; }
+            SaveMat(path, tex, f.tint, Vector2.one * f.tiling, f.smooth);
+        }
+    }
+
+    // Instantiates a pack prefab at a yaw (0/90/180/-90), stretches it along the flagged world axes to fill [min,max],
+    // then snaps it so its bounds start at min (or end at max where alignMax is set). Pack colliders are removed.
+    static GameObject FitBox(Transform root, string src, float yaw, Vector3 min, Vector3 max, Vector3 fit, Vector3 alignMax) {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(src); if (!prefab) return null;
+        var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab); go.transform.SetParent(root, false);
+        go.transform.localRotation = Quaternion.Euler(0, yaw, 0);
+        var b = Measure(go);
+        Vector3 world = new Vector3(fit.x > 0 ? (max.x - min.x) / b.size.x : 1, fit.y > 0 ? (max.y - min.y) / b.size.y : 1, fit.z > 0 ? (max.z - min.z) / b.size.z : 1);
+        bool side = Mathf.Abs(Mathf.Repeat(yaw, 180f) - 90f) < 1f;
+        go.transform.localScale = Vector3.Scale(go.transform.localScale, side ? new Vector3(world.z, world.y, world.x) : world);
+        b = Measure(go);
+        go.transform.localPosition += new Vector3(alignMax.x > 0 ? max.x - b.max.x : min.x - b.min.x, alignMax.y > 0 ? max.y - b.max.y : min.y - b.min.y, alignMax.z > 0 ? max.z - b.max.z : min.z - b.min.z);
+        foreach (var c in go.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
+        return go;
+    }
+    static Bounds Measure(GameObject go) { var rs = go.GetComponentsInChildren<Renderer>(); var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); return b; }
+    // Repeats a trim strip along one wall: `count` equal pieces between a and b (world X or Z), at height y.
+    static void Run(Transform root, string src, int count, bool alongX, float a, float b, float y, float wall, float yaw, bool towardMax) {
+        float step = (b - a) / count;
+        for (int i = 0; i < count; i++) {
+            float s0 = a + step * i, s1 = s0 + step;
+            var min = alongX ? new Vector3(s0, y, wall) : new Vector3(wall, y, s0);
+            var max = alongX ? new Vector3(s1, y, wall) : new Vector3(wall, y, s1);
+            FitBox(root, src, yaw, min, max, alongX ? new Vector3(1, 0, 0) : new Vector3(0, 0, 1), alongX ? new Vector3(0, 0, towardMax ? 1 : 0) : new Vector3(towardMax ? 1 : 0, 0, 0));
+        }
+    }
+    static GameObject Block(Transform root, string name, Vector3 center, Vector3 size, Material m) {
+        var g = GameObject.CreatePrimitive(PrimitiveType.Cube); g.name = name; Object.DestroyImmediate(g.GetComponent<Collider>());
+        g.transform.SetParent(root, false); g.transform.localPosition = center; g.transform.localScale = size; g.GetComponent<Renderer>().sharedMaterial = m; return g;
+    }
+    static void Save(GameObject root, string id) { Directory.CreateDirectory(ShellDir); PrefabUtility.SaveAsPrefabAsset(root, ShellDir + "/" + id + ".prefab"); Object.DestroyImmediate(root); }
+
+    // Room-local coordinates (see RestaurantArt.BuildRoom): room x -16.5..-3.5, back wall z -22, street front z -9
+    // (the street is +Z), walk-in doorway x -11.5..-8.5 kept clear by our own invisible colliders.
+    static void GenerateShell() {
+        if (!AssetDatabase.IsValidFolder("Assets/Synty/PolygonShops")) {
+            foreach (var id in new[] { "facade", "interior_trim", "awning" }) { string path = ShellDir + "/" + id + ".prefab"; if (File.Exists(path)) AssetDatabase.DeleteAsset(path); }
+            return;
+        }
+        Directory.CreateDirectory(ShellDir);
+        Vector3 X = new Vector3(1, 0, 0), None = Vector3.zero, Zmax = new Vector3(0, 0, 1);
+        // Storefront: two three-pane shop windows either side of the doorway, brick pillars, a brick sign band,
+        // a cornice and a roof edge. Our code-built sign, lamps and address plaque sit on top of it.
+        var f = new GameObject("facade").transform;
+        FitBox(f, Bld + "SM_Bld_ShopFront_01.prefab", 0, new Vector3(-16.5f, 0, -9.15f), new Vector3(-11.5f, 0, 0), X, None);
+        FitBox(f, Bld + "SM_Bld_ShopFront_01.prefab", 0, new Vector3(-8.5f, 0, -9.15f), new Vector3(-3.5f, 0, 0), X, None);
+        foreach (float x in new[] { -11.5f, -8.5f, -16.5f, -3.5f }) FitBox(f, Bld + "SM_Bld_Base_Pillar_01.prefab", 0, new Vector3(x - .22f, 0, -9.2f), new Vector3(x + .22f, 2.9f, 0), new Vector3(1, 1, 0), None);
+        var brick = SaveMat(ShellDir + "/fascia_brick.mat", AssetDatabase.LoadAssetAtPath<Texture2D>(Tex + "Brick_Coloured_01.png"), new Color(1f, .72f, .6f), new Vector2(10.6f, 1.3f), .05f);
+        Block(f, "Sign band (brick)", new Vector3(-10, 3.58f, -8.98f), new Vector3(13.3f, 1.64f, .36f), brick);
+        Run(f, Bld + "SM_Bld_Trim_Wall_High_02.prefab", 6, true, -16.7f, -3.3f, 4.02f, -8.62f, 0, true);
+        Run(f, Bld + "SM_Bld_Roof_Edge_01.prefab", 6, true, -16.7f, -3.3f, 4.38f, -8.55f, 0, true);
+        Run(f, Bld + "SM_Bld_Trim_Wall_Low_01.prefab", 2, true, -16.5f, -11.7f, 0, -8.62f, 0, true);
+        Run(f, Bld + "SM_Bld_Trim_Wall_Low_01.prefab", 2, true, -8.3f, -3.5f, 0, -8.62f, 0, true);
+        // Glass double doors, propped open onto the sidewalk (decor only; the doorway stays clear).
+        FitBox(f, Bld + "SM_Bld_Shopfront_Door_01.prefab", 90, new Vector3(-11.3f, 0, -8.78f), new Vector3(0, 2.6f, 0), new Vector3(0, 1, 0), None);
+        FitBox(f, Bld + "SM_Bld_Shopfront_Door_01.prefab", -90, new Vector3(0, 0, -8.78f), new Vector3(-8.7f, 2.6f, 0), new Vector3(0, 1, 0), X);
+        Save(f.gameObject, "facade");
+
+        // Awning upgrade: two striped canvas awnings over each shop window.
+        var a = new GameObject("awning").transform;
+        foreach (float x0 in new[] { -16.3f, -13.95f, -8.3f, -5.95f })
+            FitBox(a, Bld + "SM_Bld_Awning_04.prefab", 0, new Vector3(x0, 2.2f, -8.84f), new Vector3(x0 + 2.3f, 0, 0), X, None);
+        Save(a.gameObject, "awning");
+
+        // Interior: a wainscot base, a chair rail and a crown moulding on the back and side walls.
+        var t = new GameObject("interior_trim").transform;
+        const float back = -21.875f, left = -16.375f, right = -3.625f, front = -9.15f;
+        foreach (var (src, y) in new[] { ("SM_Bld_Trim_Wall_Low_01", 0f), ("SM_Bld_Trim_Wall_High_01", 1.02f), ("SM_Bld_Trim_Ceiling_01", 3.47f) }) {
+            Run(t, Bld + src + ".prefab", 5, true, left, right, y, back, 0, false);
+            Run(t, Bld + src + ".prefab", 5, false, back, front, y, left, 90, false);
+            Run(t, Bld + src + ".prefab", 5, false, back, front, y, right, -90, true);
+        }
+        Save(t.gameObject, "interior_trim");
     }
 
     // Scale so the largest side is `size`, centred on X/Z, resting on Y = 0.

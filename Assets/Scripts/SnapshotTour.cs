@@ -69,6 +69,10 @@ namespace RestaurantCity {
             ("49_cast_oldmarket_a", new Vector3(-9.5f, 0, 5.2f), 180, 6, 70),
             ("50_cast_oldmarket_b", new Vector3(-9.5f, 0, 5.2f), 180, 6, 70),
             ("51_cast_closeup_anim", new Vector3(-12.6f, 0, 1.4f), 180, 10, 70),
+            ("68_starter_room", new Vector3(-10f, 0, -10.2f), 180, 8, 70),
+            ("69_shop_teaser", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
+            ("70_storefront", new Vector3(-10f, 0, -2.6f), 180, -10, 70),
+            ("71_storefront_night", new Vector3(-10f, 0, -2.6f), 180, -10, 190),
             ("62_restaurant_dressed", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
             ("63_restaurant_dressed_back", new Vector3(-5.6f, 0, -19.4f), -40, 12, 70),
             ("64_upgrade_panel", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
@@ -133,6 +137,11 @@ namespace RestaurantCity {
                     if (shot.name.Contains("chase")) { insp.Mode = RestaurantController.InspectorMode.Chase; insp.Target = p; insp.Root.transform.position = shot.pos + new Vector3(12, 0, 0);
                         for (int i = 0; i < 25; i++) { g.Clock = 160; p.transform.position = shot.pos; insp.Lost = 0; rc.Advance(.04f); yield return null; } }
                 }
+                if (rc && shot.name.Contains("starter_room")) {
+                    // The room you get for $150, before any renovation: pack flagstone and whitewashed brick, still grubby.
+                    var d = Game.State.Restaurant; d.Owned = true; d.Rank = 1; d.Layout.Clear(); rc.RebuildLayout(); for (int i = 0; i < 5; i++) yield return null;
+                }
+                if (rc && shot.name.Contains("shop_teaser")) { var d = Game.State.Restaurant; d.Rank = 1; foreach (var id in new[] { "grill", "sink", "prep_bench" }) d.Place(Game.State, id, 0, 0, 0, out _); rc.ShowPanel("Catalog"); for (int i = 0; i < 5; i++) yield return null; }
                 if (rc && shot.name.Contains("restaurant_dressed") && !dressed) {
                     dressed = true;
                     // A fully dressed Odd Table: buy it, then place a pack-furnished dining room and level-2/3 gear.

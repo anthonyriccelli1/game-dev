@@ -114,7 +114,7 @@ namespace RestaurantCity {
         void Update() {
             if (!Game || !Room) return;
             hudTimer -= Time.unscaledDeltaTime;
-            if (hudTimer <= 0) { hudTimer = .35f; UI.Refresh(); }
+            if (hudTimer <= 0) { hudTimer = .35f; UI.Refresh(); CheckUpgradeUnlock(); }
             if (!Game.Paused && !ManagementPauses && !PlacementActive && !Game.SmokeMode) { Advance(Time.deltaTime); CheckLeavingStaffing(); }
             // "Phone": P opens your crew list from anywhere in the city.
             if (!Game.Paused && Game.Started && Keyboard.current != null && Keyboard.current.pKey.wasPressedThisFrame && !PlacementActive && (Data.Owned || Game.State.StandBuilt)) { if (PanelOpen) ClosePanel(); else ShowPanel("Phone"); }
@@ -198,7 +198,7 @@ namespace RestaurantCity {
                 var placed = Data.Layout.Find(p => p.InstanceId == target.InstanceId);
                 var item = placed == null ? null : RestaurantCatalog.Find(placed.CatalogId);
                 if (item != null && item.Category == CatalogCategory.Kitchen) {
-                    if (Data.CanCustomize) { FocusPrompt = "E  Move or sell kitchen equipment  /  Tab manage"; if (activate) { SelectedInstanceId = target.InstanceId; ShowPanel("Furniture"); } return true; }
+                    if (Data.CanCustomize) { FocusPrompt = StationUpgrades.CanUpgrade(item.Id) ? "E  Move, sell or upgrade  /  " + UpgradeTeaser(placed) : "E  Move or sell kitchen equipment  /  Tab manage"; if (activate) { SelectedInstanceId = target.InstanceId; ShowPanel("Furniture"); } return true; }
                     FocusPrompt = "E  Kitchen tickets / collect a ready dish";
                     if (activate) { var ready = Data.Orders.Find(o => o.Stage == RestaurantOrderStage.Ready); if (ready == null || !CollectDish(ready.Id)) ShowPanel("Service"); }
                 } else {
@@ -209,6 +209,21 @@ namespace RestaurantCity {
             return true;
         }
         public void ClearFocus() { FocusPrompt = ""; }
+        // One line that tells players where this station can go next (without showing Level 3 itself).
+        public string UpgradeTeaser(PlacedItem placed) {
+            int lv = Data.LevelOf(placed.InstanceId), next = lv + 1;
+            if (next > StationUpgrades.MaxLevel) return "Fully upgraded";
+            if (Data.Stars < StationUpgrades.StarsNeeded(next)) return "Chrome Level " + next + " unlocks at " + StationUpgrades.StarsNeeded(next) + " stars";
+            if (Game.State.RankEarned < StationUpgrades.RankNeeded(next)) return "Level " + next + ": ??? (arrives with the Docks)";
+            return "Level " + next + " ready: $" + StationUpgrades.Cost(RestaurantCatalog.Find(placed.CatalogId), next);
+        }
+        // The first time the restaurant reaches the chrome star level, say so loudly.
+        void CheckUpgradeUnlock() {
+            if (!Data.Owned || Data.ChromeUnlockSeen || Data.Stars < StationUpgrades.StarsNeeded(2)) return;
+            Data.ChromeUnlockSeen = true; PlayChime(true);
+            Feedback(Data.Stars + " STARS: chrome Level 2 upgrades unlocked! Aim at any kitchen station while closed and press E, or open Manage > Arrange.");
+            Game.Save();
+        }
         public void SelectCatalogItem(string id) {
             if (!Data.CanCustomize) { Feedback("Close service and finish your remaining guests before remodeling."); return; }
             if (FinishCatalog.Find(id) != null) { BeginFinishBrush(id); return; }
@@ -313,11 +328,13 @@ namespace RestaurantCity {
             RestaurantArt.RenderSurfaceFinishes(Room, Data);
             Game.State.Kitchen.EnsureStations(Data);
         }
-        public Texture GetCatalogIcon(string id) {
+        // Level 2/3 photos let the shop tease what an upgrade looks like.
+        public Texture GetCatalogIcon(string id, int level = 1) {
             if (FinishCatalog.Find(id) != null) return RestaurantArt.FinishSwatch(id);
-            if (thumbnails.TryGetValue(id, out Texture found)) return found;
+            string key = level <= 1 ? id : id + "@" + level;
+            if (thumbnails.TryGetValue(key, out Texture found)) return found;
             var stage = new GameObject("Catalog photo stage"); stage.transform.position = new Vector3(800, 0, 800);
-            var obj = CreateFurnishing(id, stage.transform); obj.transform.localPosition = Vector3.zero; if (StationUpgrades.CanUpgrade(id)) StationLooks.ApplyLevel(obj, 1);
+            var obj = CreateFurnishing(id, stage.transform); obj.transform.localPosition = Vector3.zero; if (StationUpgrades.CanUpgrade(id)) StationLooks.ApplyLevel(obj, Mathf.Max(1, level));
             foreach (var t in obj.GetComponentsInChildren<Transform>()) t.gameObject.layer = 30;
             var cam = new GameObject("Catalog camera").AddComponent<Camera>(); cam.enabled = false; cam.cullingMask = 1 << 30;
             cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(.87f, .86f, .77f); cam.orthographic = true;
@@ -328,7 +345,7 @@ namespace RestaurantCity {
             var fill = new GameObject("Catalog light").AddComponent<Light>(); fill.type = LightType.Directional; fill.cullingMask = 1 << 30; fill.intensity = 1.3f; fill.transform.rotation = Quaternion.Euler(35, -30, 0);
             var texture = new RenderTexture(320, 240, 24); texture.Create();
             RenderPipeline.SubmitRenderRequest(cam, new UniversalRenderPipeline.SingleCameraRequest { destination = texture });
-            thumbnails[id] = texture; stage.SetActive(false); Destroy(stage); Destroy(cam.gameObject); Destroy(fill.gameObject); return texture;
+            thumbnails[key] = texture; stage.SetActive(false); Destroy(stage); Destroy(cam.gameObject); Destroy(fill.gameObject); return texture;
         }
         public TextMesh WorldCaption(Transform parent, string caption, Vector3 local, float size = .021f) {
             var go = new GameObject("Guest reaction"); go.transform.SetParent(parent, false); go.transform.localPosition = local;

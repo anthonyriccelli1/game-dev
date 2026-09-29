@@ -190,8 +190,9 @@ namespace RestaurantCity {
                 Label(card, entry.Name, 128, 17, 227, 46, 21, ink, true);
                 Label(card, "$" + entry.Price + (finish == null ? "" : finish.IsWall ? " / section" : " / tile"), 128, 67, 227, 30, 23, locked ? muted : teal, true);
                 Label(card, finish != null ? (finish.IsWall ? "Walls" : "Floors") + " / Full coverage: " + finish.Ambience + " ambience"
-                    : entry.Category + (entry.Seats > 0 ? "  /  " + entry.Seats + " seats" : "") + (entry.Ambience > 0 ? "  /  +" + entry.Ambience + " ambience" : ""), 128, 103, 230, 28, 12, muted);
+                    : entry.Category + (StationUpgrades.CanUpgrade(entry.Id) ? "  /  upgradeable" : "") + (entry.Seats > 0 ? "  /  " + entry.Seats + " seats" : "") + (entry.Ambience > 0 ? "  /  +" + entry.Ambience + " ambience" : ""), 128, 103, 230, 28, 12, muted);
                 Label(card, entry.Description, 14, 134, 344, 43, 14, ink);
+                if (StationUpgrades.CanUpgrade(entry.Id)) UpgradeLadder(card, entry.Id, 1, 250, 52, 50, false);
                 string action = tierLocked ? "Unlocks at " + Reputation.Titles[entry.Tier] : locked ? "Unlock at " + entry.RequiredStars + " stars" : finish != null ? "Preview brush" : entry.Category == CatalogCategory.Exterior ? "Install for $" + entry.Price : "Preview & place";
                 bool can = !locked && Owner.Data.CanCustomize && (finish != null || Owner.Game.State.Cash >= entry.Price);
                 if (finish == null && !locked && Owner.Game.State.Cash < entry.Price) action = "Save $" + (entry.Price - Owner.Game.State.Cash) + " more";
@@ -378,7 +379,7 @@ namespace RestaurantCity {
             Button(sheet,"Prep research / 3 Flux",848,297,339,40,()=>{Owner.Game.State.Kitchen.SpendFlux(Owner.Game.State,"research",out var m);Owner.Feedback(m);},pale,ink);
             int i=0;foreach(var w in Owner.Data.Workers){string id=w.Id;Button(sheet,id+" energy boost / 1 Flux",848,351+i++*48,339,40,()=>{Owner.Game.State.Kitchen.SpendFlux(Owner.Game.State,id,out var m);Owner.Feedback(m);},pale,ink);}
             var report=Owner.Game.State.Kitchen.LastReport;
-            if(report!=null)Label(sheet,"LAST SHIFT   Sales $"+report.GrossSales+" - ingredients $"+report.IngredientCosts.ToString("0.0")+" - wages $"+report.Wages+" = net $"+report.Net+"\nServed "+report.Served+" / lost "+report.Lost+" | Satisfaction "+report.Satisfaction.ToString("0")+"% | Stars "+report.StarsBefore+" > "+report.StarsAfter+"\n"+string.Join(" / ",report.Comments)+"\n"+report.StaffSummary,30,506,1157,143,16,ink);
+            if(report!=null)Label(sheet,"LAST SHIFT   Sales $"+report.GrossSales+" - ingredients $"+report.IngredientCosts.ToString("0.0")+" - wages $"+report.Wages+" = net $"+report.Net+"\nServed "+report.Served+" / lost "+report.Lost+" | Satisfaction "+report.Satisfaction.ToString("0")+"% | Stars "+report.StarsBefore+" > "+report.StarsAfter+"\n"+string.Join(" / ",report.Comments)+"\n"+report.StaffSummary+(Owner.Data.Stars<StationUpgrades.StarsNeeded(2)?"\nNEXT GOAL: "+StationUpgrades.StarsNeeded(2)+" stars unlocks chrome Level 2 kitchen gear (faster grill, sink and prep).":""),30,506,1157,143,16,ink);
             else Label(sheet,"A shift takes arrivals for two minutes, then lets you finish remaining guests.\nUse the door sign to end arrivals early. Tab opens management between shifts.\nController Start joins player two. Management is a shared screen while closed.",30,523,1157,110,18,muted);
         }
         void BuildFurniture(RectTransform sheet) {
@@ -388,7 +389,9 @@ namespace RestaurantCity {
             for (int i = 0; i < owned.Count; i++) {
                 var placed = owned[i];
                 var definition = RestaurantCatalog.Find(placed.CatalogId);
-                Button(content, definition.Name + "  #" + placed.InstanceId + "  (" + placed.X + ", " + placed.Z + ")", 6, i * 58 + 3, 340, 50,
+                string level = "";
+                if (StationUpgrades.CanUpgrade(placed.CatalogId)) { int lv = Owner.Data.LevelOf(placed.InstanceId); bool ready = lv < StationUpgrades.MaxLevel && Owner.Data.Stars >= StationUpgrades.StarsNeeded(lv + 1) && Owner.Game.State.RankEarned >= StationUpgrades.RankNeeded(lv + 1); level = "  L" + lv + (ready ? " > UPGRADE" : ""); }
+                Button(content, definition.Name + level + "  #" + placed.InstanceId + "  (" + placed.X + ", " + placed.Z + ")", 6, i * 58 + 3, 340, 50,
                     () => Owner.SelectFurnitureItem(placed.InstanceId), placed.InstanceId == Owner.SelectedInstanceId ? teal : pale,
                     placed.InstanceId == Owner.SelectedInstanceId ? white : ink);
             }
@@ -396,9 +399,11 @@ namespace RestaurantCity {
             foreach (var item in Owner.Data.Layout) if (item.InstanceId == Owner.SelectedInstanceId) selected = item;
             if (selected == null) { Label(sheet, "Select any owned furnishing from the list. B while aiming at one opens it here directly.", 430, 270, 740, 90, 24, ink, true, TextAnchor.MiddleCenter); return; }
             var entry = RestaurantCatalog.Find(selected.CatalogId); int id = selected.InstanceId;
-            var picture = Box(sheet, "Selected furnishing", 430, 175, 275, 235).gameObject.AddComponent<RawImage>(); picture.texture = Owner.GetCatalogIcon(selected.CatalogId); picture.raycastTarget = false;
+            var picture = Box(sheet, "Selected furnishing", 430, 175, 275, 235).gameObject.AddComponent<RawImage>(); picture.texture = Owner.GetCatalogIcon(selected.CatalogId, StationUpgrades.CanUpgrade(selected.CatalogId) ? Owner.Data.LevelOf(selected.InstanceId) : 1); picture.raycastTarget = false;
             Label(sheet, entry.Name, 730, 180, 430, 58, 31, ink, true);
-            Label(sheet, entry.Description, 730, 253, 425, 90, 18, muted);
+            bool ladder = StationUpgrades.CanUpgrade(selected.CatalogId);
+            Label(sheet, entry.Description, 730, 245, 425, ladder ? 60 : 90, ladder ? 15 : 18, muted);
+            if (ladder) UpgradeLadder(sheet, selected.CatalogId, Owner.Data.LevelOf(selected.InstanceId), 730, 300, 76, true);
             Label(sheet, "Move: choose a new floor cell, then click. R rotates. Esc cancels.", 430, 429, 735, 46, 18, ink);
             Button(sheet, "Move furnishing", 430, 490, 350, 52, () => Owner.MoveItem(id), teal, white, Owner.Data.CanCustomize);
             Button(sheet, "Sell for $" + (selected.Paid / 2), 805, 490, 350, 52, () => Owner.SellItem(id), coral, white, Owner.Data.CanCustomize);
@@ -410,6 +415,28 @@ namespace RestaurantCity {
                     string label = starsOk ? "UPGRADE to Level " + next + "  /  $" + cost + "   (" + StationUpgrades.Effect(selected.CatalogId, next) + ")" : Owner.Data.Stars < stars ? "Level " + next + " unlocks at " + stars + " stars" : "Level " + next + " arrives with the Docks (" + Reputation.Titles[rank] + ")";
                     Button(sheet, label, 430, 584, 725, 48, () => Owner.UpgradeItem(id), teal, white, starsOk && Owner.Game.State.Cash >= cost && Owner.Data.CanCustomize);
                 } else Label(sheet, "Fully upgraded.", 430, 590, 735, 30, 17, teal, true);
+            }
+        }
+
+        // Level tiles: the next chrome level is shown for real (so players know it exists and want it);
+        // premium Level 3 stays a locked "?" until you own it.
+        void UpgradeLadder(RectTransform parent, string id, int current, float x, float y, float size, bool withCurrent) {
+            int first = withCurrent ? 1 : 2, tagSize = size >= 60 ? 13 : 11;
+            for (int level = first; level <= StationUpgrades.MaxLevel; level++) {
+                float left = x + (level - first) * (size + 8);
+                bool starsOk = Owner.Data.Stars >= StationUpgrades.StarsNeeded(level), rankOk = Owner.Game.State.RankEarned >= StationUpgrades.RankNeeded(level);
+                bool mystery = level >= 3 && current < 3;
+                if (mystery) {
+                    var tile = Block(parent, "Level " + level + " mystery", left, y, size, size, ink);
+                    Label(tile, "?", 0, 0, size, size - 12, (int)(size * .5f), paper, true, TextAnchor.MiddleCenter);
+                } else {
+                    Block(parent, "Level " + level + " frame", left - 2, y - 2, size + 4, size + 4, level == current ? teal : level == 2 ? new Color(.62f, .7f, .74f) : pale);
+                    var pic = Box(parent, "Level " + level + " preview", left, y, size, size).gameObject.AddComponent<RawImage>();
+                    pic.texture = Owner.GetCatalogIcon(id, level); pic.raycastTarget = false; pic.color = level > current && !starsOk ? new Color(.82f, .82f, .82f) : Color.white;
+                }
+                string tag = level == current ? "NOW" : level < current ? "L" + level : level == 2 ? (starsOk ? "READY" : "2 STARS") : (rankOk && starsOk ? "READY" : "DOCKS");
+                var strip = Block(parent, "Level " + level + " tag", left, y + size - tagSize - 4, size, tagSize + 4, level == current ? teal : ink);
+                Label(strip, tag, 0, 0, size, tagSize + 4, tagSize, paper, true, TextAnchor.MiddleCenter);
             }
         }
 
