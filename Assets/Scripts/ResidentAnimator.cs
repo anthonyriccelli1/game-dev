@@ -8,14 +8,15 @@ namespace RestaurantCity {
     // Missing clips fall back gracefully (sitting falls back to a procedural leg pose), so a checkout without
     // the Mixamo files still runs.
     public class ResidentAnimator : MonoBehaviour {
-        public enum State { Idle, Walk, Sit, Eat, Work }
+        public enum State { Idle, Walk, Sit, Eat, Work, Run }
         public State Current;
         public Gait Gait;
         Animator animator; PlayableGraph graph; AnimationMixerPlayable mixer;
-        readonly float[] weights = new float[6];
+        const int Loops = 6;
+        readonly float[] weights = new float[Loops + 1];
         AnimationClip[] loops; bool hasSit;
         float oneShotUntil, oneShotLength;
-        const int OneShotInput = 5;
+        const int OneShotInput = Loops;
 
         static readonly Dictionary<string, AnimationClip> cache = new Dictionary<string, AnimationClip>();
         public static AnimationClip Clip(string name) {
@@ -30,9 +31,9 @@ namespace RestaurantCity {
             string idle = gait == Gait.Zombie ? "ZombieIdle" : gait == Gait.Light ? "IdleB" : "Idle";
             string walk = gait == Gait.Zombie ? "ZombieWalk" : gait == Gait.Light ? "WalkB" : "Walk";
             var idleClip = Clip(idle) ?? Clip("Idle"); var sit = Clip("Sit"); hasSit = sit;
-            loops = new[] { idleClip, Clip(walk) ?? Clip("Walk") ?? idleClip, sit ?? idleClip, Clip("Eat") ?? sit ?? idleClip, Clip("Work") ?? idleClip };
+            loops = new[] { idleClip, Clip(walk) ?? Clip("Walk") ?? idleClip, sit ?? idleClip, Clip("Eat") ?? sit ?? idleClip, Clip("Work") ?? idleClip, gait == Gait.Zombie ? Clip("ZombieRun") ?? Clip(walk) ?? idleClip : Clip("Run") ?? Clip(walk) ?? idleClip };
             graph = PlayableGraph.Create(name + " anim"); graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
-            mixer = AnimationMixerPlayable.Create(graph, 6);
+            mixer = AnimationMixerPlayable.Create(graph, Loops + 1);
             float offset = Random.value * 3;   // so a crowd doesn't move in lockstep
             for (int i = 0; i < loops.Length; i++) {
                 if (!loops[i]) continue;
@@ -43,8 +44,8 @@ namespace RestaurantCity {
         }
         // Poses the model immediately (for portraits taken outside the normal frame loop).
         public void Pose(float seconds) { if (graph.IsValid()) graph.Evaluate(seconds); }
-        public void React(bool happy) {
-            var clip = happy ? (Clip("Cheer") ?? Clip("Happy")) : Clip("Angry");
+        public void React(bool happy) => PlayOnce(happy ? (Clip("Cheer") ?? Clip("Happy")) : Clip("Angry"));
+        public void PlayOnce(AnimationClip clip) {
             if (!clip || !graph.IsValid()) return;
             var old = mixer.GetInput(OneShotInput); if (old.IsValid()) { graph.Disconnect(mixer, OneShotInput); old.Destroy(); }
             var p = AnimationClipPlayable.Create(graph, clip); graph.Connect(p, 0, mixer, OneShotInput);
@@ -53,15 +54,15 @@ namespace RestaurantCity {
         void Update() {
             if (!graph.IsValid()) return;
             float dt = Time.deltaTime * 6;
-            for (int i = 0; i < 5; i++) weights[i] = Mathf.MoveTowards(weights[i], i == (int)Current ? 1 : 0, dt);
+            for (int i = 0; i < Loops; i++) weights[i] = Mathf.MoveTowards(weights[i], i == (int)Current ? 1 : 0, dt);
             bool shot = Time.time < oneShotUntil && Current != State.Sit && Current != State.Eat;
             weights[OneShotInput] = Mathf.MoveTowards(weights[OneShotInput], shot ? 1 : 0, dt);
             Apply();
         }
         void Apply() {
-            float loopTotal = 0; for (int i = 0; i < 5; i++) loopTotal += weights[i];
+            float loopTotal = 0; for (int i = 0; i < Loops; i++) loopTotal += weights[i];
             float scale = (1 - weights[OneShotInput]) / Mathf.Max(.0001f, loopTotal);
-            for (int i = 0; i < 5; i++) mixer.SetInputWeight(i, weights[i] * scale);
+            for (int i = 0; i < Loops; i++) mixer.SetInputWeight(i, weights[i] * scale);
             mixer.SetInputWeight(OneShotInput, weights[OneShotInput]);
         }
         // Without a sitting clip, fold the legs into a chair pose after the animation has posed the body.

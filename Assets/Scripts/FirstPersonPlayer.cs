@@ -65,7 +65,8 @@ namespace RestaurantCity {
             if (pad != null) move += pad.leftStick.ReadValue();
             if (mouse != null && Cursor.lockState == CursorLockMode.Locked && !Elevated) ApplyLook(mouse.delta.ReadValue() * Sensitivity);
             if (pad != null && !Elevated) ApplyLook(pad.rightStick.ReadValue() * (130 * Time.deltaTime));
-            ApplyMovement(move, Time.deltaTime, keys != null && keys.leftShiftKey.isPressed || pad != null && pad.leftStickButton.isPressed);
+            ApplyMovement(move, Time.deltaTime, keys != null && keys.leftShiftKey.isPressed || pad != null && pad.leftStickButton.isPressed,
+                keys != null && keys.spaceKey.wasPressedThisFrame || pad != null && pad.rightStickButton.wasPressedThisFrame);
             ResolveAndInteract(interact, InteractHeld);
             if (mouse != null && mouse.leftButton.wasPressedThisFrame || pad != null && pad.rightShoulder.wasPressedThisFrame) Swing();
             if (Spatula) Spatula.localRotation = toolRotation * Quaternion.Euler(Mathf.Sin(swingTimer / .55f * Mathf.PI) * -65, 0, 0);
@@ -128,13 +129,17 @@ namespace RestaurantCity {
             pitch = Mathf.Clamp(pitch - degrees.y, -78, 78);
             if (!Elevated && View) View.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
         }
-        public void ApplyMovement(Vector2 input, float seconds, bool sprint = false) {
+        public const float JumpSpeed = 6.8f;
+        public bool Sprinting, Airborne; public float LastJumpTime = -10;
+        public void ApplyMovement(Vector2 input, float seconds, bool sprint = false, bool jump = false) {
             if (!controller) controller = GetComponent<CharacterController>();
             Vector3 forward = Elevated ? Vector3.ProjectOnPlane(View.transform.forward, Vector3.up).normalized : transform.forward;
             Vector3 right = Elevated ? Vector3.ProjectOnPlane(View.transform.right, Vector3.up).normalized : transform.right;
             Vector3 move = Vector3.ClampMagnitude(right * input.x + forward * input.y, 1);
             if (Elevated && move.sqrMagnitude > .01f) transform.rotation = Quaternion.LookRotation(move);
             gravity = controller.isGrounded ? -2 : gravity - 22 * seconds;
+            if (jump && controller.isGrounded) { gravity = JumpSpeed; LastJumpTime = Time.time; }
+            Sprinting = sprint && move.sqrMagnitude > .01f; Airborne = !controller.isGrounded;
             controller.Move((move * (sprint ? 6.5f : 4) + Vector3.up * gravity) * seconds);
         }
         void LateUpdate() {

@@ -161,6 +161,10 @@ namespace RestaurantCity {
         public bool SignatureDish;
         public FoodStage Food;
         public bool IsNight => Clock >= 150;
+        // A full day/night cycle is 240 clock units. DayLengthSeconds sets how long that takes in real time
+        // (night is the last 90 units, 37.5% of the day). Cooking, patience and arrivals still run in real seconds.
+        public static float DayLengthSeconds = 720;
+        public static float ClockRate => 240f / Math.Max(1f, DayLengthSeconds);
         public bool IsBurnt => CookSeconds > 10;
         public int SalePrice => (SignatureDish ? 18 : 12) * (IsNight ? 3 : 2) / 2;
         public bool SetUpStand() {
@@ -229,7 +233,7 @@ namespace RestaurantCity {
         }
         public void Tick(float seconds) {
             if (seconds <= 0 || float.IsNaN(seconds) || float.IsInfinity(seconds)) return;
-            Clock += seconds;
+            Clock += seconds * ClockRate;
             if (Restaurant != null) Restaurant.PlayerRank = RankEarned;
             if (Restaurant != null && Restaurant.PendingRep != null && Restaurant.PendingRep.Count > 0) { foreach (var g in Restaurant.PendingRep) GainReputation(g.Amount, g.Source); Restaurant.PendingRep.Clear(); }
             else CheckRankUp();

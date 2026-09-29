@@ -3,7 +3,7 @@ using UnityEngine;
 namespace RestaurantCity {
     /// <summary>Presentation only: movement/state are supplied by the restaurant simulation.</summary>
     public class CharacterMotion : MonoBehaviour {
-        public bool Walking, Seated, Working, Eating;
+        public bool Walking, Seated, Working, Eating, Running;
         ResidentAnimator resident;
         Transform body, head, leftArm, rightArm, leftLeg, rightLeg, leftKnee, rightKnee, mouth;
         Vector3 bodyOrigin, headOrigin;
@@ -25,10 +25,11 @@ namespace RestaurantCity {
         // One-off reactions: a happy hop with arms up, or an angry stomp.
         float cheerUntil, stompUntil;
         public void Cheer() { cheerUntil = Time.time + 1.3f; mood = 1; if (resident) resident.React(true); }
+        public void Jump() { if (resident) resident.PlayOnce(ResidentAnimator.Clip("Jump")); }
         public void Stomp() { stompUntil = Time.time + 1.1f; mood = .1f; if (resident) resident.React(false); }
         void Update() {
             if (resident) {
-                resident.Current = Seated ? (Eating ? ResidentAnimator.State.Eat : ResidentAnimator.State.Sit) : Walking ? ResidentAnimator.State.Walk : Working ? ResidentAnimator.State.Work : ResidentAnimator.State.Idle;
+                resident.Current = Seated ? (Eating ? ResidentAnimator.State.Eat : ResidentAnimator.State.Sit) : Walking ? (Running ? ResidentAnimator.State.Run : ResidentAnimator.State.Walk) : Working ? ResidentAnimator.State.Work : ResidentAnimator.State.Idle;
                 return;
             }
             if (!body) return;

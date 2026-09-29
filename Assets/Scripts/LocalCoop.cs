@@ -67,7 +67,10 @@ namespace RestaurantCity {
             foreach (var player in players) {
                 if (!bodies.TryGetValue(player.PlayerId, out var body) || !body) continue;
                 var motion = body.GetComponent<CharacterMotion>();
-                if (motion) motion.Walking = player.GetComponent<CharacterController>().velocity.sqrMagnitude > .1f && !game.Paused;
+                if (!motion) continue;
+                var v = player.GetComponent<CharacterController>().velocity; v.y = 0;
+                motion.Walking = v.sqrMagnitude > .1f && !game.Paused; motion.Running = player.Sprinting;
+                if (bodyJumps.TryGetValue(player.PlayerId, out var seen) ? seen != player.LastJumpTime : player.LastJumpTime > 0) { bodyJumps[player.PlayerId] = player.LastJumpTime; if (player.LastJumpTime > 0) motion.Jump(); }
             }
         }
         public bool Join(Gamepad pad = null) {
@@ -102,9 +105,13 @@ namespace RestaurantCity {
             if (!SecondPlayer) return;
             var second = SecondPlayer; players.RemoveAt(1); bodies.Remove(1); Destroy(second.gameObject); RefreshViews();
         }
+        public static readonly ResidentDef PlayerOneLook = new ResidentDef("003_Jimmy", "You", 1.72f, 0, StaffJob.Any, "");
+        public static readonly ResidentDef PlayerTwoLook = new ResidentDef("056_Olivia", "Player 2", 1.66f, 0, StaffJob.Any, "", Gait.Light);
+        readonly System.Collections.Generic.Dictionary<int, float> bodyJumps = new System.Collections.Generic.Dictionary<int, float>();
         void AddBody(FirstPersonPlayer player) {
             if (bodies.ContainsKey(player.PlayerId)) return;
-            var body = RestaurantArt.CreateCharacter(player.PlayerId == 0 ? 0 : 1, player.transform);
+            // Players get a resident body too (animated walk/run/jump) when the Mixamo clips are installed.
+            var body = People.UseResidents ? ResidentModels.Create(player.PlayerId == 0 ? PlayerOneLook : PlayerTwoLook, player.transform) : RestaurantArt.CreateCharacter(player.PlayerId == 0 ? 0 : 1, player.transform);
             body.name = "Player " + (player.PlayerId + 1) + " visible body";
             body.transform.localPosition = Vector3.zero; body.transform.localRotation = Quaternion.identity;
             foreach (var child in body.GetComponentsInChildren<Transform>()) child.gameObject.layer = player.PlayerId == 0 ? 28 : 29;

@@ -67,7 +67,7 @@ namespace RestaurantCity {
         }
 
         void TickInspector(Inspector i, float seconds) {
-            var s = Game.State;
+            var s = Game.State; if (i.Motion) i.Motion.Running = i.Mode == InspectorMode.Chase;
             switch (i.Mode) {
                 case InspectorMode.Patrol: case InspectorMode.Cooldown: case InspectorMode.Suspicious: {
                     if (i.Mode == InspectorMode.Cooldown && (i.CooldownLeft -= seconds) <= 0) i.Mode = InspectorMode.Patrol;
