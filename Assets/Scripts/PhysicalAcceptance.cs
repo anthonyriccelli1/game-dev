@@ -97,10 +97,10 @@ namespace RestaurantCity {
    // Equipment levels: upgrade a station in place; it gets better at its job and keeps its spot.
    try{var r=Game.State.Restaurant;var g=r.Layout.Find(x=>x.CatalogId=="grill");
     if(g==null){r.Place(Game.State,"grill",0,0,0,out var bm);g=r.Layout.Find(x=>x.CatalogId=="grill");}
-    if(g!=null){int before=Game.State.Cash;Game.State.Cash=Math.Max(Game.State.Cash,500);int lv=r.LevelOf(g.InstanceId);
+    if(g!=null){int before=Game.State.Cash,oldRank=r.Rank;Game.State.Cash=Math.Max(Game.State.Cash,500);int lv=r.LevelOf(g.InstanceId);g.Level=1;lv=1;r.Rank=1;Check(!r.Upgrade(Game.State,g.InstanceId,out var um1),"Level 2 gear needs 2 stars: "+um1);r.Rank=2;
      Check(lv==1||lv==2,"new grills start at level 1 ("+lv+")");bool up=r.Upgrade(Game.State,g.InstanceId,out var um);Check(up&&r.LevelOf(g.InstanceId)==lv+1,"upgrade the grill in place: "+um);
      Check(StationUpgrades.CookSeconds("grill",2)<StationUpgrades.CookSeconds("grill",1)&&StationUpgrades.BurnSeconds(2)>StationUpgrades.BurnSeconds(1),"higher grill levels cook faster and burn later");
-     bool l3=r.Upgrade(Game.State,g.InstanceId,out var um3);Check(r.Stars>=2?l3:!l3,"level 3 needs 2 stars: "+um3);
+     bool l3=r.Upgrade(Game.State,g.InstanceId,out var um3);Check(Game.State.RankEarned>=1?l3:!l3,"Level 3 arrives with the Docks: "+um3);r.Rank=oldRank;
      Check(StationUpgrades.Plates(3)>StationUpgrades.Plates(1),"plate rack levels add plates");}}catch(Exception e){Fail(e);yield break;}
    // Night inspectors: rules first, then a live patrol that spots a player carrying Zeeb's sauce and searches them.
    try{var g=Game.State;const string me="player:0";var held=g.Kitchen.Hold(me);if(held!=null)g.Kitchen.Items.Remove(held);

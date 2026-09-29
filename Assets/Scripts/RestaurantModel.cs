@@ -189,9 +189,9 @@ namespace RestaurantCity {
         public int ShiftsRun; public int ShiftLevel=>ShiftDifficulty.Level(this);
         public float PatienceOf(RestaurantOrder o)=>o.Patience>0?o.Patience:RestaurantCatalog.Customers[o.CustomerType].Patience;
         [NonSerialized]public int PlayerRank;public string SiteId="oddtable";public int SiteAmbience=>SiteId=="bayside"?4:0;
-        public int Ambience => Math.Min(40,SiteAmbience+FinishAmbience+Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.IsFinish==true?0:RestaurantCatalog.Find(p.CatalogId)?.Ambience??0));
+        public int Ambience => Math.Min(40,SiteAmbience+FinishAmbience+Layout.Where(p=>StationUpgrades.CanUpgrade(p.CatalogId)).Sum(p=>StationUpgrades.AmbienceBonus(p.Level))+Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.IsFinish==true?0:RestaurantCatalog.Find(p.CatalogId)?.Ambience??0));
         public int CookSlots => Math.Max(1,Layout.Count(p=>p.CatalogId=="grill"||p.CatalogId=="stove"||p.CatalogId=="oven"));
-        public int StockLimit => HasEquipment("fridge")?48:24;
+        public int StockLimit => (int)Math.Round((HasEquipment("fridge")?48:24)*Layout.Where(p=>p.CatalogId=="pantry").Select(p=>StationUpgrades.StockScale(p.Level)).DefaultIfEmpty(1f).Max());
         // One shared pantry (stand and restaurant) with a count per ingredient; the limit applies to each ingredient.
         public List<StockLine> Pantry=new List<StockLine>();
         public int Stock(string id){var l=Pantry?.Find(x=>x.Id==id);return l==null?0:l.Count;}
@@ -292,7 +292,7 @@ namespace RestaurantCity {
             var p=Layout.Find(x=>x.InstanceId==instanceId);var c=p==null?null:RestaurantCatalog.Find(p.CatalogId);
             if(c==null||!StationUpgrades.CanUpgrade(c.Id))return Fail("This can't be upgraded.",out message);
             int next=Math.Max(1,p.Level)+1;if(next>StationUpgrades.MaxLevel)return Fail(c.Name+" is already fully upgraded.",out message);
-            if(Stars<StationUpgrades.StarsNeeded(next))return Fail("Level "+next+" needs "+StationUpgrades.StarsNeeded(next)+" stars.",out message);
+            if(Stars<StationUpgrades.StarsNeeded(next))return Fail("Level "+next+" needs "+StationUpgrades.StarsNeeded(next)+" stars.",out message);if(wallet.RankEarned<StationUpgrades.RankNeeded(next))return Fail("Level "+next+" gear arrives with the Docks: reach "+Reputation.Titles[StationUpgrades.RankNeeded(next)]+".",out message);
             int cost=StationUpgrades.Cost(c,next);if(wallet.Cash<cost)return Fail("Upgrading costs $"+cost+".",out message);
             wallet.Cash-=cost;p.Level=next;p.Paid+=cost;wallet.Emit("upgrade:"+instanceId+":"+next);
             message=c.Name+" upgraded to "+StationUpgrades.LevelName(next)+"! "+StationUpgrades.Effect(c.Id,next)+".";return true;

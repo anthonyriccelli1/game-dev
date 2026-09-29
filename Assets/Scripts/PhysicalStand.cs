@@ -26,7 +26,7 @@ namespace RestaurantCity {
             for (int i = 0; i < KitchenState.StandKit.Length; i++) {
                 int id = KitchenState.StandBase + 1 + i; string kind = KitchenState.StandKit[i];
                 if (standObjects.TryGetValue(id, out var existing) && existing) continue;
-                var obj = kind == "stand_plates" ? KitchenArt.CreateStation("plate_rack", Game.Stand.transform) : kind == "prep_bench" ? KitchenArt.CreateStation("cutting_board", Game.Stand.transform) : CreateFurnishing(kind, Game.Stand.transform); if (kind == "grill" || kind == "sink") StationLooks.ApplyLevel(obj, 1);
+                var obj = kind == "stand_plates" ? KitchenArt.CreateStation("plate_rack", Game.Stand.transform) : kind == "prep_bench" ? KitchenArt.CreateStation("cutting_board", Game.Stand.transform) : CreateFurnishing(kind, Game.Stand.transform); StationLooks.ApplyLevel(obj, 1);   // the street stand is all Flats hand-me-downs
                 // The rack's decorative plates are replaced by a live stack showing the real count.
                 if (kind == "stand_plates") foreach (Transform part in obj.GetComponentsInChildren<Transform>(true)) if (part.name == "Glazed cream plate") part.gameObject.SetActive(false);
                 obj.name = "Stand " + kind;

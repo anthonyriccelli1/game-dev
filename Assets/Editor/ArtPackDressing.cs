@@ -18,11 +18,16 @@ public static class ArtPackDressing {
         ("Furniture", "grill", new[] { P(Shops + "Props/SM_Prop_Kitchen_Grill_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.05f, 1.05f, 1.05f), 0f) }),
         ("Furniture", "stove", new[] { P(Shops + "Props/SM_Prop_Kitchen_Stove_Oven_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(0.55f, 0.9f, 0.82f), 0f) }),
         ("Furniture", "prep_bench", new[] { P(Shops + "Props/SM_Prop_Kitchen_Prep_Table_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.08f, 0.95f, 0.85f), 0f), P(Shops + "Props/SM_Prop_Kitchen_Chopping_Board_01.prefab", new Vector3(0.35f, 1.0f, 0f), new Vector3(1f, 1f, 1f), 0f) }),
-        ("Furniture", "assembly", new[] { P(Shops + "Props/SM_Prop_Kitchen_Prep_Table_03.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.08f, 0.95f, 0.85f), 0f) }),
-        ("Furniture", "counter", new[] { P(Shops + "Props/SM_Prop_Kitchen_Prep_Table_02.prefab", new Vector3(0f, 0f, 0f), new Vector3(0.86f, 0.95f, 0.85f), 0f) }),
+        ("Furniture", "assembly", new[] { P(Shops + "Props/SM_Prop_Kitchen_Prep_Table_03.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.08f, 0.95f, 0.85f), 0f),
+            P(Shops + "Props/SM_Prop_Kitchen_Counter_Food_Insert_Large_02.prefab", new Vector3(-.62f, 1.0f, -.12f), new Vector3(1f, 1f, .6f), 90f),
+            P(Shops + "Props/SM_Prop_Kitchen_Counter_Food_Insert_Small_03.prefab", new Vector3(-.62f, 1.0f, .22f), Vector3.one, 0f),
+            P(Shops + "Food/SM_Prop_Food_Plastic_Tray_01.prefab", new Vector3(.45f, 1.0f, .05f), Vector3.one * 1.2f, 0f) }),
+        ("Furniture", "counter", new[] { P(Shops + "Props/SM_Prop_Kitchen_Prep_Table_02.prefab", new Vector3(0f, 0f, 0f), new Vector3(0.86f, 0.95f, 0.85f), 0f),
+            P(Shops + "Props/SM_Prop_Cafe_Napkin_Holder_01.prefab", new Vector3(.3f, 1.0f, -.28f), Vector3.one, 0f),
+            P(Shops + "Food/SM_Prop_Food_Sauce_Ketchup_01.prefab", new Vector3(.18f, 1.0f, -.3f), Vector3.one, 0f) }),
+        ("Furniture", "trash", new[] { P("Assets/Synty/PolygonCity/Prefabs/Props/SM_Prop_TrashCan_01.prefab", new Vector3(0f, .41f, 0f), Vector3.one * .95f, 0f) }),
         ("Furniture", "cutting_board", new[] { P(Shops + "Props/SM_Prop_Kitchen_Prep_Table_02.prefab", new Vector3(0f, 0f, 0f), new Vector3(0.86f, 0.95f, 0.85f), 0f), P(Shops + "Props/SM_Prop_Kitchen_Chopping_Board_01.prefab", new Vector3(0f, 1.0f, 0f), new Vector3(0.9f, 1f, 0.9f), 0f) }),
         ("Furniture", "sink", new[] { P(Shops + "Props/SM_Prop_Kitchen_Sink_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(0.36f, 0.6f, 0.85f), 0f) }),
-        ("Furniture", "pantry", new[] { P(Shops + "Props/SM_Prop_Market_Drinks_Fridge_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1f, 0.9f, 0.8f), 0f) }),
         ("Items", "PreparedPatty", new[] { P(Shops + "Food/SM_Prop_Food_Meat_Patty_Raw_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.15f, 1.15f, 1.15f), 0f) }),
         ("Items", "CookedPatty", new[] { P(Shops + "Food/SM_Prop_Food_Meat_Patty_Cooked_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.15f, 1.15f, 1.15f), 0f) }),
         ("Items", "BurntPatty", new[] { P(Shops + "Food/SM_Prop_Food_Meat_Patty_Burnt_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.15f, 1.15f, 1.15f), 0f) }),
@@ -79,14 +84,15 @@ public static class ArtPackDressing {
         ("Furniture", "menu_screen", new[] { R("Props/SM_Prop_Kitchen_Menu_Screen_01", 0, 2.4f, -.45f, 180) }),
         ("Furniture", "wall_tv", new[] { R("Props/SM_Prop_Computer_TV_Wall_01", 0, 2.1f, -.45f, 180) }),
         ("Furniture", "sign_burger", new[] { R("Signs/SM_Sign_3dText_Burger_01", 0, 2.55f, -.44f, 180, .95f) }),
-        ("Furniture", "fridge", new[] { R("Props/SM_Prop_Market_Drinks_Fridge_02", 0, 0, 0, 0, .95f) }),
-        ("Furniture", "trash", new[] { R("Props/SM_Prop_Cafe_Bin_01", 0, 0, 0, 0, .85f) }),
         ("Furniture", "oven", new[] { R("Props/SM_Prop_Kitchen_Stove_Oven_01", 0, 0, 0, 0, 1.05f) }),
         ("Furniture", "plate_rack", new[] { RS("Props/SM_Prop_Kitchen_ServingShelf_01", 0, 0, 0, new Vector3(.64f, 1f, .85f)),
             R("Food/SM_Prop_Food_Plate_01", -.2f, 1.16f, 0, 0, .8f), R("Food/SM_Prop_Food_Plate_01", -.2f, 1.185f, 0, 0, .8f), R("Food/SM_Prop_Food_Plate_01", -.2f, 1.21f, 0, 0, .8f),
             R("Food/SM_Prop_Food_Plate_01", .2f, 1.16f, 0, 0, .8f), R("Food/SM_Prop_Food_Plate_01", .2f, 1.185f, 0, 0, .8f) }),
     };
+    // Slots we deliberately went back to the code-built (grimy-levelled) look for.
+    static readonly string[] Retired = { "Furniture/pantry", "Furniture/fridge" };
     public static void GenerateOverrides() {
+        foreach (var r in Retired) { string path = "Assets/Resources/ArtOverrides/" + r + ".prefab"; if (AssetDatabase.LoadAssetAtPath<GameObject>(path)) AssetDatabase.DeleteAsset(path); }
         foreach (var slot in Slots) {
             string outDir = "Assets/Resources/ArtOverrides/" + slot.cat, outPath = outDir + "/" + slot.id + ".prefab";
             var src = AssetDatabase.LoadAssetAtPath<GameObject>(slot.src);

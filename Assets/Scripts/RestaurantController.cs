@@ -290,6 +290,7 @@ namespace RestaurantCity {
         }
         public static Vector3 CellCenter(int x, int z, int width = 1, int depth = 1) => new Vector3(-15.5f + x + (width - 1) * .5f, .055f, -20.5f + z + (depth - 1) * .5f) + Site;
         public void RebuildLayout() {
+            surfaceCache.Clear();
             Game.State.Kitchen.EnsureStations(Data);
             foreach (var obj in Furnishings.Values) if (obj) { obj.SetActive(false); Destroy(obj); }
             Furnishings.Clear();
@@ -316,7 +317,7 @@ namespace RestaurantCity {
             if (FinishCatalog.Find(id) != null) return RestaurantArt.FinishSwatch(id);
             if (thumbnails.TryGetValue(id, out Texture found)) return found;
             var stage = new GameObject("Catalog photo stage"); stage.transform.position = new Vector3(800, 0, 800);
-            var obj = CreateFurnishing(id, stage.transform); obj.transform.localPosition = Vector3.zero;
+            var obj = CreateFurnishing(id, stage.transform); obj.transform.localPosition = Vector3.zero; if (StationUpgrades.CanUpgrade(id)) StationLooks.ApplyLevel(obj, 1);
             foreach (var t in obj.GetComponentsInChildren<Transform>()) t.gameObject.layer = 30;
             var cam = new GameObject("Catalog camera").AddComponent<Camera>(); cam.enabled = false; cam.cullingMask = 1 << 30;
             cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(.87f, .86f, .77f); cam.orthographic = true;

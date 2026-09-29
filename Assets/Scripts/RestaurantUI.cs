@@ -406,8 +406,8 @@ namespace RestaurantCity {
                 int lv = Owner.Data.LevelOf(id), next = lv + 1;
                 Label(sheet, StationUpgrades.LevelName(lv) + ":  " + StationUpgrades.Effect(selected.CatalogId, lv), 430, 552, 735, 26, 17, ink, true);
                 if (next <= StationUpgrades.MaxLevel) {
-                    int cost = StationUpgrades.Cost(entry, next); int stars = StationUpgrades.StarsNeeded(next); bool starsOk = Owner.Data.Stars >= stars;
-                    string label = starsOk ? "UPGRADE to Level " + next + "  /  $" + cost + "   (" + StationUpgrades.Effect(selected.CatalogId, next) + ")" : "Level " + next + " unlocks at " + stars + " stars";
+                    int cost = StationUpgrades.Cost(entry, next); int stars = StationUpgrades.StarsNeeded(next); int rank = StationUpgrades.RankNeeded(next); bool starsOk = Owner.Data.Stars >= stars && Owner.Game.State.RankEarned >= rank;
+                    string label = starsOk ? "UPGRADE to Level " + next + "  /  $" + cost + "   (" + StationUpgrades.Effect(selected.CatalogId, next) + ")" : Owner.Data.Stars < stars ? "Level " + next + " unlocks at " + stars + " stars" : "Level " + next + " arrives with the Docks (" + Reputation.Titles[rank] + ")";
                     Button(sheet, label, 430, 584, 725, 48, () => Owner.UpgradeItem(id), teal, white, starsOk && Owner.Game.State.Cash >= cost && Owner.Data.CanCustomize);
                 } else Label(sheet, "Fully upgraded.", 430, 590, 735, 30, 17, teal, true);
             }

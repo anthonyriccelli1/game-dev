@@ -16,7 +16,7 @@ namespace RestaurantCity {
                 for (int i = 0; i < shared.Length; i++) {
                     if (!shared[i]) continue;
                     var m = new Material(shared[i]);
-                    var tint = level <= 1 ? new Color(.7f, .58f, .45f) : level >= 3 ? new Color(1.05f, 1.05f, 1.1f) : Color.white;
+                    var tint = level <= 1 ? new Color(.66f, .55f, .42f) : level >= 3 ? new Color(1.05f, 1.05f, 1.1f) : Color.white;
                     if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", m.GetColor("_BaseColor") * tint);
                     else if (m.HasProperty("_Color")) m.color *= tint;
                     mats[i] = m;
@@ -26,10 +26,13 @@ namespace RestaurantCity {
             var b = Bounds(station, dress); var lb = new Bounds(station.transform.InverseTransformPoint(b.center), Vector3.Scale(b.size, Inv(station.transform.lossyScale)));
             float top = lb.max.y, front = lb.max.z;
             if (level <= 1) {
-                // Grease stains and a dent: it has seen a thousand night shifts.
-                var grease = FoodLooks.Mat(new Color(.3f, .21f, .13f));
-                for (int i = 0; i < 6; i++) Blob(dress, new Vector3(lb.min.x + lb.size.x * (.12f + i * .15f), lb.min.y + lb.size.y * (.25f + (i % 3) * .14f), front + .004f), new Vector3(.07f + (i % 2) * .05f, .04f + (i % 3) * .025f, .012f), grease, PrimitiveType.Sphere);
-                for (int i = 0; i < 3; i++) Blob(dress, new Vector3(lb.min.x + lb.size.x * (.2f + i * .3f), lb.min.y + lb.size.y * .58f - i * .04f, front + .004f), new Vector3(.018f, .09f, .01f), grease, PrimitiveType.Capsule);
+                // Flats hand-me-down: grease drips running down the front and a scorched, stained patch.
+                var grease = FoodLooks.Mat(new Color(.26f, .19f, .12f)); var stain = FoodLooks.Mat(new Color(.42f, .33f, .22f));
+                for (int i = 0; i < 4; i++) {
+                    float x = lb.min.x + lb.size.x * (.18f + i * .21f), y = lb.min.y + lb.size.y * (.72f - (i % 2) * .08f);
+                    Blob(dress, new Vector3(x, y - .06f - (i % 3) * .03f, front + .004f), new Vector3(.022f, .09f + (i % 3) * .05f, .008f), grease, PrimitiveType.Capsule);
+                }
+                Blob(dress, new Vector3(lb.min.x + lb.size.x * .7f, lb.min.y + lb.size.y * .45f, front + .003f), new Vector3(lb.size.x * .22f, lb.size.y * .12f, .006f), stain, PrimitiveType.Sphere);
             }
             if (level >= 3) {
                 // Brand stripe, neon underglow and flames licking up off the cooking surface.

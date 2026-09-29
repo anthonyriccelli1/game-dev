@@ -72,6 +72,9 @@ namespace RestaurantCity {
             ("62_restaurant_dressed", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
             ("63_restaurant_dressed_back", new Vector3(-5.6f, 0, -19.4f), -40, 12, 70),
             ("64_upgrade_panel", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
+            ("65_kitchen_grimy", new Vector3(-10f, 0, -16.5f), 180, 18, 70),
+            ("66_plates_on_tables", new Vector3(-10f, 0, -11.3f), 180, 30, 70),
+            ("67_shop_kitchen", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
             ("60_dining_sets", new Vector3(-9f, 0, 4.2f), 180, 22, 70),
             ("61_dining_close", new Vector3(-12.2f, 0, 1.6f), 180, 28, 70),
             ("57_food_showcase", new Vector3(-10.1f, 0, .75f), 180, 30, 70),
@@ -144,6 +147,16 @@ namespace RestaurantCity {
                     foreach (var item in d.Layout) if (StationUpgrades.CanUpgrade(item.CatalogId)) item.Level = item.CatalogId == "grill" ? 3 : 2;
                     rc.RebuildLayout(); for (int i = 0; i < 10; i++) yield return null;
                 }
+                if (rc && shot.name.Contains("kitchen_grimy")) { foreach (var f in Game.State.Restaurant.Layout) f.Level = 1; rc.RebuildLayout(); for (int i = 0; i < 5; i++) yield return null; }
+                if (rc && shot.name.Contains("plates_on_tables")) {
+                    var k = Game.State.Kitchen;
+                    foreach (var f in Game.State.Restaurant.Layout) {
+                        var c = RestaurantCatalog.Find(f.CatalogId); if (c == null || c.Seats <= 0) continue;
+                        for (int seatNo = 1; seatNo <= c.Seats; seatNo++) k.Items.Add(new KitchenItem { Id = k.NextItemId++, Kind = seatNo % 2 == 0 ? KitchenItemKind.DirtyPlate : KitchenItemKind.Plate, Components = seatNo % 2 == 0 ? new System.Collections.Generic.List<string>() : new System.Collections.Generic.List<string> { "bun", "cooked_patty" }, Holder = "table:0", TableInstanceId = f.InstanceId, SeatNumber = seatNo });
+                    }
+                    rc.Advance(.02f); for (int i = 0; i < 5; i++) yield return null;
+                }
+                if (rc && shot.name.Contains("shop_kitchen")) { rc.ShowPanel("Catalog"); for (int i = 0; i < 5; i++) yield return null; }
                 if (rc && shot.name.Contains("upgrade_panel")) {
                     var sink = Game.State.Restaurant.Layout.Find(x => x.CatalogId == "sink"); if (sink != null) { sink.Level = 1; Game.State.Cash = 400; rc.SelectFurnitureItem(sink.InstanceId); }
                     for (int i = 0; i < 5; i++) yield return null;

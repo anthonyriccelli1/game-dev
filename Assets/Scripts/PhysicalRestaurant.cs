@@ -96,8 +96,26 @@ namespace RestaurantCity {
   }
   Vector3 TablePlatePosition(GameObject table,int seatNumber,int itemId){
    var seat=seatNumber>0?table.transform.Find("Seat_"+(seatNumber-1)):null;
-   if(!seat)return new Vector3((itemId%2-.5f)*.4f,.94f,0);
-   var pos=seat.localPosition;pos.z*=.4f;pos.y=.94f;return pos;
+   var pos=seat?seat.localPosition:new Vector3((itemId%2-.5f)*.4f,0,0);if(seat)pos.z*=.4f;
+   pos.y=SurfaceY(table.transform,pos,.94f)+.005f;return pos;
+  }
+  // Height of the real surface under a point (pack tables and counters differ from the old code-built ones), so plates
+  // sit on the tabletop instead of floating. Skips food, characters, level dressing and tall parts (hoods, backsplashes).
+  readonly Dictionary<string,float> surfaceCache=new Dictionary<string,float>();
+  float SurfaceY(Transform furn,Vector3 local,float fallback){
+   string key=furn.GetHashCode()+":"+Mathf.RoundToInt(local.x*20)+":"+Mathf.RoundToInt(local.z*20);
+   if(surfaceCache.TryGetValue(key,out var cached))return cached;
+   var world=furn.TransformPoint(new Vector3(local.x,0,local.z));float best=float.MinValue;
+   foreach(var r in furn.GetComponentsInChildren<Renderer>()){
+    if(!r.enabled)continue;bool skip=false;
+    for(var q=r.transform;q&&q!=furn;q=q.parent)if(q.name.StartsWith("Food_")||q.name=="Level dressing"||q.GetComponent<CharacterMotion>()){skip=true;break;}
+    if(skip)continue;var b=r.bounds;
+    if(world.x<b.min.x||world.x>b.max.x||world.z<b.min.z||world.z>b.max.z)continue;
+    if(b.max.y-furn.position.y>1.35f)continue;
+    best=Mathf.Max(best,b.max.y);
+   }
+   float y=best==float.MinValue?fallback:furn.InverseTransformPoint(new Vector3(world.x,best,world.z)).y;
+   if(y<.3f)y=fallback;surfaceCache[key]=y;return y;
   }
   // Grill feedback: a small bar that fills while cooking, turns green when done, red when burning.
   static string CookStatus(KitchenStation s,KitchenItem item){
@@ -124,7 +142,7 @@ namespace RestaurantCity {
     Transform parent=transform;Vector3 pos=Vector3.zero;bool found=false;
     if(item.Holder.StartsWith("player:")){var p=Game.CoOp?.Players.FirstOrDefault(v=>v.ActorId==item.Holder);if(p){parent=p.Elevated?p.transform:p.View.transform;pos=p.Elevated?new Vector3(.3f,1,.6f):new Vector3(.32f,-.32f,.7f);found=true;}}
     else if(item.Holder.StartsWith("staff:")){if(employees.TryGetValue(item.Holder.Substring(6),out var w)){parent=w.Root.transform;pos=new Vector3(.25f,1,.45f);found=true;}}
-    else{int id;if(item.Holder.StartsWith("station:")&&int.TryParse(item.Holder.Substring(8),out id)&&StationObject(id) is GameObject s&&s){parent=s.transform;pos=new Vector3(0,1.08f,0);found=true;}else if(item.TableInstanceId>0&&Furnishings.TryGetValue(item.TableInstanceId,out var t)){parent=t.transform;pos=TablePlatePosition(t,item.SeatNumber,item.Id);found=true;}}
+    else{int id;if(item.Holder.StartsWith("station:")&&int.TryParse(item.Holder.Substring(8),out id)&&StationObject(id) is GameObject s&&s){parent=s.transform;pos=new Vector3(0,SurfaceY(s.transform,Vector3.zero,1.08f)+.01f,0);found=true;}else if(item.TableInstanceId>0&&Furnishings.TryGetValue(item.TableInstanceId,out var t)){parent=t.transform;pos=TablePlatePosition(t,item.SeatNumber,item.Id);found=true;}}
     // Prep greens are rendered by the board presentation, including retained partial cuts.
     bool boardGreens=item.Holder.StartsWith("station:")&&(item.Kind==KitchenItemKind.RawGreens||item.Kind==KitchenItemKind.ChoppedGreens)&&parent.GetComponent<ChoppingFeedback>();
     if(item.Holder.StartsWith("station:")&&parent.GetComponent<ChoppingFeedback>())pos=ChoppingFeedback.BoardTop(parent);
