@@ -29,7 +29,7 @@ namespace RestaurantCity {
         // The People book: residents you've fed at least once. Only they can be recruited (with Flux).
         public List<string> MetResidents = new List<string>();
         public int StarRating => Restaurant != null ? Math.Max(1, Restaurant.Stars) : 1;
-        public string PickVisitor(int seed) => ResidentCast.Visitor(seed, IsNight, StarRating, MetResidents).Id;
+        public string PickVisitor(int seed, int ambience = ResidentCast.StandAmbience) => ResidentCast.Visitor(seed, IsNight, StarRating, MetResidents, ambience).Id;
         public bool HasMet(string id) => MetResidents.Contains(id);
         // Reputation only for first meals in a real restaurant: the stand stays a token-reputation tutorial.
         public bool MeetResident(string id, int reputation = 0) {

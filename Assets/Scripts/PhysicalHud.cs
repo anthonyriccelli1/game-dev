@@ -76,7 +76,7 @@ namespace RestaurantCity {
    var lines=new List<string>();
    foreach(var o in waiting.Take(5)){
     var customer=RestaurantCatalog.Customers[o.CustomerType];var dish=RestaurantCatalog.Dish(o.DishId);var recipe=RecipeBook.Find(o.DishId);
-    float left=Mathf.Max(0,customer.Patience-o.Wait),ratio=Mathf.Clamp01(left/customer.Patience);
+    float pat=r.PatienceOf(o),left=Mathf.Max(0,pat-o.Wait),ratio=Mathf.Clamp01(left/pat);
     string barColor=ratio>.55f?"#4FCB7A":ratio>.25f?"#E8C34A":"#E1543B";
     int filled=Mathf.CeilToInt(ratio*8);string bar="<color="+barColor+">"+new string('|',Mathf.Max(1,filled))+"</color>"+new string('.',8-Mathf.Max(1,filled));
     string parts=recipe==null?"":string.Join("+",recipe.Components.Select(c=>c=="cooked_patty"?"patty":c=="chopped_greens"?"greens":c=="midnight_sauce"?"sauce":c));

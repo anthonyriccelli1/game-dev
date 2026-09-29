@@ -61,7 +61,9 @@ namespace RestaurantCity {
         float hudTimer;
         bool previewValid;
         // A shift has a shape: calm opening, a RUSH in the middle (harder at night), then a wind-down.
-        public const float RushStart = 30, RushEnd = 80;
+        // The current shift's plan (set when service opens): length, guest count and how many have arrived.
+        public float ShiftLength = 120; public int PlanGuests, PlanSpawned, PlanLevel; bool planForShift;
+        public float RushStart => ShiftLength * .25f; public float RushEnd => ShiftLength * .65f;
         public string ShiftPhase => !Game.State.Kitchen.ShiftActive || !Data.Open ? "" : shiftTime < RushStart ? "calm" : shiftTime < RushEnd ? "rush" : "wind";
         public bool Rush => ShiftPhase == "rush";
 

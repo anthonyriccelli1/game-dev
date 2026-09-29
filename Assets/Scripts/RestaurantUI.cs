@@ -436,7 +436,7 @@ namespace RestaurantCity {
                     var card = Block(content, r.Name, (i % 4) * 285, bookTop + 60 + (i / 4) * 300, 270, 285, known ? new Color(1f, .96f, .86f) : pale);
                     var pic = Box(card, "Portrait", 65, 12, 140, 140).gameObject.AddComponent<RawImage>(); pic.texture = ResidentIcons.Get(r, !known); pic.raycastTarget = false;
                     Label(card, known ? r.Name : "???", 10, 158, 250, 30, 21, ink, true, TextAnchor.MiddleCenter);
-                    Label(card, known ? r.Rarity + "  /  " + r.Job : r.Rarity + (r.NightOnly ? "  /  comes out at night" : ""), 10, 188, 250, 24, 14, muted, false, TextAnchor.MiddleCenter);
+                    Label(card, known ? r.Rarity + "  /  " + r.Job : r.Rarity + (r.NightOnly ? "  /  night only" : "") + (r.MinAmbience > 0 ? "  /  needs ambience " + r.MinAmbience : ""), 5, 188, 260, 24, 13, muted, false, TextAnchor.MiddleCenter);
                     string id = r.Id;
                     if (known) Button(card, "Recruit  /  " + r.FluxCost + " Flux", 15, 222, 240, 46, () => Owner.Hire(id), teal, white, gs.Flux >= r.FluxCost);
                     else Label(card, "Serve them a meal to meet them", 10, 225, 250, 40, 14, muted, false, TextAnchor.MiddleCenter);

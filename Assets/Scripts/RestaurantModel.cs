@@ -72,7 +72,7 @@ namespace RestaurantCity {
         public int Id; public string Name,FavoriteDish,Description;
         public float Patience,AmbienceWeight,CleanlinessWeight;
         public CustomerDefinition(int id,string name,string favorite,float patience,float ambience,float clean,string description) {
-            Id=id;Name=name;FavoriteDish=favorite;Patience=Math.Min(220,patience*2);AmbienceWeight=ambience;CleanlinessWeight=clean;Description=description;
+            Id=id;Name=name;FavoriteDish=favorite;Patience=patience*.65f;   // base seconds before they give up; scaled down by ShiftDifficulty as shifts get harderAmbienceWeight=ambience;CleanlinessWeight=clean;Description=description;
         }
     }
     public class StaffDefinition {
@@ -155,7 +155,7 @@ namespace RestaurantCity {
 
     [Serializable] public class PlacedItem { public int InstanceId,X,Z,Rotation,Paid; public string CatalogId; }
     [Serializable] public class RestaurantOrder {
-        public int Id,CustomerType,SeatInstanceId,SeatNumber; public string DishId,ResidentId=""; // SeatNumber is one-based; zero means an older save.
+        public int Id,CustomerType,SeatInstanceId,SeatNumber; public string DishId,ResidentId=""; public float Patience; // SeatNumber is one-based; zero means an older save. Patience 0 = older save (use the customer default).
         public RestaurantOrderStage Stage; public float Wait,CookProgress,Quality=1,StageTime;
     }
     [Serializable] public class RestaurantReview { public string Customer,Comment; public float Score; public string DishId; }
@@ -175,6 +175,8 @@ namespace RestaurantCity {
         public int Stars => Rank;
         public bool CanCustomize => Owned && !Open && Orders.Count==0;
         public int Seats => Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.Seats??0);
+        public int ShiftsRun; public int ShiftLevel=>ShiftDifficulty.Level(this);
+        public float PatienceOf(RestaurantOrder o)=>o.Patience>0?o.Patience:RestaurantCatalog.Customers[o.CustomerType].Patience;
         [NonSerialized]public int PlayerRank;public string SiteId="oddtable";public int SiteAmbience=>SiteId=="bayside"?4:0;
         public int Ambience => Math.Min(40,SiteAmbience+FinishAmbience+Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.IsFinish==true?0:RestaurantCatalog.Find(p.CatalogId)?.Ambience??0));
         public int CookSlots => Math.Max(1,Layout.Count(p=>p.CatalogId=="grill"||p.CatalogId=="stove"||p.CatalogId=="oven"));
@@ -327,7 +329,7 @@ namespace RestaurantCity {
             if(wallet.Kitchen!=null)foreach(var plate in wallet.Kitchen.Items.Where(i=>i.TableInstanceId==seatInstanceId&&i.Holder.StartsWith("table:")))occupied.Add(plate.SeatNumber);
             int seatNumber=Enumerable.Range(1,RestaurantCatalog.Find(seat.CatalogId).Seats).FirstOrDefault(n=>!occupied.Contains(n));
             if(seatNumber==0){message="All seats here are occupied.";return null;}
-            var who=ResidentCast.Get(residentId);var order=new RestaurantOrder{Id=NextOrderId++,CustomerType=type,DishId=dish,SeatInstanceId=seatInstanceId,SeatNumber=seatNumber,ResidentId=residentId??""};Orders.Add(order);message=$"{(who!=null?who.Name:customer.Name)} ordered {RestaurantCatalog.Dish(dish).Name}.";return order;
+            var who=ResidentCast.Get(residentId);var order=new RestaurantOrder{Id=NextOrderId++,CustomerType=type,DishId=dish,SeatInstanceId=seatInstanceId,SeatNumber=seatNumber,ResidentId=residentId??"",Patience=customer.Patience*ShiftDifficulty.PatienceScale(ShiftLevel)};Orders.Add(order);message=$"{(who!=null?who.Name:customer.Name)} ordered {RestaurantCatalog.Dish(dish).Name}.";return order;
         }
         public float CookTime(RestaurantOrder order) {var d=RestaurantCatalog.Dish(order.DishId);return d.CookSeconds*(d.Id=="salad"?Math.Max(.5f,1-.25f*(Layout.Count(p=>p.CatalogId=="prep_bench")-1)):1);}
         public bool BeginCooking(int id,out string message) {
@@ -340,7 +342,7 @@ namespace RestaurantCity {
         public bool CompleteServing(GameState wallet,int id,out string message) {
             var o=Orders.Find(x=>x.Id==id);if(o==null||o.Stage!=RestaurantOrderStage.Ready)return Fail("Choose a ready dish to serve.",out message);
             var c=RestaurantCatalog.Customers[o.CustomerType];var d=RestaurantCatalog.Dish(o.DishId);
-            float waitRatio=o.Wait/c.Patience,score=45+o.Quality*30+(waitRatio<.35f?10:waitRatio>.7f?-15:0)+Math.Min(10,Ambience*.55f)*c.AmbienceWeight+(Cleanliness-60)*.15f*c.CleanlinessWeight+(c.FavoriteDish==o.DishId?5:0);
+            float waitRatio=o.Wait/PatienceOf(o),score=45+o.Quality*30+(waitRatio<.35f?10:waitRatio>.7f?-15:0)+Math.Min(10,Ambience*.55f)*c.AmbienceWeight+(Cleanliness-60)*.15f*c.CleanlinessWeight+(c.FavoriteDish==o.DishId?5:0);
             score=Clamp(score,0,100);int tip=score>=85?4:score>=70?2:0,wage=WagesPerOrder,revenue=Math.Max(0,d.Price+tip-wage);
             wallet.Cash+=revenue;Earnings+=revenue;Served++;int rep=score>=70?Reputation.HappyCustomer:score>=45?Reputation.OkCustomer:0;if(score>=60&&o.CustomerType>=0&&o.CustomerType<ServedByType.Length){ServedByType[o.CustomerType]++;}bool met=wallet.MeetResident(o.ResidentId,Reputation.NewResident);Rep(rep>Reputation.HappyCustomer?"New kinds of guests":"Restaurant guests",rep);Cleanliness=Math.Max(0,Cleanliness-4);
             string food=o.Quality>.85f?"Food fresh":o.Quality>.6f?"Food cooled":"Food sat too long";
@@ -392,7 +394,7 @@ namespace RestaurantCity {
                 o.Wait+=seconds;
                 if(o.Stage==RestaurantOrderStage.Cooking){o.CookProgress+=seconds;if(o.CookProgress>=CookTime(o)){o.Stage=RestaurantOrderStage.Ready;o.StageTime=0;}}
                 if(o.Stage==RestaurantOrderStage.Ready)o.Quality=Clamp(1-Math.Max(0,o.StageTime-(HasEquipment("fridge")?40:20))*.015f,.35f,1);
-                if(o.Wait>RestaurantCatalog.Customers[o.CustomerType].Patience){Lost++;wallet.Emit("walkout:"+o.Id);Rep("Guests who left",Reputation.LostCustomer);AddReview(o,15,"Waited too long and left hungry. Start cooking sooner, add equipment, or hire help.");o.Stage=RestaurantOrderStage.Leaving;o.StageTime=0;}
+                if(o.Wait>PatienceOf(o)){Lost++;wallet.Emit("walkout:"+o.Id);Rep("Guests who left",Reputation.LostCustomer);AddReview(o,15,"Waited too long and left hungry. Start cooking sooner, add equipment, or hire help.");o.Stage=RestaurantOrderStage.Leaving;o.StageTime=0;}
             }
             Orders.RemoveAll(o=>o.Stage==RestaurantOrderStage.Leaving&&o.StageTime>=6);UpdateRank();
         }

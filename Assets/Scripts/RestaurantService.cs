@@ -49,14 +49,23 @@ namespace RestaurantCity {
                 cleaning -= seconds;
                 if (cleaning <= 0) { Data.Clean(out var msg); Feedback(msg); PlayChime(false); Game.Save(); }
             }
+            var shiftOn = Game.State.Kitchen.ShiftActive;
+            if (shiftOn && !planForShift) {
+                // New shift: plan it from the restaurant's difficulty level.
+                planForShift = true; PlanLevel = Data.ShiftLevel; ShiftLength = ShiftDifficulty.Length(PlanLevel);
+                PlanGuests = ShiftDifficulty.Guests(PlanLevel, Game.State.IsNight); PlanSpawned = 0; arrival = 2;
+            } else if (!shiftOn) planForShift = false;
             if (Data.Open) {
                 arrival -= seconds;
                 if (arrival <= 0) {
-                    arrival = Rush ? (Game.State.IsNight ? 6 : 8) : ShiftPhase == "wind" ? 20 : 15;
-                    if (queue.Count < 3) {
+                    // Spread the planned guests over the first 80% of the shift: sparse while calm, dense in the rush.
+                    float baseGap = ShiftLength * .8f / Mathf.Max(1, PlanGuests);
+                    arrival = baseGap * (Rush ? .55f : 1.4f);
+                    int group = PlanSpawned < PlanGuests ? (Random.value < ShiftDifficulty.PairChance(PlanLevel) ? 2 : 1) : 0;
+                    for (int g = 0; g < group && queue.Count < ShiftDifficulty.QueueMax(PlanLevel) && PlanSpawned < PlanGuests; g++) {
                         var guest = NewGuest(nextType++ % RestaurantCatalog.Customers.Length);
                         guest.Root.transform.position = W(-8.7f, .055f, -5.4f + queue.Count);
-                        queue.Add(guest); Game.State.Emit("arrive");
+                        queue.Add(guest); PlanSpawned++; Game.State.Emit("arrive");
                     }
                 }
             } else arrival = Mathf.Min(arrival, 4);
@@ -114,7 +123,7 @@ namespace RestaurantCity {
                     SetBubble(view.Bubble, (score >= 85 ? "<3  Delicious!" : score >= 65 ? "That hit the spot." : "Could be better...") + "\n" + Mathf.RoundToInt(score) + "%  /  " + (score >= 85 ? "+$3 tip" : "Thanks for dinner"));
 
                 } else {
-                    float patience = Mathf.Clamp01(1 - order.Wait / def.Patience); view.Motion.SetMood(patience);
+                    float patience = Mathf.Clamp01(1 - order.Wait / Data.PatienceOf(order)); view.Motion.SetMood(patience);
                     string status = order.Stage == RestaurantOrderStage.Ready ? "Dish ready!" : patience < .35f ? "I'm getting hungry..." : order.Stage == RestaurantOrderStage.Cooking ? "Smells good!" : "I'd like " + dish;
                     SetBubble(view.Bubble, guestName + (who != null && !Game.State.HasMet(who.Id) ? "  <color=#E8C34A>NEW!</color>" : "") + "\n" + status);
                 }
@@ -140,7 +149,7 @@ namespace RestaurantCity {
         }
         static int visitorSeed;
         GuestView NewGuest(int type) {
-            string residentId = People.UseResidents ? Game.State.PickVisitor(++visitorSeed * 13 + Game.State.Day * 977 + type) : "";
+            string residentId = People.UseResidents ? Game.State.PickVisitor(++visitorSeed * 13 + Game.State.Day * 977 + type, Data.Ambience) : "";
             var root = People.Resident(residentId, type, transform);
             var collider = root.AddComponent<CapsuleCollider>(); collider.radius = .29f; collider.height = 1.6f; collider.center = Vector3.up * .83f;
             root.AddComponent<RestaurantTarget>().Kind = "Customer";

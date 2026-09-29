@@ -34,11 +34,11 @@ namespace RestaurantCity {
     if(task.Station=="guest"){if(!guests.TryGetValue(task.Target,out var guest)||!guest.Seat){plan.Clear();continue;}destination=guest.Seat.position;}
     else if(task.Station=="table"){if(!Furnishings.TryGetValue(task.Target,out var table)){plan.Clear();continue;}destination=table.transform.position+Vector3.forward;}
     else{stationData=k.Stations.FirstOrDefault(s=>!KitchenState.IsStandStation(s.InstanceId)&&s.CatalogId==task.Station&&(task.Target==0||s.InstanceId==task.Target));if(stationData==null)continue;var furniture=Furnishings[stationData.InstanceId];var wp=furniture.transform.Find("WorkPoint");destination=wp?wp.position:furniture.transform.position+Vector3.forward;}
-    destination.y=.055f;worker.Energy=Mathf.Max(0,worker.Energy-dt*.3f);
+    destination.y=.055f;worker.Energy=Mathf.Max(0,worker.Energy-dt*WorkerDrain);
     SetBubble(view.Bubble,worker.Id+" / "+task.Station.Replace('_',' ')+" / "+(int)worker.Energy+" energy");
-    if(Vector3.Distance(view.Root.transform.position,destination)>1.2f){if(view.Path.Count==0)AppendRoute(view.Path,view.Root.transform.position,destination);view.Motion.Walking=Follow(view.Root.transform,view.Path,dt*(worker.Energy<25?1.5f:2.7f));continue;}
+    if(Vector3.Distance(view.Root.transform.position,destination)>1.2f){if(view.Path.Count==0)AppendRoute(view.Path,view.Root.transform.position,destination);view.Motion.Walking=Follow(view.Root.transform,view.Path,dt*(worker.Energy<25?1.3f:2.3f));continue;}
     view.Path.Clear();view.Motion.Working=true;bool done=false;
-    if(task.Action=="work"){k.Work(Game.State,actor,stationData.InstanceId,dt*(worker.Energy<25?.5f:worker.Id=="ember"&&task.Station=="prep_bench"||worker.Id=="moss"&&task.Station=="sink"?1.35f:1),out _);var item=k.At(stationData.InstanceId);done=item==null||!(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.RawGreens||item.Kind==KitchenItemKind.RawSauce||item.Kind==KitchenItemKind.DirtyPlate);}
+    if(task.Action=="work"){k.Work(Game.State,actor,stationData.InstanceId,dt*WorkerSpeed(worker,task.Station),out _);var item=k.At(stationData.InstanceId);done=item==null||!(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.RawGreens||item.Kind==KitchenItemKind.RawSauce||item.Kind==KitchenItemKind.DirtyPlate);}
     else if(task.Action=="simmer"){var pot=k.At(stationData.InstanceId);if(pot!=null&&pot.Kind==KitchenItemKind.SoupPot&&pot.Stir>=KitchenState.StirWarning)k.StirPot(stationData.InstanceId);done=pot==null||pot.Kind==KitchenItemKind.Soup||pot.Kind==KitchenItemKind.ScorchedSoup;}
     else if(task.Action=="wait"){var item=k.At(stationData.InstanceId);done=item!=null&&(item.Kind==KitchenItemKind.CookedPatty||item.Kind==KitchenItemKind.BurntPatty);}
     else if(task.Action=="serve"){done=k.Serve(Game.State,actor,task.Target,out _);if(!Data.Orders.Any(o=>o.Id==task.Target&&o.Stage==RestaurantOrderStage.Waiting))done=true;}
@@ -56,6 +56,15 @@ namespace RestaurantCity {
    else{plan.Enqueue(new KitchenTask("prep_bench"));plan.Enqueue(new KitchenTask("prep_bench","work"));plan.Enqueue(new KitchenTask("prep_bench"));}
    plan.Enqueue(new KitchenTask("assembly"));
   }
- }
+ 
+  // Staff help, they don't replace you: slower than a player off their specialty, and they tire during long shifts.
+  public const float WorkerDrain=.75f;
+  static float WorkerSpeed(WorkerState w,string station){
+   if(w.Energy<25)return .4f;
+   var role=RestaurantCatalog.Worker(w.Id)?.Role??StaffJob.Any;
+   var needs=station=="sink"?StaffJob.Clean:StaffJob.Cook;
+   return role==needs?1f:.65f;
+  }
+}
 }
 

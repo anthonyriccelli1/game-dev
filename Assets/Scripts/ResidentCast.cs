@@ -3,10 +3,13 @@ namespace RestaurantCity {
     public enum Gait { Standard, Light, Zombie }
     // One resident of Saffron Bay. Adding a resident = one line here plus its FBX/PNG in Resources/Residents.
     public class ResidentDef {
-        public string Id, Name, Blurb; public float Height; public int Tier; public bool NightOnly; public Gait Gait; public StaffJob Job;
+        public string Id, Name, Blurb; public float Height; public int Tier, MinAmbience; public bool NightOnly; public Gait Gait; public StaffJob Job;
         public ResidentDef(string id, string name, float height, int tier, StaffJob job, string blurb, Gait gait = Gait.Standard, bool night = false) {
             Id = id; Name = name; Height = height; Tier = tier; Job = job; Blurb = blurb; Gait = gait; NightOnly = night;
+            MinAmbience = tier == 0 ? 0 : tier == 1 ? 6 : 14;
         }
+        // Pickier residents only visit restaurants with at least this much ambience (decor, finishes, lighting).
+        public ResidentDef Picky(int ambience) { MinAmbience = ambience; return this; }
         public int FluxCost => Tier == 0 ? 2 : Tier == 1 ? 3 : 5;
         public string Rarity => Tier == 0 ? "Common" : Tier == 1 ? "Uncommon" : "Rare";
     }
@@ -34,12 +37,12 @@ namespace RestaurantCity {
             new ResidentDef("102_BizDude", "Biz Dude", 1.8f, 1, StaffJob.Serve, "Always networking. Customers love him."),
             new ResidentDef("054_Lydia", "Lydia", 1.62f, 1, StaffJob.Cook, "Came for one burger. Stayed for the kitchen.", Gait.Light),
             new ResidentDef("136_SlugPerson", "Slug", 1.45f, 1, StaffJob.Clean, "Slow walker. Leaves every floor shining."),
-            new ResidentDef("046_Mafiossini", "Mafiossini", 1.8f, 2, StaffJob.Serve, "Owns half the block, or says he does. Great tipper."),
-            new ResidentDef("139_CoolHydrant", "Hydrant", 1.3f, 2, StaffJob.Clean, "Built-in water pressure. The ultimate dishwasher."),
-            new ResidentDef("146_CoolTrash", "Trash Can", 1.4f, 2, StaffJob.Clean, "One man's trash is this can's whole personality."),
-            new ResidentDef("044_Zombie", "Zombie", 1.76f, 1, StaffJob.Cook, "Only comes out at night. Doesn't mind the heat.", Gait.Zombie, true),
+            new ResidentDef("046_Mafiossini", "Mafiossini", 1.8f, 2, StaffJob.Serve, "Owns half the block, or says he does. Great tipper.").Picky(20),
+            new ResidentDef("139_CoolHydrant", "Hydrant", 1.3f, 2, StaffJob.Clean, "Built-in water pressure. The ultimate dishwasher.").Picky(10),
+            new ResidentDef("146_CoolTrash", "Trash Can", 1.4f, 2, StaffJob.Clean, "One man's trash is this can's whole personality.").Picky(0),
+            new ResidentDef("044_Zombie", "Zombie", 1.76f, 1, StaffJob.Cook, "Only comes out at night. Doesn't mind the heat.", Gait.Zombie, true).Picky(0),
             new ResidentDef("033_Franky", "Franky", 2.0f, 2, StaffJob.Cook, "Stitched together, never tired. Comes out at night.", Gait.Zombie, true),
-            new ResidentDef("043_Dracula", "Dracula", 1.86f, 2, StaffJob.Serve, "Charming night-shift host. Hates garlic orders.", Gait.Standard, true),
+            new ResidentDef("043_Dracula", "Dracula", 1.86f, 2, StaffJob.Serve, "Charming night-shift host. Hates garlic orders.", Gait.Standard, true).Picky(18),
             new ResidentDef("035_Wolfman", "Wolfman", 1.9f, 2, StaffJob.Clean, "Fur everywhere, dishes nowhere. Comes out at night.", Gait.Standard, true),
         };
 
@@ -51,12 +54,15 @@ namespace RestaurantCity {
         }
         public static bool IsRecruitable(string id) { var d = Get(id); return d != null && d != Milo; }
 
-        // Who walks in next. Commons are most likely; uncommons and rares get likelier as your stars rise; night brings
+        // Who walks in next. Only residents whose taste your place meets (ambience) can come. Commons are most likely; uncommons and rares get likelier as your stars rise; night brings
         // out the night crowd. People you haven't fed yet get a small boost so the book fills steadily.
-        public static ResidentDef Visitor(int seed, bool night, int stars, ICollection<string> met) {
+        // The food stand counts as a bare-bones venue.
+        public const int StandAmbience = 3;
+        public static ResidentDef Visitor(int seed, bool night, int stars, ICollection<string> met, int ambience = 40) {
             var pool = new List<ResidentDef>();
             foreach (var r in OldMarket) {
                 if (r.NightOnly && !night) continue;
+                if (ambience < r.MinAmbience) continue;   // too fancy for this place: decorate to attract them
                 int weight = r.Tier == 0 ? 6 : r.Tier == 1 ? 2 + stars : stars >= 2 ? 2 : 1;
                 if (r.NightOnly) weight += 3;
                 if (met != null && !met.Contains(r.Id)) weight += 2;
