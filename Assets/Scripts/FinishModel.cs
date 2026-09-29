@@ -42,6 +42,11 @@ namespace RestaurantCity {
             new FinishDefinition("floor_slate","Night slate","slate","3D505B","273B47","71828A",5,6,2,2)
         };
         public static FinishDefinition Find(string id) => Array.Find(All,d=>d.Id==id);
+        public static bool TryPieceKey(string key,out int instanceId) {
+            instanceId=0;
+            if(string.IsNullOrEmpty(key)||!key.StartsWith("piece:",StringComparison.Ordinal))return false;
+            return int.TryParse(key.Substring(6),out instanceId)&&instanceId>0&&key=="piece:"+instanceId;
+        }
         public static bool ValidSurfaceKey(string key,bool isWall) {
             if(string.IsNullOrEmpty(key))return false;
             var parts=key.Split(':');if(parts.Length!=3)return false;
@@ -66,15 +71,25 @@ namespace RestaurantCity {
     [Serializable] public class SurfaceFinish { public string Key,CatalogId; }
     public partial class RestaurantState {
         public List<SurfaceFinish> SurfaceFinishes=new List<SurfaceFinish>();
+        public bool ValidFinishTarget(string key,bool wall) {
+            if(FinishCatalog.ValidSurfaceKey(key,wall))return true;
+            if(!wall||!FinishCatalog.TryPieceKey(key,out int id))return false;
+            return Layout!=null&&Layout.Any(p=>p!=null&&p.InstanceId==id&&(p.CatalogId=="partition_wall"||p.CatalogId=="service_window"));
+        }
+        public IEnumerable<string> FinishTargets(bool wall) {
+            foreach(var key in FinishCatalog.SurfaceKeys(wall))yield return key;
+            if(wall&&Layout!=null)foreach(var p in Layout)
+                if(p!=null&&(p.CatalogId=="partition_wall"||p.CatalogId=="service_window"))yield return "piece:"+p.InstanceId;
+        }
         public string FinishAt(string key) {
-            bool wall=FinishCatalog.ValidSurfaceKey(key,true);
-            if(!wall&&!FinishCatalog.ValidSurfaceKey(key,false))return "";
+            bool wall=ValidFinishTarget(key,true);
+            if(!wall&&!ValidFinishTarget(key,false))return "";
             var patch=SurfaceFinishes?.FindLast(p=>p!=null&&p.Key==key&&FinishCatalog.Find(p.CatalogId)?.IsWall==wall);
-            return patch?.CatalogId??(wall?WallId:FloorId);
+            return patch?.CatalogId??(FinishCatalog.TryPieceKey(key,out _)?"":wall?WallId:FloorId);
         }
         public int FinishPrice(string id,string key,bool fill) {
-            var d=FinishCatalog.Find(id);if(d==null||!FinishCatalog.ValidSurfaceKey(key,d.IsWall))return -1;
-            return d.Price*(fill?FinishCatalog.SurfaceKeys(d.IsWall).Count(k=>FinishAt(k)!=id):(FinishAt(key)==id?0:1));
+            var d=FinishCatalog.Find(id);if(d==null||!ValidFinishTarget(key,d.IsWall))return -1;
+            return d.Price*(fill?FinishTargets(d.IsWall).Count(k=>FinishAt(k)!=id):(FinishAt(key)==id?0:1));
         }
         public bool ApplyFinish(GameState wallet,string id,string key,bool fill,out string reason) {
             if(!CanCustomize)return Fail("Close service and wait for customers to leave before renovating.",out reason);
@@ -85,7 +100,7 @@ namespace RestaurantCity {
             if(Stars<d.RequiredStars)return Fail("Requires a "+d.RequiredStars+"-star restaurant.",out reason);
             if(wallet.RankEarned<d.Tier)return Fail("Unlocks at "+Reputation.Titles[d.Tier]+" reputation.",out reason);
             if(wallet.Cash<price)return Fail("You need $"+price+" for "+d.Name+".",out reason);
-            var keys=(fill?FinishCatalog.SurfaceKeys(d.IsWall):new[]{key}).Where(k=>FinishAt(k)!=id).ToArray();
+            var keys=(fill?FinishTargets(d.IsWall):new[]{key}).Where(k=>FinishAt(k)!=id).ToArray();
             SurfaceFinishes=SurfaceFinishes??new List<SurfaceFinish>();
             foreach(string target in keys){SurfaceFinishes.RemoveAll(p=>p!=null&&p.Key==target);SurfaceFinishes.Add(new SurfaceFinish{Key=target,CatalogId=id});}
             wallet.Cash-=price;UpdateRank();reason="Applied "+d.Name+" for $"+price+".";return true;
@@ -94,7 +109,7 @@ namespace RestaurantCity {
             var valid=new Dictionary<string,SurfaceFinish>();
             foreach(var p in SurfaceFinishes??new List<SurfaceFinish>()) {
                 var d=p==null?null:FinishCatalog.Find(p.CatalogId);
-                if(d!=null&&FinishCatalog.ValidSurfaceKey(p.Key,d.IsWall))valid[p.Key]=p;
+                if(d!=null&&ValidFinishTarget(p.Key,d.IsWall))valid[p.Key]=p;
             }
             SurfaceFinishes=valid.Values.OrderBy(p=>p.Key,StringComparer.Ordinal).ToList();
         }

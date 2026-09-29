@@ -19,8 +19,12 @@ namespace RestaurantCity {
                 Game.State.Cash = 300;
                 Require(R.BuyRestaurant(P), "isolated restaurant acquired through the real lease interaction");
                 Check(GameObject.Find("Future restaurant sign") == null, "owned restaurant removes the lease board interaction");
+                Check(GameObject.Find("Pole sign / THE ODD TABLE") == null, "duplicate oversized street sign is retired");
+                System.IO.Directory.CreateDirectory("InteractionEvidence");
+                P.Teleport(new Vector3(0, .15f, 3.5f)); P.LookAt(new Vector3(0, 1.9f, 8));
+                CapturePlacement("street-stand.png");
                 P.Teleport(new Vector3(-10, .15f, 2.5f)); P.LookAt(new Vector3(-10, 2, -9));
-                System.IO.Directory.CreateDirectory("InteractionEvidence"); CapturePlacement("architecture-front.png");
+                CapturePlacement("architecture-front.png");
                 P.Teleport(new Vector3(-10, .15f, -10.7f)); P.LookAt(new Vector3(-10, 1.5f, -18));
                 CapturePlacement("architecture-starter.png");
                 // Buying now gives an empty room: install the kitchen the way a player would.
@@ -244,6 +248,17 @@ namespace RestaurantCity {
                     R.Furnishings[placed.InstanceId].GetComponentsInChildren<Renderer>().Any(r => r.enabled),
                     id + " has a visible, saved room object");
             }
+            R.SelectCatalogItem("wall_teal");
+            foreach (var id in new[] { "partition_wall", "service_window" }) {
+                int instanceId = R.Data.Layout.Last(x => x.CatalogId == id).InstanceId;
+                string key = "piece:" + instanceId;
+                Check(R.ChooseFinishSurface(key) && R.ApplySelectedFinish(false) && R.Data.FinishAt(key) == "wall_teal",
+                    id + " accepts the wall brush");
+                Check(R.Furnishings[instanceId].GetComponentsInChildren<MeshRenderer>(true).Any(r => r.enabled && r.sharedMaterial == RestaurantArt.FinishMaterial("wall_teal")) &&
+                    !R.Furnishings[instanceId].transform.Find("Painted architecture faces"),
+                    id + " finishes its full model rather than showing an inset paint patch");
+            }
+            R.CancelPlacement(false);
             P.Teleport(new Vector3(-10, .15f, -10.7f));
             P.LookAt(new Vector3(-10, 1.5f, -18));
             System.IO.Directory.CreateDirectory("InteractionEvidence");

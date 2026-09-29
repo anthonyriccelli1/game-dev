@@ -22,6 +22,7 @@ namespace RestaurantCity {
             var world = Game.Stand.transform.parent;
             var bin = world ? world.Find("Discard bin") : null; if (bin) bin.gameObject.SetActive(false);
             foreach (Transform child in world) if (child.name == "BIN" || (child.GetComponent<TextMesh>() && child.GetComponent<TextMesh>().text == "BIN")) child.gameObject.SetActive(false);
+            BuildStandShell();
 
             for (int i = 0; i < KitchenState.StandKit.Length; i++) {
                 int id = KitchenState.StandBase + 1 + i; string kind = KitchenState.StandKit[i];
@@ -31,7 +32,8 @@ namespace RestaurantCity {
                 if (kind == "stand_plates") foreach (Transform part in obj.GetComponentsInChildren<Transform>(true)) if (part.name == "Glazed cream plate") part.gameObject.SetActive(false);
                 obj.name = "Stand " + kind;
                 obj.transform.position = new Vector3(StandX[i], 0, StandZ);
-                obj.transform.rotation = Quaternion.Euler(0, 180, 0);
+                // Stations face the cook, who works from the sidewalk side (z 9.35); customers stay on the street side.
+                obj.transform.rotation = Quaternion.identity;
                 var target = obj.AddComponent<RestaurantTarget>(); target.InstanceId = id;
                 foreach (var child in obj.GetComponentsInChildren<RestaurantTarget>()) child.InstanceId = id;
                 if (obj.GetComponentsInChildren<Collider>().Length == 0) { var c = obj.AddComponent<BoxCollider>(); c.center = new Vector3(0, .65f, 0); c.size = new Vector3(kind == "grill" ? 1.8f : .9f, 1.3f, .9f); }
@@ -40,6 +42,24 @@ namespace RestaurantCity {
             BuildMilo(world);
             BuildStandSign();
             BuildStandTables(world);
+        }
+
+        // The stand art is a visual shell. The original scene objects keep their colliders and the
+        // station objects below keep their exact positions, targets, work points and item points.
+        void BuildStandShell() {
+            if (Game.Stand.transform.Find("POLYGON Shops stand shell")) return;
+            var shell = ArtOverrides.Find("Shell", "street_stand");
+            if (!shell) return; // Projects without the Shops pack retain the original stand.
+            foreach (Transform child in Game.Stand.transform) {
+                bool legacy = child.name == "Canopy post" || child.name == "Striped awning" ||
+                    child.name == "LITTLE FLAME" || child.name == "LITTLE FLAME signboard" || child.name == "Burger";
+                if (!legacy) continue;
+                foreach (var renderer in child.GetComponentsInChildren<Renderer>(true)) renderer.enabled = false;
+            }
+            var art = Instantiate(shell, Game.Stand.transform);
+            art.name = "POLYGON Shops stand shell";
+            art.transform.localPosition = Vector3.zero;
+            art.transform.localRotation = Quaternion.identity;
         }
 
         // The stand's two sidewalk tables are the same cafe tables guests sit at in the restaurant (same chairs,
@@ -90,14 +110,22 @@ namespace RestaurantCity {
             if (standSignText) return;
             var sign = new GameObject("Stand open sign"); sign.transform.SetParent(Game.Stand.transform, false);
             sign.transform.position = new Vector3(4.95f, 0, 7.1f);   // outside the right post, beside the customer line; never in front of a station
+            var menuArt = ArtOverrides.Find("Shell", "street_menu_board");
             var body = GameObject.CreatePrimitive(PrimitiveType.Cube); body.name = "Chalkboard"; body.transform.SetParent(sign.transform, false);
             body.transform.localPosition = new Vector3(0, .75f, 0); body.transform.localScale = new Vector3(.9f, 1.1f, .08f);
             body.GetComponent<Renderer>().sharedMaterial = KitchenArt.Material("1B2A30");
+            if (menuArt) body.GetComponent<Renderer>().enabled = false;
             var legs = GameObject.CreatePrimitive(PrimitiveType.Cube); legs.name = "Sign legs"; legs.transform.SetParent(sign.transform, false);
             legs.transform.localPosition = new Vector3(0, .1f, 0); legs.transform.localScale = new Vector3(.95f, .2f, .3f);
             legs.GetComponent<Renderer>().sharedMaterial = KitchenArt.Material("895343");
+            if (menuArt) {
+                legs.GetComponent<Renderer>().enabled = false;
+                var model = Instantiate(menuArt, sign.transform);
+                model.name = "POLYGON Shops menu board";
+                model.transform.localPosition = Vector3.zero;
+            }
             sign.AddComponent<Interactable>().Kind = InteractionKind.StandSign;
-            standSignText = WorldCaption(sign.transform, "", new Vector3(0, .8f, -.06f), .02f);
+            standSignText = WorldCaption(sign.transform, "", new Vector3(0, .8f, menuArt ? -.13f : -.06f), .02f);
             standSignText.transform.rotation = Quaternion.identity;
         }
 

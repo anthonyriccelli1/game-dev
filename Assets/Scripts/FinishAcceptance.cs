@@ -43,6 +43,21 @@ namespace RestaurantCity {
    var corrupted=JsonUtility.FromJson<RestaurantState>("{\"Owned\":true,\"SurfaceFinishes\":[{\"Key\":\"floor:0:0\",\"CatalogId\":\"floor_checker\"},{\"Key\":\"floor:0:0\",\"CatalogId\":\"floor_wood\"},{\"Key\":\"floor:99:0\",\"CatalogId\":\"floor_wood\"},{\"Key\":\"wall:back:0\",\"CatalogId\":\"floor_wood\"}]}");
    corrupted.SanitizeAfterLoad();
    Check(((System.Collections.ICollection)surface.GetValue(corrupted)).Count==1,"load removes invalid and duplicate surface records");
+   var pieceWallet=new GameState{Cash=1000};var pieceState=pieceWallet.Restaurant;pieceState.Owned=true;
+   Check(pieceState.Place(pieceWallet,"partition_wall",0,0,0,out _),"partition can be placed for finish coverage");
+   var partition=pieceState.Layout.Last(p=>p.CatalogId=="partition_wall");string pieceKey="piece:"+partition.InstanceId;
+   int pieceBefore=pieceWallet.Cash;
+   Check(pieceState.ValidFinishTarget(pieceKey,true)&&!pieceState.ValidFinishTarget(pieceKey,false)&&
+       pieceState.ApplyFinish(pieceWallet,"wall_teal",pieceKey,false,out _)&&pieceWallet.Cash==pieceBefore-FinishCatalog.Find("wall_teal").Price,
+       "one wall finish purchase covers both partition faces");
+   Check(pieceState.Move(partition.InstanceId,2,0,1,out _)&&pieceState.FinishAt(pieceKey)=="wall_teal",
+       "partition finish follows move and rotation by instance ID");
+   var pieceRestored=JsonUtility.FromJson<RestaurantState>(JsonUtility.ToJson(pieceState));pieceRestored.SanitizeAfterLoad();
+   Check(pieceRestored.FinishAt(pieceKey)=="wall_teal","placed wall finish survives save migration");
+   Check(pieceState.Sell(pieceWallet,partition.InstanceId,out _)&&!pieceState.ValidFinishTarget(pieceKey,true)&&pieceState.FinishAt(pieceKey)=="",
+       "sold partition cannot retain an active finish target");
+   pieceState.SanitizeFinishes();
+   Check(pieceState.SurfaceFinishes.Count==0,"sold partition finish is removed during sanitization");
    wallet.Cash=10000;wallet.RankEarned=5;data.Rank=2;
    Check(Paint(Id(premium),Id(premium).StartsWith("wall_")?"wall:back:0":"floor:0:1"),"earned rank and stars unlock premium finish purchases");
 

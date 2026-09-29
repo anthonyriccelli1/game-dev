@@ -202,5 +202,27 @@ namespace RestaurantCity {
                 patch.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
         }
+
+        // A placed architecture finish belongs to the furnishing, so it follows moves and rotations.
+        public static void PieceFinishGeometry(GameObject piece, string catalogId, out Vector3 center, out Vector3 size) {
+            float depth = catalogId == "service_window" ? .24f : .22f;
+            size = new Vector3(2f, ArchitectureArt.WallHeight, depth);
+            center = new Vector3(0, ArchitectureArt.WallHeight * .5f, 0);
+        }
+        // Unpainted walls match the room's own base walls (shabby brick until the room is refinished).
+        public static Material PieceBaseMaterial(string roomWallId) {
+            bool shabby = string.IsNullOrEmpty(roomWallId) || roomWallId == "wall_shabby";
+            return shabby ? ShabbyWall() : FinishMaterial(roomWallId) ?? ShabbyWall();
+        }
+        // Every "Paint /" face of the piece takes the finish, on both sides and edges, at the same metre scale
+        // as the room walls. Trim, ledges and skirting keep their timber.
+        public static void RenderPieceFinish(GameObject piece, string catalogId, string finishId, string roomWallId = null) {
+            if (!piece || !ArchitectureArt.IsPaintable(catalogId)) return;
+            var old = piece.transform.Find("Painted architecture faces");
+            if (old) { old.gameObject.SetActive(false); Object.Destroy(old.gameObject); }
+            var material = FinishCatalog.Find(finishId)?.IsWall == true ? FinishMaterial(finishId) : PieceBaseMaterial(roomWallId);
+            foreach (var renderer in piece.GetComponentsInChildren<MeshRenderer>(true))
+                if (renderer.name.StartsWith("Paint /")) renderer.sharedMaterial = material;
+        }
     }
 }

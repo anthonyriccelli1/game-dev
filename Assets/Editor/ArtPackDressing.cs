@@ -90,7 +90,7 @@ public static class ArtPackDressing {
             R("Food/SM_Prop_Food_Plate_01", .2f, 1.16f, 0, 0, .8f), R("Food/SM_Prop_Food_Plate_01", .2f, 1.185f, 0, 0, .8f) }),
     };
     // Slots we deliberately went back to the code-built (grimy-levelled) look for.
-    static readonly string[] Retired = { "Furniture/pantry", "Furniture/fridge" };
+    static readonly string[] Retired = { "Furniture/pantry", "Furniture/fridge", "Furniture/partition_wall", "Furniture/service_window" };
     public static void GenerateOverrides() {
         foreach (var r in Retired) { string path = "Assets/Resources/ArtOverrides/" + r + ".prefab"; if (AssetDatabase.LoadAssetAtPath<GameObject>(path)) AssetDatabase.DeleteAsset(path); }
         foreach (var slot in Slots) {
@@ -134,6 +134,7 @@ public static class ArtPackDressing {
         GenerateFinishes();
         GenerateShell();
         GenerateArchitecture();
+        StreetStandArt.Generate();
         AssetDatabase.SaveAssets();
     }
 
@@ -200,8 +201,8 @@ public static class ArtPackDressing {
     // The wall meshes are 2.5m wide in the pack and the cafe counter is 2.07m wide, so fit the art to
     // the shared 2m span without changing the collision footprint or creating a lip across the aisle.
     static void GenerateArchitecture() {
-        MakeArchitecture("partition_wall", Bld + "SM_Bld_Base_Wall_01.prefab", new Vector3(2f, 3f, .225f), false);
-        MakeArchitecture("service_window", Bld + "SM_Bld_Base_Wall_Window_Double_01.prefab", new Vector3(2f, 3f, .256f), true);
+        // Partition walls and service windows are code-built with metre UVs so wall finishes paint them like
+        // the room walls (see ArchitectureArt); only the counter uses pack art.
         MakeArchitecture("service_counter", Shops + "Props/SM_Prop_Cafe_Counter_Outdoor_02.prefab", new Vector3(2f, .98f, .5f), false);
     }
     static void MakeArchitecture(string id, string source, Vector3 size, bool openWindow) {
@@ -244,7 +245,7 @@ public static class ArtPackDressing {
     // (the street is +Z), walk-in doorway x -11.5..-8.5 kept clear by our own invisible colliders.
     static void GenerateShell() {
         if (!AssetDatabase.IsValidFolder("Assets/Synty/PolygonShops")) {
-            foreach (var id in new[] { "facade", "interior_trim", "awning" }) { string path = ShellDir + "/" + id + ".prefab"; if (File.Exists(path)) AssetDatabase.DeleteAsset(path); }
+            foreach (var id in new[] { "facade", "interior_trim", "awning", "storefront_sign" }) { string path = ShellDir + "/" + id + ".prefab"; if (File.Exists(path)) AssetDatabase.DeleteAsset(path); }
             return;
         }
         Directory.CreateDirectory(ShellDir);
@@ -266,6 +267,8 @@ public static class ArtPackDressing {
         FitBox(f, Bld + "SM_Bld_Shopfront_Door_01.prefab", -90, new Vector3(0, 0, -8.78f), new Vector3(-8.7f, 2.6f, 0), new Vector3(0, 1, 0), X);
         Save(f.gameObject, "facade");
 
+        GenerateStorefrontSign();
+
         // Awning upgrade: two striped canvas awnings over each shop window.
         var a = new GameObject("awning").transform;
         foreach (float x0 in new[] { -16.3f, -13.95f, -8.3f, -5.95f })
@@ -281,6 +284,60 @@ public static class ArtPackDressing {
             Run(t, Bld + src + ".prefab", 5, false, back, front, y, right, -90, true);
         }
         Save(t.gameObject, "interior_trim");
+    }
+
+    // The pack supplies a separate mesh for every letter. Build the restaurant name from those
+    // meshes so it has real depth, consistent spacing, and word-by-word color on the street.
+    static void GenerateStorefrontSign() {
+        var backingSource = AssetDatabase.LoadAssetAtPath<GameObject>(Shops + "Signs/SM_Sign_Backing_Long_01.prefab");
+        if (!backingSource) return;
+        var dark = SaveMat(ShellDir + "/sign_ink.mat", null, new Color(.085f, .18f, .19f), Vector2.one, .13f);
+        var cream = SaveMat(ShellDir + "/sign_cream.mat", null, new Color(1f, .87f, .65f), Vector2.one, .3f);
+        var coral = SaveMat(ShellDir + "/sign_coral.mat", null, new Color(.96f, .39f, .29f), Vector2.one, .3f);
+        var brass = SaveMat(ShellDir + "/sign_brass.mat", null, new Color(.89f, .65f, .34f), Vector2.one, .37f);
+        var root = new GameObject("storefront_sign");
+        var backing = (GameObject)PrefabUtility.InstantiatePrefab(backingSource, root.transform);
+        backing.name = "POLYGON Shops sign backing";
+        backing.transform.localPosition = new Vector3(-10f, 3.46f, -8.65f);
+        backing.transform.localScale = Vector3.Scale(backing.transform.localScale, new Vector3(1f, .88f, 1f));
+        foreach (var renderer in backing.GetComponentsInChildren<Renderer>()) renderer.sharedMaterial = dark;
+        foreach (var collider in backing.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(collider);
+
+        const string name = "THE ODD TABLE";
+        var letters = new System.Collections.Generic.List<(GameObject model, float width)>();
+        float totalWidth = 0f;
+        for (int i = 0; i < name.Length; i++) {
+            char c = name[i];
+            if (c == ' ') { totalWidth += .24f; continue; }
+            var source = AssetDatabase.LoadAssetAtPath<GameObject>(Shops + "Signs/SM_Sign_3dText_Letter_" + c + ".prefab");
+            if (!source) { Object.DestroyImmediate(root); return; }
+            var model = (GameObject)PrefabUtility.InstantiatePrefab(source, root.transform);
+            model.name = "POLYGON Shops letter " + c + " " + i;
+            // Pack letters face +Z (the street) unrotated; turning them 180 showed their backs, mirrored.
+            model.transform.localRotation = Quaternion.identity;
+            foreach (var collider in model.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(collider);
+            var mesh = model.GetComponentInChildren<MeshFilter>().sharedMesh;
+            float scale = .86f / mesh.bounds.size.y;
+            model.transform.localScale *= scale;
+            float width = Measure(model).size.x;
+            letters.Add((model, width));
+            totalWidth += width + .055f;
+            var color = i < 3 ? brass : i < 7 ? coral : cream;
+            foreach (var renderer in model.GetComponentsInChildren<Renderer>()) renderer.sharedMaterial = color;
+        }
+        totalWidth -= .055f;
+        // Seen from the street (looking toward -Z), reading left to right runs toward -X.
+        float cursor = -10f + totalWidth * .5f;
+        int letterIndex = 0;
+        foreach (char c in name) {
+            if (c == ' ') { cursor -= .24f; continue; }
+            var (model, width) = letters[letterIndex++];
+            var bounds = Measure(model);
+            model.transform.localPosition += new Vector3(cursor - bounds.max.x,
+                3.07f - bounds.min.y, -8.53f - bounds.center.z);
+            cursor -= width + .055f;
+        }
+        Save(root, "storefront_sign");
     }
 
     // Scale so the largest side is `size`, centred on X/Z, resting on Y = 0.

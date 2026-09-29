@@ -71,6 +71,8 @@ namespace RestaurantCity {
             Game = game;
             if (Game.State.Restaurant == null) Game.State.Restaurant = new RestaurantState();
             var previous = GameObject.Find("Future Restaurant"); if (previous) previous.SetActive(false);
+            // The old street pole carries a duplicate, oversized Odd Table sign beside the storefront.
+            var oldPoleSign = GameObject.Find("Pole sign / THE ODD TABLE"); if (oldPoleSign) oldPoleSign.SetActive(false);
             var site = RestaurantSites.Get(Data.SiteId); Site = site.Offset;
             var siteRoot = new GameObject("Restaurant site / " + site.Title).transform; siteRoot.SetParent(transform, false); siteRoot.localPosition = Site;
             RestaurantArt.RestaurantName = site.Sign;
@@ -255,6 +257,8 @@ namespace RestaurantCity {
             SelectedCatalogId = id; movingId = instanceId; PreviewRotation = rotation;
             BeginPlacementView();
             preview = CreateFurnishing(id, transform); preview.name = "Placement preview";
+            if (instanceId >= 0 && (id == "partition_wall" || id == "service_window"))
+                RestaurantArt.RenderPieceFinish(preview, id, Data.FinishAt("piece:" + instanceId), Data.WallId);
             foreach (var collider in preview.GetComponentsInChildren<Collider>()) collider.enabled = false;
             footprint = GameObject.CreatePrimitive(PrimitiveType.Cube); footprint.name = "Placement validity"; Destroy(footprint.GetComponent<Collider>());
             footprint.GetComponent<Renderer>().material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
@@ -330,6 +334,8 @@ namespace RestaurantCity {
                 if (StationUpgrades.CanUpgrade(p.CatalogId)) StationLooks.ApplyLevel(obj, Data.LevelOf(p.InstanceId));
                 int w = p.Rotation % 2 == 0 ? item.Width : item.Depth, d = p.Rotation % 2 == 0 ? item.Depth : item.Width;
                 obj.transform.position = CellCenter(p.X, p.Z, w, d); obj.transform.rotation = Quaternion.Euler(0, p.Rotation * 90, 0);
+                if (p.CatalogId == "partition_wall" || p.CatalogId == "service_window")
+                    RestaurantArt.RenderPieceFinish(obj, p.CatalogId, Data.FinishAt("piece:" + p.InstanceId), Data.WallId);
                 var target = obj.AddComponent<RestaurantTarget>(); target.InstanceId = p.InstanceId;
                 if (obj.GetComponentsInChildren<Collider>().Length == 0) { var collider = obj.AddComponent<BoxCollider>(); collider.center = new Vector3(0, .65f, 0); collider.size = new Vector3(item.Width * .9f, 1.3f, item.Depth * .9f); }
                 // Child hitboxes (pantry ingredient shelves) share the furnishing's instance id so a

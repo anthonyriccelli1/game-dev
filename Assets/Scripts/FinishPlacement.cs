@@ -13,6 +13,10 @@ namespace RestaurantCity {
             get {
                 if (string.IsNullOrEmpty(FinishSurfaceKey)) return "Point at a surface";
                 var p = FinishSurfaceKey.Split(':');
+                if (p[0] == "piece") {
+                    var placed = Data.Layout.Find(item => item.InstanceId == int.Parse(p[1]));
+                    return (placed?.CatalogId == "service_window" ? "Service window" : "Partition wall") + " #" + p[1] + " / both faces";
+                }
                 return p[0] == "floor" ? "Floor tile " + (int.Parse(p[1]) + 1) + ", " + (int.Parse(p[2]) + 1)
                     : char.ToUpper(p[1][0]) + p[1].Substring(1) + " wall / section " + (int.Parse(p[2]) + 1);
             }
@@ -75,7 +79,7 @@ namespace RestaurantCity {
             finishOutlineMaterial = new Material(outlineShader) { color = new Color(1f, .82f, .23f) };
             finishOutline.sharedMaterial = finishOutlineMaterial;
             ChooseFinishSurface(finish.IsWall ? "wall:back:5" : "floor:5:4");
-            Feedback(finish.Name + " brush: click one section. F quotes " + (finish.IsWall ? "all walls" : "the entire floor") + ".");
+            Feedback(finish.Name + " brush: click one section or a placed wall. F quotes " + (finish.IsWall ? "all walls" : "the entire floor") + ".");
             UI.Rebuild();
         }
 
@@ -102,16 +106,28 @@ namespace RestaurantCity {
         }
         public bool ChooseFinishSurface(string key) {
             var finish = FinishCatalog.Find(SelectedCatalogId);
-            if (!FinishBrushActive || finish == null || !FinishCatalog.ValidSurfaceKey(key, finish.IsWall)) return false;
+            if (!FinishBrushActive || finish == null || !Data.ValidFinishTarget(key, finish.IsWall)) return false;
             FinishSurfaceKey = key;
             Vector3 center, size;
-            if (finish.IsWall) {
+            if (FinishCatalog.TryPieceKey(key, out int pieceId)) {
+                if (!Furnishings.TryGetValue(pieceId, out var piece) || !piece) return false;
+                var placed = Data.Layout.Find(item => item.InstanceId == pieceId);
+                RestaurantArt.PieceFinishGeometry(piece, placed.CatalogId, out var localCenter, out var localSize);
+                center = piece.transform.TransformPoint(localCenter);
+                size = new Vector3(localSize.x, localSize.y, localSize.z + .015f);
+                finishPatch.transform.position = center;
+                finishPatch.transform.rotation = piece.transform.rotation;
+                finishPatch.transform.localScale = size;
+                finishCap.SetActive(false);
+            } else if (finish.IsWall) {
+                finishPatch.transform.rotation = Quaternion.identity;
                 WallBrushGeometry(key, out center, out size);
                 finishCap.SetActive(true); finishCap.transform.position = center + Vector3.up * .027f; finishCap.transform.localScale = size;
                 var p = key.Split(':'); bool back = p[1] == "back";
                 finishPatch.transform.position = new Vector3(center.x, Site.y + 1.9f, center.z) + (back ? Vector3.forward : p[1] == "left" ? Vector3.right : Vector3.left) * .072f;
                 finishPatch.transform.localScale = back ? new Vector3(WallSection - .025f, 3.68f, .012f) : new Vector3(.012f, 3.68f, WallSection - .025f);
             } else {
+                finishPatch.transform.rotation = Quaternion.identity;
                 var p = key.Split(':');
                 center = W(-16.5f + (int.Parse(p[1]) + .5f) * WallSection, .105f, -22 + (int.Parse(p[2]) + .5f) * FloorTileDepth);
                 size = new Vector3(WallSection - .02f, .015f, FloorTileDepth - .02f);
@@ -119,8 +135,10 @@ namespace RestaurantCity {
             }
             finishPatch.SetActive(true); finishOutline.gameObject.SetActive(true);
             // A high outline remains visible even when a floor tile is underneath furniture.
-            center.y = Site.y + 3.97f; float hx = size.x * .5f, hz = size.z * .5f;
-            finishOutline.SetPositions(new[] { center + new Vector3(-hx, 0, -hz), center + new Vector3(hx, 0, -hz), center + new Vector3(hx, 0, hz), center + new Vector3(-hx, 0, hz) });
+            center.y = Site.y + (FinishCatalog.TryPieceKey(key, out _) ? 2.58f : 3.97f);
+            float hx = size.x * .5f, hz = size.z * .5f;
+            var rotate = FinishCatalog.TryPieceKey(key, out int selectedPiece) && Furnishings.TryGetValue(selectedPiece, out var selectedObject) ? selectedObject.transform.rotation : Quaternion.identity;
+            finishOutline.SetPositions(new[] { center + rotate * new Vector3(-hx, 0, -hz), center + rotate * new Vector3(hx, 0, -hz), center + rotate * new Vector3(hx, 0, hz), center + rotate * new Vector3(-hx, 0, hz) });
             Hint = FinishTargetLabel + " / " + finish.Name + " / $" + Data.FinishPrice(SelectedCatalogId, key, false) + " per patch";
             return true;
         }
@@ -143,6 +161,10 @@ namespace RestaurantCity {
             if (!FinishBrushActive || FinishFillPending || PointerOverFinishUI(screen)) return false;
             var ray = Game.Player.View.ScreenPointToRay(screen);
             var finish = FinishCatalog.Find(SelectedCatalogId);
+            if (finish.IsWall) foreach (var hit in Physics.RaycastAll(ray, 100f)) {
+                var target = hit.collider.GetComponentInParent<RestaurantTarget>();
+                if (target && ChooseFinishSurface("piece:" + target.InstanceId)) return true;
+            }
             var plane = new Plane(Vector3.up, W(0, finish.IsWall ? 3.91f : .055f, 0));
             if (!plane.Raycast(ray, out float distance)) return false;
             var p = ray.GetPoint(distance) - Site;
@@ -155,7 +177,7 @@ namespace RestaurantCity {
                 key = "floor:" + Mathf.FloorToInt((p.x + 16.5f) / WallSection) + ":" + Mathf.FloorToInt((p.z + 22) / FloorTileDepth);
             if (ChooseFinishSurface(key)) return true;
             FinishSurfaceKey = ""; finishPatch.SetActive(false); finishCap.SetActive(false); finishOutline.gameObject.SetActive(false);
-            Hint = finish.IsWall ? "Point at a textured wall strip along the room edge." : "Point at a floor tile inside the room.";
+            Hint = finish.IsWall ? "Point at a wall strip or a placed partition or service window." : "Point at a floor tile inside the room.";
             return false;
         }
 
@@ -165,6 +187,9 @@ namespace RestaurantCity {
             Feedback(message);
             if (changed) {
                 RestaurantArt.RenderSurfaceFinishes(Room, Data); PlayChime(true); Game.Save();
+                foreach (var item in Data.Layout)
+                    if ((item.CatalogId == "partition_wall" || item.CatalogId == "service_window") && Furnishings.TryGetValue(item.InstanceId, out var piece))
+                        RestaurantArt.RenderPieceFinish(piece, item.CatalogId, Data.FinishAt("piece:" + item.InstanceId), Data.WallId);
                 foreach (var strip in finishWallStrips) {
                     var material = RestaurantArt.FinishMaterial(Data.FinishAt(strip.Key));
                     if (material && strip.Value) strip.Value.sharedMaterial = material;

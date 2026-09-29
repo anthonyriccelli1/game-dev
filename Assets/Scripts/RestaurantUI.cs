@@ -88,7 +88,7 @@ namespace RestaurantCity {
             status.text = "Satisfaction " + s.Satisfaction.ToString("0") + "%    |    " + (s.Open ? "Open for service" : "Closed for arrivals") + "\n" + s.Served + " served    |    Ambience " + s.Ambience + "    |    Cleanliness " + s.Cleanliness.ToString("0") + "%";
             stock.text = "Pantry: " + string.Join(", ", s.Pantry.Where(l => l.Count > 0).Select(l => l.Count + " " + Ingredients.Name(l.Id))) + "\n" + s.Seats + " seats    |    " + s.CookSlots + " cooking stations";
             cash.text = "$" + Owner.Game.State.Cash;
-            hints.text = Owner.FinishBrushActive ? "Click one patch    /    F Quote all walls or entire floor    /    Esc, B or right click Return to catalog"
+            hints.text = Owner.FinishBrushActive ? "Click a floor tile, wall section, partition or service window    /    F Quote all    /    Esc, B or right click Return to catalog"
                 : Owner.PlacementActive ? "Place with left click    /    R Rotate " + (Owner.PreviewRotation * 90) + " degrees    /    Esc Cancel    /    B Return to catalog" : "B  Catalog     /     Tab  Manage restaurant     /     E  Interact     /     Esc  Pause";
             RefreshFinishControls();
             notice.text = Owner.PlacementActive ? Owner.Hint : !string.IsNullOrEmpty(Owner.FocusPrompt) ? Owner.FocusPrompt : Owner.Game.Notice;
@@ -227,12 +227,12 @@ namespace RestaurantCity {
             finishControls.gameObject.SetActive(Owner.FinishBrushActive);
             if (!Owner.FinishBrushActive) return;
             var finish = FinishCatalog.Find(Owner.SelectedCatalogId); if (finish == null) return;
-            finishBrushTitle.text = finish.Name + "\n" + (finish.IsWall ? "Wall section brush" : "Floor tile brush");
+            finishBrushTitle.text = finish.Name + "\n" + (finish.IsWall ? "Wall and partition brush" : "Floor tile brush");
             finishBrushTarget.text = Owner.FinishTargetLabel;
             int price = Owner.Data.FinishPrice(Owner.SelectedCatalogId, Owner.FinishSurfaceKey, false);
             finishBrushCost.text = price < 0 ? "Choose a surface to preview" : price == 0 ? "Already applied / $0" : "$" + price + " for this patch";
             fillConfirmGroup.gameObject.SetActive(Owner.FinishFillPending); fillBeginGroup.gameObject.SetActive(!Owner.FinishFillPending);
-            finishFillText.text = "Fill " + (finish.IsWall ? "all 36 wall sections" : "all 120 floor tiles") + " for $" + Owner.FinishFillQuote + "?";
+            finishFillText.text = "Fill " + (finish.IsWall ? "all 36 room sections and placed walls" : "all 120 floor tiles") + " for $" + Owner.FinishFillQuote + "?";
             finishFillConfirm.interactable = Owner.Game.State.Cash >= Owner.FinishFillQuote && Owner.Data.CanCustomize;
         }
 

@@ -305,7 +305,7 @@ namespace RestaurantCity {
             var p=Layout.Find(i=>i.InstanceId==instanceId);if(p==null)return Fail("That furnishing no longer exists.",out message);
             if(new[]{"prep_bench","grill","pantry","plate_rack","assembly","sink"}.Contains(p.CatalogId)&&Layout.Count(i=>i.CatalogId==p.CatalogId)<=1)return Fail("Install a replacement before selling your last essential kitchen station.",out message);
             if(RestaurantCatalog.Find(p.CatalogId).Seats>0&&Seats<=RestaurantCatalog.Find(p.CatalogId).Seats)return Fail("Install replacement seating before selling your last table.",out message);
-            int refund=p.Paid/2;Layout.Remove(p);wallet.Cash+=refund;message=$"Sold for ${refund}. Starter furnishings have no resale value.";return true;
+            int refund=p.Paid/2;Layout.Remove(p);SurfaceFinishes?.RemoveAll(f=>f!=null&&f.Key=="piece:"+instanceId);wallet.Cash+=refund;message=$"Sold for ${refund}. Starter furnishings have no resale value.";return true;
         }
         // Only dishes with hands-on steps (RecipeBook) and a known recipe can go on the menu.
         public bool IsDishAvailable(GameState wallet,string id) {var d=RestaurantCatalog.Dish(id);return d!=null&&Stars>=d.RequiredStars&&wallet.Knows(id)&&HasEquipment(d.Equipment)&&RecipeBook.Recipes.Any(r=>r.DishId==id);}

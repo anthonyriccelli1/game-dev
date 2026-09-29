@@ -60,6 +60,7 @@ public static class EditorTools {
     static string PrefabPath(string line) => line.StartsWith("Assets/") ? line + ".prefab" : "Assets/Synty/" + line + ".prefab";
     // Regenerates the art-pack overrides (models, finishes, restaurant shell) without a full build.
     public static string GenerateArt() { ArtPackDressing.GenerateOverrides(); return "art overrides generated"; }
+    public static string GenerateStreetStandArt() { StreetStandArt.Generate(); return "street stand art generated"; }
     public static string DumpPrefabSizes() {
         var sb = new StringBuilder();
         foreach (var line in File.ReadAllLines("EditorOutput/render-list.txt").Select(l => l.Trim().Split(' ')[0]).Where(l => l.Length > 0)) {

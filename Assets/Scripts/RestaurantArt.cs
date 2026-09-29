@@ -127,11 +127,11 @@ namespace RestaurantCity {
             Slab("WallFinish_Right",p,new Vector3(-3.5f,1.9f,-15.5f),new Vector3(.25f,3.8f,13),wallpaper,true);
             var wallWear=Group("ShabbyWallWear",p).transform;var floorWear=Group("ShabbyFloorWear",p).transform;
             foreach(var entry in new[]{new Vector3(-14.2f,.8f,-21.86f),new Vector3(-6.2f,2.7f,-21.86f),new Vector3(-12.7f,2.9f,-21.86f)}) {
-                Scar("PeelingPaper",wallWear,entry,new Vector2(1.1f,.66f),C("B9AE9A"),false);
-                Scar("ExposedPlaster",wallWear,entry+new Vector3(.08f,-.03f,.005f),new Vector2(.79f,.47f),C("DDD5C6"),false);
+                Scar("PeelingPaper",wallWear,entry,new Vector2(1.1f,.66f),C("AFA38D"),false);
+                Scar("ExposedPlaster",wallWear,entry+new Vector3(.08f,-.03f,.005f),new Vector2(.79f,.47f),C("C9BFAB"),false);
             }
             foreach(var entry in new[]{new Vector3(-16.36f,.74f,-12.8f),new Vector3(-16.36f,2.6f,-18f),new Vector3(-3.64f,1.73f,-14f)}) {
-                var scar=Scar("WallWearPatch",wallWear,entry,new Vector2(1.3f,.62f),C("CFC6B5"),false);scar.transform.localRotation=Quaternion.Euler(0,entry.x<-10?90:-90,0);
+                var scar=Scar("WallWearPatch",wallWear,entry,new Vector2(1.3f,.62f),C("B6AA95"),false);scar.transform.localRotation=Quaternion.Euler(0,entry.x<-10?90:-90,0);
             }
             foreach(var entry in new[]{new Vector3(-10.3f,.069f,-10.8f),new Vector3(-12.8f,.069f,-17.6f),new Vector3(-6.1f,.069f,-20.1f),new Vector3(-14.6f,.069f,-13.7f)}) {
                 Scar("OldFloorStain",floorWear,entry,new Vector2(1.4f,.7f),C("938769"),true);
@@ -188,7 +188,7 @@ namespace RestaurantCity {
             ApplyPackShell(room);
             return room;
         }
-        static Material ShabbyWall()=>PackFinish("shabby_wall")??Mat("OldWallpaper",C("C9BA95"),0,false,"wallpaper");
+        internal static Material ShabbyWall()=>PackFinish("shabby_wall")??Mat("OldWallpaper",C("C9BA95"),0,false,"wallpaper");
         static Material ShabbyFloor()=>PackFinish("shabby_floor")??Mat("OldTile",C("B6AA87"),0,false,"worn");
         // With the POLYGON Shops pack: its storefront, mouldings and awnings replace the code-built
         // look. Our own colliders (walls, doorway) stay exactly where they were; only renderers are swapped.
@@ -201,9 +201,10 @@ namespace RestaurantCity {
             var p=room.transform;
             foreach(Transform child in p) if(packShellReplaces.Contains(child.name)){var r=child.GetComponent<Renderer>();if(r)r.enabled=false;}
             PackPiece(facade,p,"Pack storefront");
-            // The lettering sits directly on the pack's brick fascia. Keep the name readable without
-            // covering the architectural detail with another slab.
-            var sign=p.Find("Sign_"+RestaurantName);if(sign)sign.localPosition=new Vector3(-10,3.48f,-8.75f);
+            // Replace the flat placeholder with individually colored, dimensional Shops-pack letters.
+            var sign=p.Find("Sign_"+RestaurantName);
+            var packSign=ArtOverrides.Find("Shell","storefront_sign");
+            if(packSign){if(sign)sign.gameObject.SetActive(false);PackPiece(packSign,p,"Pack storefront sign");}
             // The old code-built menu board is illegible beside the pack architecture. Players can
             // furnish the wall with the catalog's proper menu screen or their own decorations.
             foreach(Transform child in p) if(child.name=="OldMenuBoard"||child.name=="Slate"||child.name.StartsWith("Sign_TODAY AT "))child.gameObject.SetActive(false);
@@ -232,8 +233,8 @@ namespace RestaurantCity {
                     else if(meshes.TryGetValue("flat_architecture",out var originalFloor))r.GetComponent<MeshFilter>().sharedMesh=originalFloor;
                 }
             }
-            var wallWear=room.transform.Find("ShabbyWallWear");if(wallWear)wallWear.gameObject.SetActive(shabbyWall&&!PackFinish("shabby_wall"));
-            var floorWear=room.transform.Find("ShabbyFloorWear");if(floorWear)floorWear.gameObject.SetActive(shabbyFloor&&!PackFinish("shabby_floor"));
+            var wallWear=room.transform.Find("ShabbyWallWear");if(wallWear)wallWear.gameObject.SetActive(shabbyWall);
+            var floorWear=room.transform.Find("ShabbyFloorWear");if(floorWear)floorWear.gameObject.SetActive(shabbyFloor);
             var a=room.transform.Find("UpgradeAwning");if(a)a.gameObject.SetActive(awning);var n=room.transform.Find("UpgradeNeon");if(n)n.gameObject.SetActive(neon);
         }
         static void Feet(Transform p,float width,float depth,float height,Color c) {foreach(float x in new[]{-width*.4f,width*.4f})foreach(float z in new[]{-depth*.4f,depth*.4f})Box("TaperedFoot",p,new Vector3(x,height*.5f,z),new Vector3(.1f,height,.1f),c);}
