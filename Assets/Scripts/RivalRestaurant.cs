@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace RestaurantCity {
-    // "The Gilded Orbit": the rival four-star restaurant across the street. Pure showcase: a glimpse of
+    // "The Gilded Orbit": the rival three-star show-off restaurant across the street. Pure showcase: a glimpse of
     // what the player's place could become. Its elite staff never leave the building and can't be hired.
     public partial class RestaurantController {
         Transform rivalRoot;

@@ -217,7 +217,7 @@ public static class PrototypeBuilder {
         int count = Mathf.CeilToInt(width / .45f);
         for (int i = 0; i < count; i++) Cube("Striped awning", p + new Vector3(-width / 2 + (i + .5f) * width / count, 0, 0), new Vector3(width / count, .18f, 2.8f), i % 2 == 0 ? mat : cream, parent);
     }
-    // Walk-in shell of the rival four-star restaurant (x 14..24, z 16.5..23.5). Interior is furnished at runtime.
+    // Walk-in shell of the rival three-star restaurant (x 14..24, z 16.5..23.5). Interior is furnished at runtime.
     static void RivalRestaurantShell(Transform parent) {
         var root = new GameObject("Rival restaurant / The Gilded Orbit").transform; root.parent = parent;
         var obsidian = Mat("Obsidian", "1C1B2B"); var gold = Mat("Rival gold", "D9A441"); var plum = Mat("Plum velvet", "4A2548");
@@ -260,7 +260,7 @@ public static class PrototypeBuilder {
         Cube("Marquee", new Vector3(19, 5.1f, zf - .45f), new Vector3(9.2f, 1.1f, .6f), obsidian, root);
         Cube("Marquee trim", new Vector3(19, 4.52f, zf - .76f), new Vector3(9.4f, .08f, .1f), gold, root, false);
         var name = Label("THE GILDED ORBIT", new Vector3(19, 5.22f, zf - .78f), .3f, new Color(.98f, .78f, .35f), root);
-        var stars = Label("FOUR STARS  *  *  *  *   RESERVATIONS ONLY", new Vector3(19, 4.78f, zf - .78f), .11f, new Color(1, .93f, .8f), root);
+        var stars = Label("THREE STARS  *  *  *   RESERVATIONS ONLY", new Vector3(19, 4.78f, zf - .78f), .11f, new Color(1, .93f, .8f), root);
     }
     static void Building(string name, float x, float z, float width, float height, Material mat, Transform parent) {
         var root = new GameObject(name).transform; root.parent = parent;
