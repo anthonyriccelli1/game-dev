@@ -73,6 +73,8 @@ namespace RestaurantCity {
             ("69_shop_teaser", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
             ("70_storefront", new Vector3(-10f, 0, -2.6f), 180, -10, 70),
             ("71_storefront_night", new Vector3(-10f, 0, -2.6f), 180, -10, 190),
+            ("72_walls_snap", new Vector3(-7.2f, 0, -10.3f), 215, 12, 70),
+            ("73_walls_front_row", new Vector3(-10f, 0, -17.2f), 0, 8, 70),
             ("62_restaurant_dressed", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
             ("63_restaurant_dressed_back", new Vector3(-5.6f, 0, -19.4f), -40, 12, 70),
             ("64_upgrade_panel", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
@@ -136,6 +138,15 @@ namespace RestaurantCity {
                     for (int i = 0; i < 40; i++) { g.Clock = 160; p.transform.position = shot.pos; rc.Advance(.05f); if (insp.Mode == RestaurantController.InspectorMode.Stop) break; yield return null; }
                     if (shot.name.Contains("chase")) { insp.Mode = RestaurantController.InspectorMode.Chase; insp.Target = p; insp.Root.transform.position = shot.pos + new Vector3(12, 0, 0);
                         for (int i = 0; i < 25; i++) { g.Clock = 160; p.transform.position = shot.pos; insp.Lost = 0; rc.Advance(.04f); yield return null; } }
+                }
+                if (rc && shot.name.Contains("walls_snap")) {
+                    // A kitchen wall across the room (with a doorway gap), a service window, a T-joint wall, and
+                    // furniture in the front row by the windows.
+                    var gs = Game.State; gs.Cash = 20000; var d = gs.Restaurant; d.Owned = true; d.Layout.Clear(); d.SurfaceFinishes.Clear();
+                    foreach (var (id, x, z, r) in new[] { ("partition_wall", 0, 6, 0), ("partition_wall", 2, 6, 0), ("service_window", 4, 6, 0), ("partition_wall", 6, 6, 0), ("partition_wall", 10, 6, 0), ("partition_wall", 3, 4, 1), ("cafe_table", 1, 10, 0), ("booth_teal", 8, 10, 0), ("fern", 11, 11, 0) })
+                        Debug.LogWarning("WALLS " + id + " placed=" + d.Place(gs, id, x, z, r, out var why) + " " + why);
+                    var wid = d.Layout.Find(q => q.CatalogId == "partition_wall"); if (wid != null) d.ApplyFinish(gs, "wall_teal", "piece:" + wid.InstanceId, false, out _);
+                    rc.RebuildLayout(); for (int i = 0; i < 5; i++) yield return null;
                 }
                 if (rc && shot.name.Contains("starter_room")) {
                     // The room you get for $150, before any renovation: pack flagstone and whitewashed brick, still grubby.

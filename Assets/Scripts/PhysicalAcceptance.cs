@@ -18,7 +18,7 @@ namespace RestaurantCity {
   // Stand salad: plate on the counter, greens from the pantry onto the cutting board, chop, then onto the plate.
   void StandSalad(){ActId(S(4));ActId(S(3));ActId(S(1),"greens");ActId(S(7));Check(Game.State.Kitchen.Work(Game.State,"player:0",S(7),3.1f,out var m),"chop at the stand: "+m);ActId(S(7));ActId(S(3));ActId(S(3));}
   void WashStand(){while(Game.State.StandDirty>0){ActId(S(5));Check(Game.State.Kitchen.Work(Game.State,"player:0",S(5),KitchenState.WashSeconds+.1f,out var m),"stand wash: "+m);}}
-  bool InstallFirstFree(string id){var d=Game.Restaurant.Data;for(int z=0;z<10;z++)for(int x=0;x<12;x++)if(d.CanPlace(id,x,z,0,-1,out _))return d.Place(Game.State,id,x,z,0,out _);return false;}
+  bool InstallFirstFree(string id){var d=Game.Restaurant.Data;for(int z=0;z<RestaurantState.GridD;z++)for(int x=0;x<12;x++)if(d.CanPlace(id,x,z,0,-1,out _))return d.Place(Game.State,id,x,z,0,out _);return false;}
   int Station(string id)=>Game.State.Kitchen.Stations.First(s=>s.CatalogId==id).InstanceId;
   void Act(string station,string action="",string actor="player:0"){Check(Game.State.Kitchen.Act(Game.State,actor,Station(station),action,out var m),m);}
   // Raw protein now goes straight from the pantry to the grill; greens and midnight sauce still chop/prepare

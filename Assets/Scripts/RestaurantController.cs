@@ -195,7 +195,7 @@ namespace RestaurantCity {
             int w = PreviewRotation % 2 == 0 ? item.Width : item.Depth;
             int d = PreviewRotation % 2 == 0 ? item.Depth : item.Width;
             previewX = Mathf.RoundToInt(p.x + 15.5f - (w - 1) * .5f);
-            previewZ = Mathf.RoundToInt(p.z + 20.5f - (d - 1) * .5f);
+            previewZ = Mathf.RoundToInt(p.z + 21.1f - (d - 1) * .5f);
             UpdatePreview();
             return true;
         }
@@ -320,7 +320,7 @@ namespace RestaurantCity {
             bool sold = Data.Sell(Game.State, id, out string reason); Feedback(reason);
             if (sold) { SelectedInstanceId = -1; RebuildLayout(); Game.Save(); ShowPanel("Catalog"); }
         }
-        public static Vector3 CellCenter(int x, int z, int width = 1, int depth = 1) => new Vector3(-15.5f + x + (width - 1) * .5f, .055f, -20.5f + z + (depth - 1) * .5f) + Site;
+        public static Vector3 CellCenter(int x, int z, int width = 1, int depth = 1) => new Vector3(-15.5f + x + (width - 1) * .5f, .055f, -21.1f + z + (depth - 1) * .5f) + Site;   // grid runs from the back wall (z -21.6) to just inside the front windows
         public void RebuildLayout() {
             surfaceCache.Clear();
             Game.State.Kitchen.EnsureStations(Data);
@@ -334,6 +334,7 @@ namespace RestaurantCity {
                 if (StationUpgrades.CanUpgrade(p.CatalogId)) StationLooks.ApplyLevel(obj, Data.LevelOf(p.InstanceId));
                 int w = p.Rotation % 2 == 0 ? item.Width : item.Depth, d = p.Rotation % 2 == 0 ? item.Depth : item.Width;
                 obj.transform.position = CellCenter(p.X, p.Z, w, d); obj.transform.rotation = Quaternion.Euler(0, p.Rotation * 90, 0);
+                ArchitectureArt.ReachRoomWalls(obj, p.CatalogId, new Vector2(Site.x - 16.375f, Site.z - 21.875f), new Vector2(Site.x - 3.625f, Site.z - 9.15f));
                 if (p.CatalogId == "partition_wall" || p.CatalogId == "service_window")
                     RestaurantArt.RenderPieceFinish(obj, p.CatalogId, Data.FinishAt("piece:" + p.InstanceId), Data.WallId);
                 var target = obj.AddComponent<RestaurantTarget>(); target.InstanceId = p.InstanceId;

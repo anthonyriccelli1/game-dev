@@ -236,16 +236,16 @@ namespace RestaurantCity {
             if(!StepTo(actor,path.Peek(),step))path.Dequeue();return path.Count>0;
         }
         void AppendRoute(Queue<Vector3> path,Vector3 from,Vector3 to) {
-            bool[] blocked=new bool[120];
-            foreach(var p in Data.Layout){var d=RestaurantCatalog.Find(p.CatalogId);if(!d.OccupiesFloor)continue;int w=p.Rotation%2==0?d.Width:d.Depth,h=p.Rotation%2==0?d.Depth:d.Width;for(int x=p.X;x<p.X+w;x++)for(int z=p.Z;z<p.Z+h;z++)if(x>=0&&x<12&&z>=0&&z<10)blocked[x+z*12]=true;}
-            int start=NearestFree(from,blocked),goal=NearestFree(to,blocked);int[] previous=Enumerable.Repeat(-1,120).ToArray();var frontier=new Queue<int>();frontier.Enqueue(start);previous[start]=start;
-            int[] offsets={-1,1,-12,12};
-            while(frontier.Count>0){int c=frontier.Dequeue();if(c==goal)break;foreach(int offset in offsets){int n=c+offset;if(n<0||n>=120||Mathf.Abs(n%12-c%12)>1||blocked[n]||previous[n]>=0)continue;previous[n]=c;frontier.Enqueue(n);}}
+            const int W=RestaurantState.GridW,D=RestaurantState.GridD,N=W*D;bool[] blocked=new bool[N];
+            foreach(var p in Data.Layout){var d=RestaurantCatalog.Find(p.CatalogId);if(!d.OccupiesFloor)continue;int w=p.Rotation%2==0?d.Width:d.Depth,h=p.Rotation%2==0?d.Depth:d.Width;for(int x=p.X;x<p.X+w;x++)for(int z=p.Z;z<p.Z+h;z++)if(x>=0&&x<W&&z>=0&&z<D)blocked[x+z*W]=true;}
+            int start=NearestFree(from,blocked),goal=NearestFree(to,blocked);int[] previous=Enumerable.Repeat(-1,N).ToArray();var frontier=new Queue<int>();frontier.Enqueue(start);previous[start]=start;
+            int[] offsets={-1,1,-W,W};
+            while(frontier.Count>0){int c=frontier.Dequeue();if(c==goal)break;foreach(int offset in offsets){int n=c+offset;if(n<0||n>=N||Mathf.Abs(n%W-c%W)>1||blocked[n]||previous[n]>=0)continue;previous[n]=c;frontier.Enqueue(n);}}
             if(previous[goal]<0)return;
             var reverse=new List<int>();for(int c=goal;c!=start;c=previous[c])reverse.Add(c);reverse.Reverse();
-            path.Enqueue(CellCenter(start%12,start/12));foreach(int c in reverse)path.Enqueue(CellCenter(c%12,c/12));
+            path.Enqueue(CellCenter(start%W,start/W));foreach(int c in reverse)path.Enqueue(CellCenter(c%W,c/W));
         }
-        static int NearestFree(Vector3 point,bool[] blocked) {int best=0;float distance=float.MaxValue;for(int i=0;i<120;i++){if(blocked[i])continue;float d=(CellCenter(i%12,i/12)-point).sqrMagnitude;if(d<distance){distance=d;best=i;}}return best;}
+        static int NearestFree(Vector3 point,bool[] blocked) {const int W=RestaurantState.GridW;int best=0;float distance=float.MaxValue;for(int i=0;i<blocked.Length;i++){if(blocked[i])continue;float d=(CellCenter(i%W,i/W)-point).sqrMagnitude;if(d<distance){distance=d;best=i;}}return best;}
         static GameObject SmallShape(string name,PrimitiveType type,Transform parent,Vector3 position,Vector3 scale,Color color) {
             var g=GameObject.CreatePrimitive(type);g.name=name;g.transform.SetParent(parent,false);g.transform.localPosition=position;g.transform.localScale=scale;Destroy(g.GetComponent<Collider>());
             var mat=new Material(Shader.Find("Universal Render Pipeline/Lit"));mat.color=color;g.GetComponent<Renderer>().sharedMaterial=mat;return g;

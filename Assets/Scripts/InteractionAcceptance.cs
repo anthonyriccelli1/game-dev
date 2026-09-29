@@ -115,7 +115,7 @@ namespace RestaurantCity {
                             int oldX = placed.X, oldZ = placed.Z;
                             var definition = RestaurantCatalog.Find(placed.CatalogId);
                             bool moved = false;
-                            for (int z = 0; z < 10 && !moved; z++) for (int x = 0; x < 12 && !moved; x++) {
+                            for (int z = 0; z < RestaurantState.GridD && !moved; z++) for (int x = 0; x < 12 && !moved; x++) {
                                 if (x == placed.X && z == placed.Z || !R.Data.CanPlace(placed.CatalogId, x, z, placed.Rotation, prep, out _)) continue;
                                 var world = RestaurantController.CellCenter(x, z, definition.Width, definition.Depth);
                                 var pointer = P.View.WorldToScreenPoint(world);
@@ -231,7 +231,7 @@ namespace RestaurantCity {
             Application.Quit(failures == 0 ? 0 : 1);
         }
         void InstallFirstFree(string id) {
-            for (int z = 0; z < 10; z++) for (int x = 0; x < 12; x++) if (R.Data.CanPlace(id, x, z, 0, -1, out _)) { R.Data.Place(Game.State, id, x, z, 0, out _); return; }
+            for (int z = 0; z < RestaurantState.GridD; z++) for (int x = 0; x < 12; x++) if (R.Data.CanPlace(id, x, z, 0, -1, out _)) { R.Data.Place(Game.State, id, x, z, 0, out _); return; }
         }
         void RunArchitectureChecks() {
             R.ClosePanel(); R.Data.Open = false; Game.State.Cash = 2000;

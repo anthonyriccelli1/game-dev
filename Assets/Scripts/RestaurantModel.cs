@@ -186,6 +186,8 @@ namespace RestaurantCity {
         public List<RestaurantReview> Reviews=new List<RestaurantReview>();
         public List<WorkerState> Workers=new List<WorkerState>();
         public int[] ServedByType=new int[10];
+        // Placement grid: 1 m cells, 12 across and 12 deep (front row stops just short of the front windows).
+        public const int GridW=12,GridD=12;
         public int Stars => Rank;
         public bool CanCustomize => Owned && !Open && Orders.Count==0;
         public int Seats => Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.Seats??0);
@@ -220,19 +222,19 @@ namespace RestaurantCity {
         public void EnsurePhysicalKit() {
             if(Owned&&!CounterInstalled){
                 // Every kitchen gets one free counter so players can set dishes down instead of discarding them.
-                if(!HasEquipment("counter")){for(int z=0;z<10&&!CounterInstalled;z++)for(int x=0;x<12&&!CounterInstalled;x++)if(CanPlace("counter",x,z,0,-1,out _)){AddPlaced("counter",x,z,0,0);CounterInstalled=true;}}
+                if(!HasEquipment("counter")){for(int z=0;z<GridD&&!CounterInstalled;z++)for(int x=0;x<12&&!CounterInstalled;x++)if(CanPlace("counter",x,z,0,-1,out _)){AddPlaced("counter",x,z,0,0);CounterInstalled=true;}}
                 else CounterInstalled=true;
             }
             if(Owned&&!TrashInstalled){
-                if(!HasEquipment("trash")){for(int z=0;z<10&&!TrashInstalled;z++)for(int x=0;x<12&&!TrashInstalled;x++)if(CanPlace("trash",x,z,0,-1,out _)){AddPlaced("trash",x,z,0,0);TrashInstalled=true;}}
+                if(!HasEquipment("trash")){for(int z=0;z<GridD&&!TrashInstalled;z++)for(int x=0;x<12&&!TrashInstalled;x++)if(CanPlace("trash",x,z,0,-1,out _)){AddPlaced("trash",x,z,0,0);TrashInstalled=true;}}
                 else TrashInstalled=true;
             }
             if(!Owned||PhysicalKitInstalled)return;
             foreach(string id in new[]{"pantry","plate_rack","assembly","sink"}) {
                 if(HasEquipment(id))continue;
                 bool added=false;
-                for(int z=0;z<10&&!added;z++)for(int x=7;x<12&&!added;x++)if(CanPlace(id,x,z,0,-1,out _)){AddPlaced(id,x,z,0,0);added=true;}
-                for(int z=0;z<10&&!added;z++)for(int x=0;x<5&&!added;x++)if(CanPlace(id,x,z,0,-1,out _)){AddPlaced(id,x,z,0,0);added=true;}
+                for(int z=0;z<GridD&&!added;z++)for(int x=7;x<12&&!added;x++)if(CanPlace(id,x,z,0,-1,out _)){AddPlaced(id,x,z,0,0);added=true;}
+                for(int z=0;z<GridD&&!added;z++)for(int x=0;x<5&&!added;x++)if(CanPlace(id,x,z,0,-1,out _)){AddPlaced(id,x,z,0,0);added=true;}
             }
             PhysicalKitInstalled=new[]{"pantry","plate_rack","assembly","sink"}.All(HasEquipment);
         }
@@ -244,8 +246,8 @@ namespace RestaurantCity {
             if(item.Tier>PlayerRank)return Fail("Unlocks at "+Reputation.Titles[item.Tier]+": better gear arrives with each district.",out message);
             if(item.IsFinish||item.IsExterior){message="Ready to install.";return true;}
             int width=rotation%2==0?item.Width:item.Depth,depth=rotation%2==0?item.Depth:item.Width;
-            if(x<0||z<0||x+width>12||z+depth>10)return Fail("Keep the furnishing inside the restaurant.",out message);
-            if(item.OccupiesFloor&&z+depth>2&&x<7&&x+width>5)return Fail("Leave the central aisle clear for customers.",out message);
+            if(x<0||z<0||x+width>GridW||z+depth>GridD)return Fail("Keep the furnishing inside the restaurant.",out message);
+            if(item.OccupiesFloor&&z+depth>GridD-3&&x<7&&x+width>5)return Fail("Keep the doorway clear for customers.",out message);
             foreach(var p in Layout) {
                 if(p.InstanceId==ignoreInstance)continue;
                 var other=RestaurantCatalog.Find(p.CatalogId);if(other==null||other.IsFinish||other.IsExterior)continue;
@@ -259,15 +261,15 @@ namespace RestaurantCity {
         bool HasLayoutAccess(string id,int x,int z,int rotation,int ignoreInstance) {
             var candidate=new PlacedItem{CatalogId=id,X=x,Z=z,Rotation=rotation};
             var placed=Layout.Where(p=>p.InstanceId!=ignoreInstance).ToList();placed.Add(candidate);
-            bool[,] blocked=new bool[12,10],visited=new bool[12,10];
-            foreach(var p in placed){var d=RestaurantCatalog.Find(p.CatalogId);if(!d.OccupiesFloor)continue;int w=p.Rotation%2==0?d.Width:d.Depth,h=p.Rotation%2==0?d.Depth:d.Width;for(int xx=p.X;xx<p.X+w;xx++)for(int zz=p.Z;zz<p.Z+h;zz++){if(xx<0||xx>=12||zz<0||zz>=10)return false;blocked[xx,zz]=true;}}
-            var queue=new Queue<int>();if(blocked[5,9])return false;queue.Enqueue(5+9*12);visited[5,9]=true;
+            bool[,] blocked=new bool[GridW,GridD],visited=new bool[GridW,GridD];
+            foreach(var p in placed){var d=RestaurantCatalog.Find(p.CatalogId);if(!d.OccupiesFloor)continue;int w=p.Rotation%2==0?d.Width:d.Depth,h=p.Rotation%2==0?d.Depth:d.Width;for(int xx=p.X;xx<p.X+w;xx++)for(int zz=p.Z;zz<p.Z+h;zz++){if(xx<0||xx>=GridW||zz<0||zz>=GridD)return false;blocked[xx,zz]=true;}}
+            var queue=new Queue<int>();if(blocked[5,GridD-1])return false;queue.Enqueue(5+(GridD-1)*GridW);visited[5,GridD-1]=true;
             int[] dx={-1,1,0,0},dz={0,0,-1,1};
-            while(queue.Count>0){int cell=queue.Dequeue(),cx=cell%12,cz=cell/12;for(int k=0;k<4;k++){int nx=cx+dx[k],nz=cz+dz[k];if(nx<0||nx>=12||nz<0||nz>=10||blocked[nx,nz]||visited[nx,nz])continue;visited[nx,nz]=true;queue.Enqueue(nx+nz*12);}}
+            while(queue.Count>0){int cell=queue.Dequeue(),cx=cell%GridW,cz=cell/GridW;for(int k=0;k<4;k++){int nx=cx+dx[k],nz=cz+dz[k];if(nx<0||nx>=GridW||nz<0||nz>=GridD||blocked[nx,nz]||visited[nx,nz])continue;visited[nx,nz]=true;queue.Enqueue(nx+nz*GridW);}}
             foreach(var p in placed){var d=RestaurantCatalog.Find(p.CatalogId);if(d.Seats==0&&d.Category!=CatalogCategory.Kitchen)continue;int w=p.Rotation%2==0?d.Width:d.Depth,h=p.Rotation%2==0?d.Depth:d.Width;bool reachable=false;
                 for(int xx=p.X-1;xx<=p.X+w;xx++)for(int zz=p.Z-1;zz<=p.Z+h;zz++){
                     bool side=(xx>=p.X&&xx<p.X+w&&(zz==p.Z-1||zz==p.Z+h))||(zz>=p.Z&&zz<p.Z+h&&(xx==p.X-1||xx==p.X+w));
-                    if(side&&xx>=0&&xx<12&&zz>=0&&zz<10&&visited[xx,zz])reachable=true;
+                    if(side&&xx>=0&&xx<GridW&&zz>=0&&zz<GridD&&visited[xx,zz])reachable=true;
                 }
                 if(!reachable)return false;
             }return true;

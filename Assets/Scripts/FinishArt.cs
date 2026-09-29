@@ -205,9 +205,8 @@ namespace RestaurantCity {
 
         // A placed architecture finish belongs to the furnishing, so it follows moves and rotations.
         public static void PieceFinishGeometry(GameObject piece, string catalogId, out Vector3 center, out Vector3 size) {
-            float depth = catalogId == "service_window" ? .24f : .22f;
-            size = new Vector3(2f, ArchitectureArt.WallHeight, depth);
-            center = new Vector3(0, ArchitectureArt.WallHeight * .5f, 0);
+            size = new Vector3(2.24f, ArchitectureArt.WallHeight, .26f);
+            center = new Vector3(0, ArchitectureArt.WallHeight * .5f, -.5f);   // walls sit on the footprint's grid line
         }
         // Unpainted walls match the room's own base walls (shabby brick until the room is refinished).
         public static Material PieceBaseMaterial(string roomWallId) {
