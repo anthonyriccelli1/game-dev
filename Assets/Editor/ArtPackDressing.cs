@@ -95,7 +95,8 @@ public static class ArtPackDressing {
         // Glass-door reach-in fridge: you can see the stock on its shelves (PantryDisplay uses these shelf heights).
         ("Furniture", "fridge", new[] { R("Props/SM_Prop_Market_Drinks_Fridge_02", 0, 0, 0) }),
         // Swirl & Fizz machine (soft serve + soda). The cup's pour point is set by RestaurantArt ("PourPoint").
-        ("Furniture", "drink_machine", new[] { R("Props/SM_Prop_Kitchen_Ice_Cream_Machine_01", 0, 0, -.1f, 0, 1.05f) }),
+        ("Furniture", "drink_machine", new[] { RS("Props/SM_Prop_Kitchen_Prep_Table_02", 0, 0, 0, new Vector3(.86f, .95f, .85f)), R("Props/SM_Prop_Kitchen_Ice_Cream_Machine_01", 0, 1.0f, -.12f, 0, .92f),
+            R("Food/SM_Prop_Food_Cup_01", .36f, 1.0f, .22f, 0, .8f), R("Food/SM_Prop_Food_Cup_01", .36f, 1.2f, .22f, 0, .8f) }),
         ("Furniture", "oven", new[] { R("Props/SM_Prop_Kitchen_Stove_Oven_01", 0, 0, 0, 0, 1.05f) }),
         ("Furniture", "plate_rack", new[] { RS("Props/SM_Prop_Kitchen_ServingShelf_01", 0, 0, 0, new Vector3(.64f, 1f, .85f)),
             R("Food/SM_Prop_Food_Plate_01", -.2f, 1.16f, 0, 0, .8f), R("Food/SM_Prop_Food_Plate_01", -.2f, 1.185f, 0, 0, .8f), R("Food/SM_Prop_Food_Plate_01", -.2f, 1.21f, 0, 0, .8f),

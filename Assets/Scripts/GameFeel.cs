@@ -106,7 +106,7 @@ namespace RestaurantCity {
             foreach (var st in k.Stations) {
                 if (st.CatalogId != "grill" && st.CatalogId != "oven" && st.CatalogId != "stove") continue;
                 var obj = StationObject(st.InstanceId); var item = k.At(st.InstanceId);
-                bool on = obj && item != null && (item.Kind == KitchenItemKind.RawProtein || item.Kind == KitchenItemKind.CookedPatty || item.Kind == KitchenItemKind.SoupPot || item.Kind == KitchenItemKind.Soup);
+                bool on = obj && item != null && (item.Kind == KitchenItemKind.RawProtein || item.Kind == KitchenItemKind.CookedPatty || item.Kind == KitchenItemKind.RawSausage || item.Kind == KitchenItemKind.CookedSausage || item.Kind == KitchenItemKind.SoupPot || item.Kind == KitchenItemKind.Soup);
                 stationLoops.TryGetValue(st.InstanceId, out var src);
                 if (on && !src) {
                     src = obj.AddComponent<AudioSource>(); src.loop = true; src.spatialBlend = 1; src.minDistance = 1.5f; src.maxDistance = 14; src.rolloffMode = AudioRolloffMode.Linear;

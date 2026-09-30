@@ -72,7 +72,7 @@ namespace RestaurantCity {
     string line=preview.Kind==KitchenActionKind.None?preview.FailReason:glyph+(preview.Allowed?preview.Label:preview.FailReason);
     prompts[actor]=station.CatalogId.Replace('_',' ')+(string.IsNullOrEmpty(line)?"":"\n"+line);
     prompts[actor]+=CookStatus(station,k.At(station.InstanceId));
-    if(station.CatalogId=="grill"&&k.At(station.InstanceId)!=null)prompts[actor]+="\nLeft click / RB: flip patty";
+    if(station.CatalogId=="grill"&&k.At(station.InstanceId) is KitchenItem onGrill&&!KitchenState.Sausage(onGrill.Kind))prompts[actor]+="\nLeft click / RB: flip patty";
     if(station.CatalogId=="trash")prompts[actor]+="\nContents "+station.WasteCount+" / 6";
     if(pressed&&preview.Kind==KitchenActionKind.Tap){k.Act(Game.State,actor,station.InstanceId,target.SubId,out message);Feedback(message);}
     if(held&&k.Hold(actor)==null)k.Work(Game.State,actor,station.InstanceId,Time.deltaTime,out _);
@@ -118,17 +118,17 @@ namespace RestaurantCity {
    if(y<.3f)y=fallback;surfaceCache[key]=y;return y;
   }
   // Grill feedback: a small bar that fills while cooking, turns green when done, red when burning.
-  static string CookStatus(KitchenStation s,KitchenItem item){
+  string CookStatus(KitchenStation s,KitchenItem item){
    if(item!=null&&s.CatalogId=="stove"){
     if(item.Kind==KitchenItemKind.ScorchedSoup)return "\n<color=#E1543B>SCORCHED - take the pot and throw it away</color>";
     if(item.Kind==KitchenItemKind.Soup)return "\n<color=#4FCB7A>SOUP'S READY - bring a plate and ladle it</color>";
     if(item.Kind==KitchenItemKind.SoupPot){int f=Mathf.Clamp(Mathf.FloorToInt(s.Progress/KitchenState.SoupSeconds*10),0,10);return "\n"+(item.Stir>=KitchenState.StirWarning?"<color=#E1543B>STIR IT! Scorching in "+Mathf.CeilToInt(KitchenState.ScorchSeconds-item.Stir)+"s</color>":"<color=#E8C34A>Simmering ["+new string('#',f)+new string('-',10-f)+"]</color>");}
    }
    if(item==null||(s.CatalogId!="grill"&&s.CatalogId!="oven"))return "";
-   float done=s.CatalogId=="oven"?6:8,burn=24,t=s.Progress;
-   if(item.Kind==KitchenItemKind.BurntPatty)return "\n<color=#E1543B>BURNT - take it and press Q to discard</color>";
-   if(item.Kind==KitchenItemKind.CookedPatty){int left=Mathf.Max(0,Mathf.CeilToInt(burn-t));return "\n<color="+(left<6?"#E1543B":"#4FCB7A")+">READY"+(left<6?" - burning in "+left+"s!":"")+"</color>";}
-   if(item.Kind!=KitchenItemKind.RawProtein)return "";
+   var times=KitchenState.GrillTimes(s.CatalogId,Data.LevelOf(s.InstanceId),item.Kind);float done=times.cook,burn=times.burn,t=s.Progress;
+   if(item.Kind==KitchenItemKind.BurntPatty||item.Kind==KitchenItemKind.BurntSausage)return "\n<color=#E1543B>BURNT - take it and press Q to discard</color>";
+   if(item.Kind==KitchenItemKind.CookedPatty||item.Kind==KitchenItemKind.CookedSausage){int left=Mathf.Max(0,Mathf.CeilToInt(burn-t));return "\n<color="+(left<6?"#E1543B":"#4FCB7A")+">READY"+(left<6?" - burning in "+left+"s!":"")+"</color>";}
+   if(item.Kind!=KitchenItemKind.RawProtein&&item.Kind!=KitchenItemKind.RawSausage)return "";
    int filled=Mathf.Clamp(Mathf.FloorToInt(t/done*10),0,10);
    return "\n<color=#E8C34A>Cooking ["+new string('#',filled)+new string('-',10-filled)+"]</color>";
   }
@@ -175,10 +175,10 @@ namespace RestaurantCity {
     if(!station||!station.activeInHierarchy){if(progressBars.TryGetValue(s.InstanceId,out var stale)&&stale)stale.SetActive(false);continue;}
     var item=k.At(s.InstanceId);float ratio=-1;string color="E8C34A";
     if(item!=null&&(s.CatalogId=="grill"||s.CatalogId=="oven")){
-     float done=s.CatalogId=="oven"?6:8,burn=24;
-     if(item.Kind==KitchenItemKind.RawProtein)ratio=s.Progress/done;
-     else if(item.Kind==KitchenItemKind.CookedPatty){float heat=(s.Progress-done)/(burn-done);ratio=1;color=heat<.5f?"4FCB7A":heat<.8f?"E8973A":"E1543B";}
-     else if(item.Kind==KitchenItemKind.BurntPatty){ratio=1;color="3A2A26";}
+     var times=KitchenState.GrillTimes(s.CatalogId,Data.LevelOf(s.InstanceId),item.Kind);float done=times.cook,burn=times.burn;
+     if(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.RawSausage)ratio=s.Progress/done;
+     else if(item.Kind==KitchenItemKind.CookedPatty||item.Kind==KitchenItemKind.CookedSausage){float heat=(s.Progress-done)/(burn-done);ratio=1;color=heat<.5f?"4FCB7A":heat<.8f?"E8973A":"E1543B";}
+     else if(item.Kind==KitchenItemKind.BurntPatty||item.Kind==KitchenItemKind.BurntSausage){ratio=1;color="3A2A26";}
     }else if(item!=null&&s.CatalogId=="stove"){
      if(item.Kind==KitchenItemKind.SoupPot){ratio=s.Progress/KitchenState.SoupSeconds;color=item.Stir>=KitchenState.StirWarning?"E1543B":"E8C34A";}
      else if(item.Kind==KitchenItemKind.Soup){ratio=1;color="4FCB7A";}else if(item.Kind==KitchenItemKind.ScorchedSoup){ratio=1;color="3A2A26";}

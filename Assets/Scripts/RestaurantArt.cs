@@ -287,9 +287,11 @@ namespace RestaurantCity {
                 FridgeShelf(p,"protein",.56f,.9f);FridgeShelf(p,"greens",.9f,1.24f);FridgeShelf(p,"soup",1.24f,1.6f);FridgeShelf(p,"sausage",1.6f,1.95f);break;
             case "drink_machine":
                 // Swirl & Fizz: soft serve and soda from one nozzle. The cup sits on the drip tray at "PourPoint".
-                h=1.2f;Box("MachineBody",p,new Vector3(0,.6f,-.05f),new Vector3(.62f,1.2f,.6f),Coral);Box("DripTray",p,new Vector3(0,.3f,.3f),new Vector3(.5f,.05f,.3f),steel);
-                for(int i=0;i<3;i++)Box("Nozzle",p,new Vector3(-.15f+i*.15f,.62f,.25f),new Vector3(.05f,.12f,.05f),Brass);Box("BerryWindow",p,new Vector3(0,.95f,.26f),new Vector3(.42f,.2f,.02f),C("B04AD9"));
-                Group("PourPoint",p,new Vector3(0,.12f,.3f));break;
+                // It stands on its own steel counter so the nozzle is at working height.
+                h=1.85f;Box("Counter",p,new Vector3(0,.48f,0),new Vector3(.9f,.96f,.85f),steel);
+                Box("MachineBody",p,new Vector3(0,1.42f,-.1f),new Vector3(.55f,.86f,.55f),Coral);Box("DripTray",p,new Vector3(0,1.02f,.22f),new Vector3(.45f,.04f,.25f),steel);
+                for(int i=0;i<3;i++)Box("Nozzle",p,new Vector3(-.14f+i*.14f,1.5f,.18f),new Vector3(.05f,.12f,.05f),Brass);Box("BerryWindow",p,new Vector3(0,1.7f,.18f),new Vector3(.4f,.16f,.02f),C("B04AD9"));
+                Group("PourPoint",p,new Vector3(0,1.1f,.22f));break;
             case "stool_pair":case "cafe_table":case "bistro_table":case "patio_table":
                 w=2;d=2;Table(p,Vector3.zero,.82f,.77f);Chair(p,new Vector3(0,0,-.65f),0,id=="stool_pair");Chair(p,new Vector3(0,0,.65f),180,id=="stool_pair");Seat(p,0,new Vector3(0,0,-.65f),0);Seat(p,1,new Vector3(0,0,.65f),180);break;
             case "booth_teal":case "booth_coral":

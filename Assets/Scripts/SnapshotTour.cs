@@ -76,7 +76,7 @@ namespace RestaurantCity {
             ("72_walls_snap", new Vector3(-7.2f, 0, -10.3f), 215, 12, 70),
             ("73_walls_front_row", new Vector3(-10f, 0, -17.2f), 0, 8, 70),
             ("74_fridge_pantry", new Vector3(-9.9f, 0, -18.9f), 180, 16, 70),
-            ("76_drink_machine", new Vector3(-7.6f, 0, -19.2f), 180, 20, 70),
+            ("76_drink_machine", new Vector3(-7.2f, 0, -18.4f), 180, 24, 70),
             ("62_restaurant_dressed", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
             ("63_restaurant_dressed_back", new Vector3(-5.6f, 0, -19.4f), -40, 12, 70),
             ("64_upgrade_panel", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
@@ -161,7 +161,12 @@ namespace RestaurantCity {
                     d.AddStock("sausage", 8); d.AddStock("moonberry", 4); rc.RebuildLayout(); gs.Kitchen.EnsureStations(d);
                     var dm = d.Layout.Find(x => x.CatalogId == "drink_machine");
                     if (dm != null) { gs.Kitchen.Act(gs, "snap", dm.InstanceId, "", out var m1); gs.Kitchen.Work(gs, "snap", dm.InstanceId, KitchenState.PourSeconds + .1f, out var m2); Debug.LogWarning("DRINK " + m1 + " / " + m2); }
-                    for (int i = 0; i < 40; i++) { p.transform.position = shot.pos; rc.Advance(.02f); yield return null; }
+                    // A Comet Dog sausage cooking on the grill next to it, with its progress bar.
+                    Debug.LogWarning("GRILL place=" + d.Place(gs, "grill", 9, 0, 0, out var gw) + " " + gw); rc.RebuildLayout(); gs.Kitchen.EnsureStations(d);
+                    var fr = d.Layout.Find(x => x.CatalogId == "fridge"); var gr = d.Layout.Find(x => x.CatalogId == "grill");
+                    if (fr != null && gr != null) { gs.Kitchen.Act(gs, "snap2", fr.InstanceId, "sausage", out var g1); gs.Kitchen.Act(gs, "snap2", gr.InstanceId, "", out var g2); Debug.LogWarning("GRILL " + g1 + " / " + g2); }
+                    for (int i = 0; i < 70; i++) { p.transform.position = shot.pos; rc.Advance(.06f); yield return null; }
+                    if (gr != null) Debug.LogWarning("GRILL after 4.2s: " + gs.Kitchen.At(gr.InstanceId)?.Kind + " progress " + gs.Kitchen.Stations.Find(x => x.InstanceId == gr.InstanceId)?.Progress);
                 }
                 if (rc && shot.name.Contains("walls_snap")) {
                     // A kitchen wall across the room (with a doorway gap), a service window, a T-joint wall, and
