@@ -67,6 +67,26 @@ namespace RestaurantCity {
    int fridgeId=cold.Layout.Last(p=>p.CatalogId=="fridge").InstanceId;
    Check(coldWallet.Kitchen.Preview(coldWallet,"p1",pantryId,"protein").Kind!=KitchenActionKind.Tap&&coldWallet.Kitchen.Preview(coldWallet,"p1",fridgeId,"protein").Kind==KitchenActionKind.Tap,"with a fridge, patties come from the fridge, not the pantry");
    Check(coldWallet.Kitchen.Preview(coldWallet,"p1",pantryId,"bun").Kind==KitchenActionKind.Tap&&coldWallet.Kitchen.Preview(coldWallet,"p1",fridgeId,"bun").Kind!=KitchenActionKind.Tap,"buns stay in the pantry");
+   // Comet Dog: a sausage cooks in 60% of a patty's time and burns in half the time; bun + cooked sausage is the dish.
+   var dogWallet=new GameState{Cash=2000};var dog=dogWallet.Restaurant;dog.Owned=true;dog.Rank=2;var dk=dogWallet.Kitchen;
+   foreach(var (id,x) in new[]{("pantry",0),("grill",3),("plate_rack",6),("assembly",8),("drink_machine",11)})Check(dog.Place(dogWallet,id,x,0,0,out var why),id+" placed for the new-recipe checks: "+why);
+   int Id2(string c)=>dog.Layout.Last(p=>p.CatalogId==c).InstanceId;
+   dog.AddStock("sausage",3);dog.AddStock("bun",3);dog.AddStock("moonberry",2);
+   Check(dk.Preview(dogWallet,"p1",Id2("pantry"),"sausage").Kind!=KitchenActionKind.Tap,"sausages need the Comet Dog recipe");
+   dogWallet.Learn("cometdog");
+   Check(dk.Act(dogWallet,"p1",Id2("pantry"),"sausage",out _)&&dk.Hold("p1")?.Kind==KitchenItemKind.RawSausage,"take a raw sausage");
+   Check(dk.Act(dogWallet,"p1",Id2("grill"),"",out _),"sausage goes on the grill");
+   dk.Tick(dogWallet,5f);Check(dk.At(Id2("grill"))?.Kind==KitchenItemKind.CookedSausage,"sausage cooks in about 5 seconds");
+   dk.Tick(dogWallet,7.5f);Check(dk.At(Id2("grill"))?.Kind==KitchenItemKind.BurntSausage,"sausage burns at about 12 seconds (half a patty's burn time)");
+   var plate=new KitchenItem{Id=999,Kind=KitchenItemKind.Plate,Holder="p1",Components=new System.Collections.Generic.List<string>{"bun","cooked_sausage"}};
+   Check(dk.RecipeOf(plate)=="cometdog","bun + cooked sausage is a Comet Dog");
+   // Moonberry Float: set a cup (uses a moonberry), hold to pour, then it melts if you dawdle.
+   Check(dk.Preview(dogWallet,"p2",Id2("drink_machine"),"").Kind!=KitchenActionKind.Tap,"the drink machine needs the Moonberry Float recipe");
+   dogWallet.Learn("float");
+   Check(dk.Act(dogWallet,"p2",Id2("drink_machine"),"",out _)&&dk.At(Id2("drink_machine"))?.Kind==KitchenItemKind.FloatCup&&dog.Stock("moonberry")==1,"a cup under the nozzle uses one moonberry");
+   Check(dk.Work(dogWallet,"p2",Id2("drink_machine"),KitchenState.PourSeconds+.1f,out _)&&dk.RecipeOf(dk.At(Id2("drink_machine")))=="float","holding E pours a Moonberry Float");
+   var flt=dk.At(Id2("drink_machine"));dk.Tick(dogWallet,KitchenState.MeltStart+10);
+   Check(flt.Quality<1&&KitchenState.Melting(flt),"a float left too long melts and loses value");
    wallet.Cash=10000;wallet.RankEarned=5;data.Rank=2;
    Check(Paint(Id(premium),Id(premium).StartsWith("wall_")?"wall:back:0":"floor:0:1"),"earned rank and stars unlock premium finish purchases");
 

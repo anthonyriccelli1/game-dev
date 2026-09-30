@@ -69,7 +69,7 @@ namespace RestaurantCity {
                 // resolve exactly which ingredient the player is looking at, replacing the hidden Q cycle.
                 PantryShelf(p,"protein",-.48f,0,.62f); PantryShelf(p,"greens",.48f,0,.62f);
                 PantryShelf(p,"bun",-.48f,.62f,1.12f); PantryShelf(p,"sauce",.48f,.62f,1.12f);
-                PantryShelf(p,"soup",-.48f,1.12f,1.8f);
+                PantryShelf(p,"soup",-.48f,1.12f,1.8f); PantryShelf(p,"sausage",.48f,1.12f,1.8f);
             } else if(id=="plate_rack") {
                 Bench(p,width,"317E79");
                 for(int stack=0;stack<2;stack++)for(int n=0;n<5;n++)Plate(p,new Vector3(stack==0?-.21f:.21f,1+n*.04f,0),.8f);
@@ -178,6 +178,12 @@ namespace RestaurantCity {
                 if(kind!="ScorchedSoup")for(int i=0;i<3;i++)Disk("Veg bit",p,new Vector3(-.07f+i*.07f,.215f,.03f*(i-1)),new Vector3(.04f,.012f,.04f),i==1?"73A566":"E8792E");
                 if(kind=="Soup")for(int i=0;i<2;i++){var steam=Disk("Steam",p,new Vector3(-.04f+i*.08f,.32f+i*.05f,0),new Vector3(.07f,.07f,.07f),"F5F1E8");steam.transform.localScale*=.9f;}
             } else if(kind=="Bun")Bun(p,Vector3.zero);
+            else if(kind=="RawSausage"||kind=="CookedSausage"||kind=="BurntSausage") {
+                var link=S("Sausage",p,Profile("sausage",new[]{0f,.02f,.28f,.3f},new[]{0f,.04f,.04f,0f},8),new Vector3(0,.04f,-.15f),Vector3.one,M(kind=="RawSausage"?"D9776E":kind=="CookedSausage"?"A8542A":"2E2320"));link.transform.localRotation=Quaternion.Euler(90,0,0);
+            }
+            else if(kind=="FloatCup") {
+                S("Empty float cup",p,Profile("cup",new[]{0f,.01f,.24f,.26f},new[]{.06f,.07f,.085f,.085f},10),Vector3.zero,Vector3.one,M("5E7BE0"));
+            }
             else if(kind=="RawProtein") {var meat=Box("Raw cut of protein",p,new Vector3(0,.045f,0),new Vector3(.24f,.085f,.18f),"C96C64");meat.transform.localRotation=Quaternion.Euler(0,15,0);for(int i=0;i<3;i++){var fat=Box("Raw marbling",p,new Vector3((i-1)*.057f,.09f,0),new Vector3(.014f,.004f,.13f),"F0BC9D");fat.transform.localRotation=Quaternion.Euler(0,-22,0);}}
             else Patty(p,Vector3.zero,kind);
             return ArtOverrides.Apply(root,"Items",kind);

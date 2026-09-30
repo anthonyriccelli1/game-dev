@@ -8,12 +8,12 @@ namespace RestaurantCity {
         static readonly (string shelf, string ingredient, string kind, float x, float y, string title)[] PantrySpots = {
             ("protein", "patty", "RawProtein", -.48f, .265f, "Patties"), ("greens", "greens", "RawGreens", .48f, .265f, "Greens"),
             ("bun", "bun", "Bun", -.48f, .805f, "Buns"), ("sauce", "midnight_sauce", "RawSauce", .48f, .805f, "Sauce"),
-            ("soup", "soup_veg", "SoupVeg", -.48f, 1.345f, "Soup veg"),
+            ("soup", "soup_veg", "SoupVeg", -.48f, 1.345f, "Soup veg"), ("sausage", "sausage", "RawSausage", .48f, 1.345f, "Sausages"),
         };
         // The glass-door fridge: one shelf per cold ingredient, at the pack fridge's own shelf heights.
         static readonly (string shelf, string ingredient, string kind, float x, float y, string title)[] FridgeSpots = {
             ("protein", "patty", "RawProtein", 0f, .565f, "Patties"), ("greens", "greens", "RawGreens", 0f, .905f, "Greens"),
-            ("soup", "soup_veg", "SoupVeg", 0f, 1.245f, "Soup veg"),
+            ("soup", "soup_veg", "SoupVeg", 0f, 1.245f, "Soup veg"), ("sausage", "sausage", "RawSausage", 0f, 1.605f, "Sausages"),
         };
         readonly Dictionary<GameObject, Dictionary<string, ShelfView>> pantryViews = new Dictionary<GameObject, Dictionary<string, ShelfView>>();
         IEnumerable<(GameObject obj, int id, string catalogId)> PantryObjects() {
@@ -50,7 +50,8 @@ namespace RestaurantCity {
                         if (views.TryGetValue(spot.shelf, out var gone)) { foreach (var o in gone.Items) if (o) Destroy(o); gone.Items.Clear(); gone.Shown = 0; gone.Count = -1; if (gone.Label) gone.Label.gameObject.SetActive(false); }
                         continue;
                     }
-                    if ((spot.shelf == "sauce" && !Game.State.Knows("midnight") || spot.shelf == "soup" && !Game.State.Knows("soup")) && Data.Stock(spot.ingredient) == 0) continue;
+                    var ingDef = Ingredients.Get(spot.ingredient);
+                    if (ingDef != null && !string.IsNullOrEmpty(ingDef.Recipe) && !Game.State.Knows(ingDef.Recipe) && Data.Stock(spot.ingredient) == 0) continue;
                     if (!views.TryGetValue(spot.shelf, out var v)) views[spot.shelf] = v = new ShelfView();
                     int count = Data.Stock(spot.ingredient); int show = count == 0 ? 0 : Mathf.Clamp(Mathf.CeilToInt(count / 4f), 1, 6);
                     if (show != v.Shown) {

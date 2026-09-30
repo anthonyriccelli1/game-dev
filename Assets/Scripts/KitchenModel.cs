@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 namespace RestaurantCity {
- public enum KitchenItemKind { RawProtein,PreparedPatty,CookedPatty,BurntPatty,RawGreens,ChoppedGreens,RawSauce,MidnightSauce,Bun,Plate,DirtyPlate,GroceryBag,SoupVeg,SoupPot,Soup,ScorchedSoup }
+ public enum KitchenItemKind { RawProtein,PreparedPatty,CookedPatty,BurntPatty,RawGreens,ChoppedGreens,RawSauce,MidnightSauce,Bun,Plate,DirtyPlate,GroceryBag,SoupVeg,SoupPot,Soup,ScorchedSoup,RawSausage,CookedSausage,BurntSausage,FloatCup }
  public enum KitchenActionKind { None,Tap,Hold }
  // Preview describes exactly what a single interact press will do; Act performs it by calling Preview and
  // invoking the very same Apply callback it returned, so the on-screen prompt and the executed action can
@@ -50,6 +50,7 @@ namespace RestaurantCity {
   static string DirectComponent(string stationId,KitchenItemKind kind){
    switch(kind){
     case KitchenItemKind.CookedPatty:return "cooked_patty";
+    case KitchenItemKind.CookedSausage:return "cooked_sausage";
     case KitchenItemKind.ChoppedGreens:return "chopped_greens";
     case KitchenItemKind.MidnightSauce:return "midnight_sauce";
     case KitchenItemKind.Bun:return "bun";
@@ -58,8 +59,8 @@ namespace RestaurantCity {
    }
   }
   static bool IsCounter(string id)=>id=="assembly"||id=="counter";
-  static string ComponentLabel(string id)=>id=="bun"?"a bun":id=="cooked_patty"?"the cooked patty":id=="chopped_greens"?"chopped greens":id=="midnight_sauce"?"midnight sauce":id;
-  static string PantryLabel(string choice)=>choice=="soup"?"soup vegetables":choice=="protein"?"a raw patty":choice=="greens"?"greens":choice=="bun"?"a bun":"sauce ingredients";
+  static string ComponentLabel(string id)=>id=="cooked_sausage"?"the cooked sausage":id=="float"?"the float":id=="bun"?"a bun":id=="cooked_patty"?"the cooked patty":id=="chopped_greens"?"chopped greens":id=="midnight_sauce"?"midnight sauce":id;
+  static string PantryLabel(string choice)=>choice=="sausage"?"a raw sausage":choice=="soup"?"soup vegetables":choice=="protein"?"a raw patty":choice=="greens"?"greens":choice=="bun"?"a bun":"sauce ingredients";
   bool CanAddComponent(KitchenItem plate,string component,out string message){
    if(plate.Components.Contains(component))return Fail("This plate already has "+ComponentLabel(component)+".",out message);
    if(RecipeBook.Recipes.Any(r=>r.Components.Contains(component)&&plate.Components.All(c=>r.Components.Contains(c)))){message="";return true;}
@@ -68,7 +69,7 @@ namespace RestaurantCity {
    return Fail(name+" doesn't use "+ComponentLabel(component)+".",out message);
   }
   // Each pantry shelf holds one real ingredient; stock is counted and runs out per ingredient.
-  static KitchenItemKind ShelfKind(string shelf)=>shelf=="soup"?KitchenItemKind.SoupVeg:shelf=="protein"?KitchenItemKind.RawProtein:shelf=="greens"?KitchenItemKind.RawGreens:shelf=="bun"?KitchenItemKind.Bun:KitchenItemKind.RawSauce;
+  static KitchenItemKind ShelfKind(string shelf)=>shelf=="sausage"?KitchenItemKind.RawSausage:shelf=="soup"?KitchenItemKind.SoupVeg:shelf=="protein"?KitchenItemKind.RawProtein:shelf=="greens"?KitchenItemKind.RawGreens:shelf=="bun"?KitchenItemKind.Bun:KitchenItemKind.RawSauce;
   static string OutOf(IngredientDef ing)=>ing.Source==Ingredients.Stash?"Out of "+ing.Name.ToLower()+". Call Zeeb on your phone (P).":"Out of "+ing.Name.ToLower()+". Buy more at Milo's.";
   // Which shelves a storage station holds: the fridge keeps cold food; a restaurant pantry keeps dry goods once there is
   // a fridge (until then it holds everything); the street stand's cart pantry always holds everything.
@@ -90,7 +91,7 @@ namespace RestaurantCity {
    if(ing!=null&&!shelves.Contains(choice))return Blocked(ing.Name+(ing.Cold?" are kept in the fridge.":" are kept in the pantry."));
    if(ing==null)return Blocked("Look at a shelf: patties, greens, buns, sauce or soup veg.");
    if(choice=="sauce"&&!game.Knows("midnight"))return Blocked("Needs the midnight recipe.");
-   if(choice=="soup"&&!game.Knows("soup"))return Blocked("Buy the Planet soup recipe in the Cookbook first.");
+   if(!string.IsNullOrEmpty(ing.Recipe)&&choice!="sauce"&&!game.Knows(ing.Recipe))return Blocked("Buy the "+RestaurantCatalog.Dish(ing.Recipe).Name+" recipe in the Cookbook first.");
    if(hand!=null&&hand.Kind==KitchenItemKind.Plate&&choice=="bun"){
     // Fewer-press shortcut: a bun needs no prep, so it can go straight onto a plate you are already carrying.
     if(!CanAddComponent(hand,"bun",out string reason))return Blocked(reason);
@@ -179,6 +180,16 @@ namespace RestaurantCity {
     if(game.StandDirty<=0)return Blocked("No dirty plates right now.");
     return Tap("Put a dirty plate in the sink ("+game.StandDirty+" waiting)",()=>{game.StandDirty--;var d=Create(KitchenItemKind.DirtyPlate,"station:"+stationId);d.StandPlate=true;s.Progress=0;return "Hold E to wash it.";});
    }
+   // Swirl & Fizz machine: set a cup under the nozzle (uses one moonberry), hold to pour, then grab the float.
+   if(s.CatalogId=="drink_machine"){
+    if(item!=null&&item.Kind==KitchenItemKind.FloatCup&&hand==null)return NeedsHold("Pour the Moonberry Float");
+    if(item==null&&hand==null){
+     if(!game.Knows("float"))return Blocked("Buy the Moonberry Float recipe in the Cookbook first.");
+     var berry=Ingredients.Get("moonberry");if(game.Restaurant.Stock("moonberry")<1)return Blocked(OutOf(berry));
+     return Tap("Set a cup under the nozzle",()=>{game.Restaurant.UseStock("moonberry");ShiftCosts+=berry.UnitCost;Create(KitchenItemKind.FloatCup,"station:"+stationId);s.Progress=0;return "Hold E to pour the float.";});
+    }
+    if(item==null)return Blocked("Free your hands to pour a float.");
+   }
    // Fewer-press shortcuts: while carrying a plate, a finished ingredient at its own station slides
    // straight onto it instead of needing a separate pickup-then-assembly trip.
    if(hand!=null&&hand.Kind==KitchenItemKind.Plate&&item!=null){
@@ -201,13 +212,13 @@ namespace RestaurantCity {
    if(hand==null)return Blocked("Bring an ingredient or plate here.");
    if(item!=null){
     if(!IsCounter(s.CatalogId)||item.Kind!=KitchenItemKind.Plate)return Blocked(IsCounter(s.CatalogId)?"Counter is full. Put a plate here to build on it.":"Station occupied.");
-    string part=hand.Kind==KitchenItemKind.Soup?"soup":hand.Kind==KitchenItemKind.CookedPatty?"cooked_patty":hand.Kind==KitchenItemKind.Bun?"bun":hand.Kind==KitchenItemKind.ChoppedGreens?"chopped_greens":hand.Kind==KitchenItemKind.MidnightSauce?"midnight_sauce":null;
+    string part=hand.Kind==KitchenItemKind.Soup?"soup":hand.Kind==KitchenItemKind.CookedSausage?"cooked_sausage":hand.Kind==KitchenItemKind.CookedPatty?"cooked_patty":hand.Kind==KitchenItemKind.Bun?"bun":hand.Kind==KitchenItemKind.ChoppedGreens?"chopped_greens":hand.Kind==KitchenItemKind.MidnightSauce?"midnight_sauce":null;
     if(part==null)return Blocked(hand.Kind==KitchenItemKind.RawSauce?"Raw sauce ingredients: trash these, then hold the PLATE and press E on the sauce shelf.":"Prepare the ingredient first. Discard burnt food.");
     if(!CanAddComponent(item,part,out string why))return Blocked(why);
     var plate=item;var carried=hand;
     return Tap("Add "+ComponentLabel(part)+" to plate",()=>{plate.Components.Add(part);plate.Quality=Math.Min(plate.Quality,carried.Quality);Items.Remove(carried);return "Added "+ComponentLabel(part)+" to the plate.";});
    }
-   bool allowed=s.CatalogId=="prep_bench"&&Raw(hand.Kind)||(s.CatalogId=="grill"||s.CatalogId=="oven")&&hand.Kind==KitchenItemKind.RawProtein||s.CatalogId=="stove"&&hand.Kind==KitchenItemKind.SoupVeg||IsCounter(s.CatalogId)||s.CatalogId=="sink"&&hand.Kind==KitchenItemKind.DirtyPlate;
+   bool allowed=s.CatalogId=="prep_bench"&&Raw(hand.Kind)||(s.CatalogId=="grill"||s.CatalogId=="oven")&&(hand.Kind==KitchenItemKind.RawProtein||s.CatalogId=="grill"&&hand.Kind==KitchenItemKind.RawSausage)||s.CatalogId=="stove"&&hand.Kind==KitchenItemKind.SoupVeg||IsCounter(s.CatalogId)||s.CatalogId=="sink"&&hand.Kind==KitchenItemKind.DirtyPlate;
    if(!allowed)return Blocked("Use the correct station for this item.");
    var carriedItem=hand;
    return Tap("Place "+Label(hand).ToLower(),()=>{carriedItem.Holder="station:"+stationId;carriedItem.Age=0;s.Progress=0;s.WorkOwner=null;return "Placed "+Label(carriedItem);});
@@ -221,7 +232,14 @@ namespace RestaurantCity {
    var s=Stations.Find(x=>x.InstanceId==stationId);var item=At(stationId);
    if(s==null||item==null||seconds<=0||float.IsNaN(seconds)||float.IsInfinity(seconds))return Fail("Place an ingredient or dirty plate here first.",out message);
    if(Hold(actor)!=null)return Fail("Free your hands before working.",out message);
-   bool prep=s.CatalogId=="prep_bench"&&Raw(item.Kind),wash=s.CatalogId=="sink"&&item.Kind==KitchenItemKind.DirtyPlate;
+   bool prep=s.CatalogId=="prep_bench"&&Raw(item.Kind),wash=s.CatalogId=="sink"&&item.Kind==KitchenItemKind.DirtyPlate,pour=s.CatalogId=="drink_machine"&&item.Kind==KitchenItemKind.FloatCup;
+   if(pour){
+    if(!string.IsNullOrEmpty(s.WorkOwner)&&s.WorkOwner!=actor)return Fail("Someone else is pouring.",out message);
+    s.WorkOwner=actor;s.Progress+=seconds;game.Emit("pour:"+stationId);
+    if(s.Progress<PourSeconds){message="Pouring "+(int)(s.Progress/PourSeconds*100)+"%";return true;}
+    item.Kind=KitchenItemKind.Plate;item.Disposable=true;item.Components=new List<string>{"float"};item.Age=0;item.Quality=1;
+    s.Progress=0;s.WorkOwner=null;message="Moonberry Float ready. Serve it before it melts!";return true;
+   }
    if(!prep&&!wash)return Fail("Nothing to prepare.",out message);
    if(!string.IsNullOrEmpty(s.WorkOwner)&&s.WorkOwner!=actor)return Fail("Someone else is working here.",out message);
    s.WorkOwner=actor;s.Progress+=seconds;game.Emit(wash?"wash:"+stationId:"chop:"+stationId);float duration=wash?WashSeconds:item.Kind==KitchenItemKind.RawSauce?4:3;if(prep&&game.FluxResearch)duration*=.65f;duration*=StationUpgrades.WorkScale(game.Restaurant.LevelOf(stationId));
@@ -306,10 +324,13 @@ namespace RestaurantCity {
    if(item.Kind==KitchenItemKind.Plate&&item.Components.Count>0){item.Kind=KitchenItemKind.DirtyPlate;item.Components.Clear();message="Food discarded. Wash the plate.";return true;}
    if(item.Kind==KitchenItemKind.Plate)CleanPlates++;Items.Remove(item);message="Item discarded; clean plates return to the rack.";return true;
   }
+  // Moonberry Float: poured in PourSeconds, then melts: full value for MeltStart seconds, then fades to a slush.
+  public const float PourSeconds=2.5f,MeltStart=18,MeltRate=.04f;
+  public static bool Melting(KitchenItem i)=>i!=null&&i.Components!=null&&i.Components.Contains("float")&&i.Age>MeltStart;
   public string RecipeOf(KitchenItem item)=>item==null||item.Kind!=KitchenItemKind.Plate?"":RecipeBook.Match(item.Components);
-  public string Label(KitchenItem item){if(item==null)return "Empty hands";string dish=RecipeOf(item);if(dish!="")return RestaurantCatalog.Dish(dish).Name;switch(item.Kind){case KitchenItemKind.GroceryBag:return "Grocery bag ("+item.Components.Count+" items)";case KitchenItemKind.SoupVeg:return "Soup vegetables";case KitchenItemKind.SoupPot:return "Simmering soup";case KitchenItemKind.Soup:return "Pot of Planet soup";case KitchenItemKind.ScorchedSoup:return "Scorched soup";case KitchenItemKind.RawProtein:return "Raw patty";case KitchenItemKind.PreparedPatty:return "Prepared patty";case KitchenItemKind.CookedPatty:return "Cooked patty";case KitchenItemKind.BurntPatty:return "Burnt patty";case KitchenItemKind.RawGreens:return "Uncut greens";case KitchenItemKind.ChoppedGreens:return "Chopped greens";case KitchenItemKind.RawSauce:return "Midnight ingredients";case KitchenItemKind.MidnightSauce:return "Midnight sauce";case KitchenItemKind.DirtyPlate:return "Dirty plate";case KitchenItemKind.Plate:return item.Components.Count==0?(item.Disposable?"Paper plate":"Clean plate"):"Partly assembled dish";default:return "Bun";}}
+  public string Label(KitchenItem item){if(item==null)return "Empty hands";string dish=RecipeOf(item);if(dish!="")return RestaurantCatalog.Dish(dish).Name+(Melting(item)?" (melting!)":"");switch(item.Kind){case KitchenItemKind.RawSausage:return "Raw sausage";case KitchenItemKind.CookedSausage:return "Cooked sausage";case KitchenItemKind.BurntSausage:return "Burnt sausage";case KitchenItemKind.FloatCup:return "Cup under the nozzle";case KitchenItemKind.GroceryBag:return "Grocery bag ("+item.Components.Count+" items)";case KitchenItemKind.SoupVeg:return "Soup vegetables";case KitchenItemKind.SoupPot:return "Simmering soup";case KitchenItemKind.Soup:return "Pot of Planet soup";case KitchenItemKind.ScorchedSoup:return "Scorched soup";case KitchenItemKind.RawProtein:return "Raw patty";case KitchenItemKind.PreparedPatty:return "Prepared patty";case KitchenItemKind.CookedPatty:return "Cooked patty";case KitchenItemKind.BurntPatty:return "Burnt patty";case KitchenItemKind.RawGreens:return "Uncut greens";case KitchenItemKind.ChoppedGreens:return "Chopped greens";case KitchenItemKind.RawSauce:return "Midnight ingredients";case KitchenItemKind.MidnightSauce:return "Midnight sauce";case KitchenItemKind.DirtyPlate:return "Dirty plate";case KitchenItemKind.Plate:return item.Components.Count==0?(item.Disposable?"Paper plate":"Clean plate"):"Partly assembled dish";default:return "Bun";}}
   // Planet soup on the stove: veg in the pot simmers to soup in SoupSeconds, but scorches if nobody stirs for ScorchSeconds.
-  public const float SoupSeconds=14,ScorchSeconds=9,StirWarning=5;
+  public const float SoupSeconds=14,ScorchSeconds=9,StirWarning=5,SausageCook=.6f,SausageBurn=.5f;
   public void StirPot(int stationId){var item=At(stationId);if(item!=null&&item.Kind==KitchenItemKind.SoupPot)item.Stir=0;}
   void TickStove(GameState game,KitchenStation s,KitchenItem item,float seconds){
    if(item.Kind==KitchenItemKind.SoupVeg){item.Kind=KitchenItemKind.SoupPot;item.Stir=0;s.Progress=0;}
@@ -322,7 +343,10 @@ namespace RestaurantCity {
    if(seconds<=0||float.IsNaN(seconds)||float.IsInfinity(seconds))return;
    BalancePlates(game.Restaurant);
    foreach(var s in Stations){if(s.CatalogId!="stove")continue;var pot=At(s.InstanceId);if(pot!=null)TickStove(game,s,pot,seconds*StationUpgrades.SoupSpeed(game.Restaurant.LevelOf(s.InstanceId)));}
-   foreach(var s in Stations){var item=At(s.InstanceId);if((s.CatalogId!="grill"&&s.CatalogId!="oven")||item==null)continue;if(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.CookedPatty){int lvl=game.Restaurant.LevelOf(s.InstanceId);s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=StationUpgrades.BurnSeconds(lvl)){if(item.Kind!=KitchenItemKind.BurntPatty)game.Emit("burn:"+s.InstanceId);item.Kind=KitchenItemKind.BurntPatty;item.Quality=0;}else if(s.Progress>=StationUpgrades.CookSeconds(s.CatalogId,lvl))item.Kind=KitchenItemKind.CookedPatty;}}
+   foreach(var s in Stations){var item=At(s.InstanceId);if((s.CatalogId!="grill"&&s.CatalogId!="oven")||item==null)continue;if(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.CookedPatty){int lvl=game.Restaurant.LevelOf(s.InstanceId);s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=StationUpgrades.BurnSeconds(lvl)){if(item.Kind!=KitchenItemKind.BurntPatty)game.Emit("burn:"+s.InstanceId);item.Kind=KitchenItemKind.BurntPatty;item.Quality=0;}else if(s.Progress>=StationUpgrades.CookSeconds(s.CatalogId,lvl))item.Kind=KitchenItemKind.CookedPatty;}
+    // Comet Dog sausages: hot as a comet. They cook in 60% of a patty's time and burn in half the time.
+    else if(item.Kind==KitchenItemKind.RawSausage||item.Kind==KitchenItemKind.CookedSausage){int lvl=game.Restaurant.LevelOf(s.InstanceId);s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=StationUpgrades.BurnSeconds(lvl)*SausageBurn){if(item.Kind!=KitchenItemKind.BurntSausage)game.Emit("burn:"+s.InstanceId);item.Kind=KitchenItemKind.BurntSausage;item.Quality=0;}else if(s.Progress>=StationUpgrades.CookSeconds(s.CatalogId,lvl)*SausageCook)item.Kind=KitchenItemKind.CookedSausage;}}
+   foreach(var item in Items)if(item.Components!=null&&item.Components.Contains("float")){if(item.Holder.StartsWith("station:"))item.Age+=seconds;if(item.Age>MeltStart)item.Quality=Math.Min(item.Quality,Math.Max(.35f,1-(item.Age-MeltStart)*MeltRate));}
    foreach(var item in Items){if(!item.Holder.StartsWith("table:"))continue;int id;if(!int.TryParse(item.Holder.Substring(6),out id))continue;var order=game.Restaurant.Orders.Find(o=>o.Id==id);if(order==null||order.Stage==RestaurantOrderStage.Leaving){item.Kind=KitchenItemKind.DirtyPlate;item.Components.Clear();}}
    foreach(var item in Items)if(!item.Holder.StartsWith("station:")&&(item.Kind==KitchenItemKind.CookedPatty||item.Kind==KitchenItemKind.Plate&&item.Components.Count>0)){item.Age+=seconds;item.Quality=Math.Min(item.Quality,Math.Max(.4f,1-Math.Max(0,item.Age-40)*.008f));}
    foreach(var worker in game.Restaurant.Workers)if(worker.Job==StaffJob.Off||(!game.Restaurant.Open&&worker.Job!=StaffJob.Stand))worker.Energy=Math.Min(100,worker.Energy+seconds*.6f);

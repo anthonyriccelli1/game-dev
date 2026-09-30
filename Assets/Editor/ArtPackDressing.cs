@@ -32,6 +32,12 @@ public static class ArtPackDressing {
         ("Items", "CookedPatty", new[] { P(Shops + "Food/SM_Prop_Food_Meat_Patty_Cooked_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.15f, 1.15f, 1.15f), 0f) }),
         ("Items", "BurntPatty", new[] { P(Shops + "Food/SM_Prop_Food_Meat_Patty_Burnt_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.15f, 1.15f, 1.15f), 0f) }),
         ("Items", "Bun", new[] { P(Shops + "Food/SM_Prop_Food_Bun_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.15f, 1.15f, 1.15f), 0f) }),
+        ("Items", "RawSausage", new[] { P(Shops + "Food/SM_Prop_Food_Sausage_Raw_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.1f, 1.1f, 1.1f), 0f) }),
+        ("Items", "CookedSausage", new[] { P(Shops + "Food/SM_Prop_Food_Sausage_Cooked_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.1f, 1.1f, 1.1f), 0f) }),
+        ("Items", "BurntSausage", new[] { P(Shops + "Food/SM_Prop_Food_Sausage_Burnt_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.1f, 1.1f, 1.1f), 0f) }),
+        ("Parts", "HotDog", new[] { P(Shops + "Food/SM_Prop_Food_Hot_Dog_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.1f, 1.1f, 1.1f), 0f) }),
+        ("Parts", "Sausage", new[] { P(Shops + "Food/SM_Prop_Food_Sausage_Cooked_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1.1f, 1.1f, 1.1f), 0f) }),
+        ("Parts", "Cup", new[] { P(Shops + "Food/SM_Prop_Food_Cup_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1f, 1f, 1f), 0f) }),
         ("Items", "RawGreens", new[] { P(Shops + "Food/SM_Prop_Food_Lettuce_Whole_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(1f, 1f, 1f), 0f) }),
         ("Items", "ChoppedGreens", new[] { P(Shops + "Food/SM_Prop_Food_Lettuce_Leaves_01.prefab", new Vector3(0f, 0.03f, 0f), new Vector3(1f, 1f, 1f), 0f) }),
         ("Parts", "Plate", new[] { P(Shops + "Food/SM_Prop_Food_Plate_01.prefab", new Vector3(0f, 0f, 0f), new Vector3(0.95f, 0.95f, 0.95f), 0f) }),
@@ -88,6 +94,8 @@ public static class ArtPackDressing {
         ("Furniture", "sign_burger", new[] { R("Signs/SM_Sign_3dText_Burger_01", 0, 2.55f, -.44f, 180, .95f) }),
         // Glass-door reach-in fridge: you can see the stock on its shelves (PantryDisplay uses these shelf heights).
         ("Furniture", "fridge", new[] { R("Props/SM_Prop_Market_Drinks_Fridge_02", 0, 0, 0) }),
+        // Swirl & Fizz machine (soft serve + soda). The cup's pour point is set by RestaurantArt ("PourPoint").
+        ("Furniture", "drink_machine", new[] { R("Props/SM_Prop_Kitchen_Ice_Cream_Machine_01", 0, 0, -.1f, 0, 1.05f) }),
         ("Furniture", "oven", new[] { R("Props/SM_Prop_Kitchen_Stove_Oven_01", 0, 0, 0, 0, 1.05f) }),
         ("Furniture", "plate_rack", new[] { RS("Props/SM_Prop_Kitchen_ServingShelf_01", 0, 0, 0, new Vector3(.64f, 1f, .85f)),
             R("Food/SM_Prop_Food_Plate_01", -.2f, 1.16f, 0, 0, .8f), R("Food/SM_Prop_Food_Plate_01", -.2f, 1.185f, 0, 0, .8f), R("Food/SM_Prop_Food_Plate_01", -.2f, 1.21f, 0, 0, .8f),

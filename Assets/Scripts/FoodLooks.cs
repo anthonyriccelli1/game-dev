@@ -39,6 +39,7 @@ namespace RestaurantCity {
 
         public static void BuildPlate(List<string> components, Transform p, bool dirty) {
             bool Has(string id) => components != null && components.Contains(id);
+            if (!dirty && Has("float")) { MoonberryFloat(p); return; }   // served in its own cup, no plate
             float y = Put("Plate", p, 0);
             if (dirty) {
                 Shape(PrimitiveType.Cylinder, "Sauce smear", p, new Vector3(.04f, y + .002f, .02f), new Vector3(.17f, .002f, .1f), Mat(C("7A3E2A")));
@@ -47,6 +48,7 @@ namespace RestaurantCity {
             }
             bool bun = Has("bun"), patty = Has("cooked_patty"), greens = Has("chopped_greens"), soup = Has("soup"), midnight = Has("midnight_sauce");
             if (soup) { PlanetSoupBowl(p, y); return; }
+            if (Has("cooked_sausage")) { CometDog(p, y, bun); return; }
             if (!bun && greens) { StoopSalad(p, y); return; }
             if (bun) y = Put("BunBottom", p, y);
             if (greens) y = Put("Lettuce", p, y - .02f) - .01f;
@@ -87,6 +89,49 @@ namespace RestaurantCity {
             var ringMat = Mat(C("5FD0F5"), 1.3f);
             for (int i = 0; i < 18; i++) { float a = i * Mathf.PI * 2 / 18; Shape(PrimitiveType.Cube, "Ring rock", ring, new Vector3(Mathf.Cos(a) * .19f, 0, Mathf.Sin(a) * .19f), new Vector3(.02f, .008f, .03f), ringMat, new Vector3(0, -a * Mathf.Rad2Deg, 0)); }
             ring.gameObject.AddComponent<FoodFx>().Mode = FoodFx.Kind.Spin;
+        }
+
+        // Comet Dog: a sausage in its bun, trailing a glowing tail of orange sauce with star sprinkles, like a comet.
+        static void CometDog(Transform p, float y, bool bun) {
+            float top = bun ? Put("HotDog", p, y, 90) : Put("Sausage", p, y, 90);
+            var tail = Mat(C("FF8A1E"), 1.4f); var tip = Mat(C("FFD24A"), 1.8f);
+            for (int i = 0; i < 5; i++) {
+                float t = i / 4f; var at = new Vector3(-.2f - t * .12f, top - .01f + t * .03f, Mathf.Sin(t * 3f) * .02f);
+                Shape(PrimitiveType.Capsule, "Comet tail", p, at, new Vector3(.04f * (1 - t * .7f), .05f * (1 - t * .6f), .04f * (1 - t * .7f)), i == 0 ? tip : tail, new Vector3(0, 0, 90));
+            }
+            Shape(PrimitiveType.Capsule, "Sauce streak", p, new Vector3(0, top + .004f, 0), new Vector3(.02f, .16f, .02f), tail, new Vector3(0, 0, 90));
+            var sprinkles = new GameObject("Star sprinkles").transform; sprinkles.SetParent(p, false); sprinkles.localPosition = new Vector3(0, top + .03f, 0);
+            for (int i = 0; i < 6; i++) {
+                var s = Shape(PrimitiveType.Cube, "Star sprinkle", sprinkles, new Vector3(-.28f + i * .1f, (i % 3) * .015f, ((i % 2) - .5f) * .06f), Vector3.one * .014f, tip, new Vector3(45, 0, 45));
+                s.AddComponent<FoodFx>().Mode = FoodFx.Kind.Float; s.GetComponent<FoodFx>().Phase = i * .9f;
+            }
+        }
+
+        // Moonberry Float: a tall icy-blue cup of fizzing moonberry soda, a lilac soft-serve swirl on top,
+        // a straw, a crescent-moon garnish and bubbles rising out of it.
+        static void MoonberryFloat(Transform p) {
+            var cupPart = Part("Cup"); float top = .26f;
+            if (cupPart) {
+                var cup = Object.Instantiate(cupPart, p, false); cup.name = "Float cup"; cup.transform.localScale = cupPart.transform.localScale * 1.05f;
+                foreach (var c in cup.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
+                foreach (var r in cup.GetComponentsInChildren<Renderer>()) r.sharedMaterial = Mat(C("5E7BE0"), .25f);
+                top = 0; foreach (var r in cup.GetComponentsInChildren<Renderer>()) top = Mathf.Max(top, p.InverseTransformPoint(r.bounds.max).y);
+            } else Shape(PrimitiveType.Cylinder, "Float cup", p, new Vector3(0, .13f, 0), new Vector3(.17f, .13f, .17f), Mat(C("5E7BE0"), .25f));
+            Shape(PrimitiveType.Cylinder, "Moonberry soda", p, new Vector3(0, top - .012f, 0), new Vector3(.16f, .004f, .16f), Mat(C("B04AD9"), .8f));
+            var swirl = Mat(C("E9D5FF"), .35f);
+            Shape(PrimitiveType.Sphere, "Soft serve", p, new Vector3(0, top + .02f, 0), new Vector3(.17f, .07f, .17f), swirl);
+            Shape(PrimitiveType.Sphere, "Soft serve", p, new Vector3(0, top + .065f, 0), new Vector3(.12f, .06f, .12f), swirl);
+            Shape(PrimitiveType.Sphere, "Soft serve tip", p, new Vector3(0, top + .1f, 0), new Vector3(.06f, .05f, .06f), swirl);
+            Shape(PrimitiveType.Cylinder, "Straw", p, new Vector3(.045f, top + .08f, -.02f), new Vector3(.012f, .1f, .012f), Mat(C("FF5FA2")), new Vector3(0, 0, -12));
+            var moon = Mat(C("FFE27A"), 1.6f);
+            Shape(PrimitiveType.Sphere, "Crescent moon", p, new Vector3(-.055f, top + .08f, .03f), new Vector3(.035f, .035f, .012f), moon);
+            Shape(PrimitiveType.Sphere, "Crescent bite", p, new Vector3(-.045f, top + .085f, .032f), new Vector3(.03f, .03f, .014f), swirl);
+            var fizz = new GameObject("Fizz").transform; fizz.SetParent(p, false); fizz.localPosition = new Vector3(0, top + .05f, 0);
+            var bubble = Mat(C("E3B8FF"), 1.4f);
+            for (int i = 0; i < 5; i++) {
+                float a = i * 1.26f; var b = Shape(PrimitiveType.Sphere, "Fizz bubble", fizz, new Vector3(Mathf.Cos(a) * .07f, i * .02f, Mathf.Sin(a) * .07f), Vector3.one * .014f, bubble);
+                b.AddComponent<FoodFx>().Mode = FoodFx.Kind.Float; b.GetComponent<FoodFx>().Phase = i * .6f;
+            }
         }
 
         // Stoop Salad: greens and tomato in a bowl with a little paper cocktail umbrella.

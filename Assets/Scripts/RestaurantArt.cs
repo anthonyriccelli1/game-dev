@@ -284,7 +284,12 @@ namespace RestaurantCity {
             case "fridge":
                 h=2;Box("RetroFridge",p,new Vector3(0,.99f,0),new Vector3(.91f,1.96f,.83f),Teal);Box("FridgeDoor",p,new Vector3(0,.78f,.43f),new Vector3(.84f,1.35f,.08f),Cream);Box("FreezerDoor",p,new Vector3(0,1.72f,.43f),new Vector3(.84f,.45f,.08f),Cream);Box("Handle",p,new Vector3(.3f,1.05f,.53f),new Vector3(.05f,.45f,.06f),Brass);Box("Magnet",p,new Vector3(-.16f,1.14f,.49f),new Vector3(.21f,.27f,.01f),Coral);Label("COLD",p,new Vector3(0,1.74f,.49f),.052f,Teal);
                 // Aimable cold shelves (patties, greens, soup veg) at the glass-door fridge's shelf heights; stock is drawn by PantryDisplay.
-                FridgeShelf(p,"protein",.56f,.9f);FridgeShelf(p,"greens",.9f,1.24f);FridgeShelf(p,"soup",1.24f,1.6f);break;
+                FridgeShelf(p,"protein",.56f,.9f);FridgeShelf(p,"greens",.9f,1.24f);FridgeShelf(p,"soup",1.24f,1.6f);FridgeShelf(p,"sausage",1.6f,1.95f);break;
+            case "drink_machine":
+                // Swirl & Fizz: soft serve and soda from one nozzle. The cup sits on the drip tray at "PourPoint".
+                h=1.2f;Box("MachineBody",p,new Vector3(0,.6f,-.05f),new Vector3(.62f,1.2f,.6f),Coral);Box("DripTray",p,new Vector3(0,.3f,.3f),new Vector3(.5f,.05f,.3f),steel);
+                for(int i=0;i<3;i++)Box("Nozzle",p,new Vector3(-.15f+i*.15f,.62f,.25f),new Vector3(.05f,.12f,.05f),Brass);Box("BerryWindow",p,new Vector3(0,.95f,.26f),new Vector3(.42f,.2f,.02f),C("B04AD9"));
+                Group("PourPoint",p,new Vector3(0,.12f,.3f));break;
             case "stool_pair":case "cafe_table":case "bistro_table":case "patio_table":
                 w=2;d=2;Table(p,Vector3.zero,.82f,.77f);Chair(p,new Vector3(0,0,-.65f),0,id=="stool_pair");Chair(p,new Vector3(0,0,.65f),180,id=="stool_pair");Seat(p,0,new Vector3(0,0,-.65f),0);Seat(p,1,new Vector3(0,0,.65f),180);break;
             case "booth_teal":case "booth_coral":
@@ -315,7 +320,7 @@ namespace RestaurantCity {
                 Box("FinishSample",p,new Vector3(0,.06f,0),new Vector3(.9f,.12f,.9f),id.Contains("teal")?Teal:id.Contains("rose")||id.Contains("coral")?Coral:Cream);break;
             }
             if(collide){var box=g.AddComponent<BoxCollider>();box.size=elevatedColliderSize??new Vector3(w*.94f,h,d*.92f);box.center=elevatedColliderCenter??new Vector3(0,h*.5f,0);}
-            if(id=="grill"||id=="prep_bench"||id=="stove"||id=="oven"||id=="fridge")Group("WorkPoint",p,new Vector3(0,0,1.05f));
+            if(id=="grill"||id=="prep_bench"||id=="stove"||id=="oven"||id=="fridge"||id=="drink_machine")Group("WorkPoint",p,new Vector3(0,0,1.05f));
             return g;
         }
         static Transform Limb(Transform body,string name,Vector3 pos,Color color,float length,float width) {var joint=Group(name,body,pos).transform;Round("Sleeve",joint,new Vector3(0,-length*.22f,0),new Vector3(width,length*.65f,width),color);Round("Hand",joint,new Vector3(0,-length*.62f,0),new Vector3(width*.8f,width,width*.8f),color*.9f);return joint;}

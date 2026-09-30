@@ -76,6 +76,7 @@ namespace RestaurantCity {
             ("72_walls_snap", new Vector3(-7.2f, 0, -10.3f), 215, 12, 70),
             ("73_walls_front_row", new Vector3(-10f, 0, -17.2f), 0, 8, 70),
             ("74_fridge_pantry", new Vector3(-9.9f, 0, -18.9f), 180, 16, 70),
+            ("76_drink_machine", new Vector3(-7.6f, 0, -19.2f), 180, 20, 70),
             ("62_restaurant_dressed", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
             ("63_restaurant_dressed_back", new Vector3(-5.6f, 0, -19.4f), -40, 12, 70),
             ("64_upgrade_panel", new Vector3(-10f, 0, -11.3f), 180, 14, 70),
@@ -85,6 +86,7 @@ namespace RestaurantCity {
             ("60_dining_sets", new Vector3(-9f, 0, 4.2f), 180, 22, 70),
             ("61_dining_close", new Vector3(-12.2f, 0, 1.6f), 180, 28, 70),
             ("57_food_showcase", new Vector3(-10.1f, 0, .75f), 180, 30, 70),
+            ("75_new_dishes", new Vector3(-10.1f, 0, .35f), 180, 34, 70),
             ("58_grill_levels", new Vector3(-11f, 0, 3.4f), 180, 16, 70),
             ("59_grill_levels_night", new Vector3(-11f, 0, 3.4f), 180, 16, 190),
             ("55_night_inspector", new Vector3(-30, 0, -1.5f), 90, 4, 190),
@@ -152,6 +154,15 @@ namespace RestaurantCity {
                     foreach (var (id, n) in new[] { ("patty", 14), ("greens", 9), ("soup_veg", 6), ("bun", 18), ("midnight_sauce", 3) }) d.AddStock(id, n);
                     rc.RebuildLayout(); for (int i = 0; i < 40; i++) { p.transform.position = shot.pos; rc.Advance(.02f); yield return null; }
                 }
+                if (rc && shot.name.Contains("drink_machine")) {
+                    // The Swirl & Fizz machine pouring, beside the fridge with sausages on its top shelf.
+                    var gs = Game.State; var d = gs.Restaurant; d.Rank = 2; gs.Learn("float"); gs.Learn("cometdog");
+                    Debug.LogWarning("DRINK place=" + d.Place(gs, "drink_machine", 7, 0, 0, out var dw) + " " + dw);
+                    d.AddStock("sausage", 8); d.AddStock("moonberry", 4); rc.RebuildLayout(); gs.Kitchen.EnsureStations(d);
+                    var dm = d.Layout.Find(x => x.CatalogId == "drink_machine");
+                    if (dm != null) { gs.Kitchen.Act(gs, "snap", dm.InstanceId, "", out var m1); gs.Kitchen.Work(gs, "snap", dm.InstanceId, KitchenState.PourSeconds + .1f, out var m2); Debug.LogWarning("DRINK " + m1 + " / " + m2); }
+                    for (int i = 0; i < 40; i++) { p.transform.position = shot.pos; rc.Advance(.02f); yield return null; }
+                }
                 if (rc && shot.name.Contains("walls_snap")) {
                     // A kitchen wall across the room (with a doorway gap), a service window, a T-joint wall, and
                     // furniture in the front row by the windows.
@@ -211,6 +222,16 @@ namespace RestaurantCity {
                         }
                     }
                     for (int i = 0; i < 30; i++) yield return null;
+                }
+                if (shot.name.Contains("new_dishes")) {
+                    // Comet Dog and Moonberry Float, plated, with sausages raw / cooked / burnt.
+                    var old = GameObject.Find("Style lineup"); if (old) Destroy(old);
+                    var line = new GameObject("Style lineup").transform; Game.State.StandOpen = false;
+                    var t = ArtOverrides.Find("Furniture", "assembly"); if (t) { var tb = Instantiate(t, line); tb.transform.position = new Vector3(-10.1f, 0, -1.2f); }
+                    var parts = new (string kind, string[] comps, float x, float z)[] { ("Plate", new[] { "bun", "cooked_sausage" }, -10.55f, -1.05f), ("Plate", new[] { "float" }, -9.7f, -1.05f),
+                        ("RawSausage", null, -10.7f, -1.5f), ("CookedSausage", null, -10.3f, -1.5f), ("BurntSausage", null, -9.9f, -1.5f) };
+                    foreach (var q in parts) { var it = KitchenArt.CreateItem(q.kind, q.comps == null ? null : new System.Collections.Generic.List<string>(q.comps), line); it.transform.position = new Vector3(q.x, 1.05f, q.z); }
+                    for (int i = 0; i < 20; i++) yield return null;
                 }
                 if (shot.name.Contains("food_showcase") || shot.name.Contains("grill_levels")) {
                     var old = GameObject.Find("Style lineup"); if (old) Destroy(old);

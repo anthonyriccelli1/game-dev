@@ -57,7 +57,17 @@ namespace RestaurantCity {
                 "Take soup vegetables from the pantry's top shelf and put them in the pot on the stove.",
                 "It simmers for 14 seconds. Stir it (E) at least every 9 seconds or it scorches.",
                 "Carry a clean plate to the stove and ladle the soup onto it.",
-                "Carry the finished soup to the matching guest."})
+                "Carry the finished soup to the matching guest."}),
+            new RecipeDefinition("cometdog",new[]{"bun","cooked_sausage"},new[]{
+                "Take a raw sausage from the fridge.",
+                "Put it on the grill. It cooks fast and burns fast: stay close.",
+                "Plate it with a bun.",
+                "Carry the Comet Dog to the matching guest."}),
+            new RecipeDefinition("float",new[]{"float"},new[]{
+                "Needs the Swirl & Fizz machine and moonberries from Milo.",
+                "Press E at the machine to set a cup under the nozzle.",
+                "Hold E to pour the float.",
+                "Serve it fast: after about 18 seconds it starts to melt and loses its tip."})
         };
         // Recipes you can buy in the Cookbook (cash, and the rank that sells them). Others are starters or found in the city.
         public static readonly (string dish,int price,int rank)[] ForSale = { ("soup",60,0) };
@@ -96,6 +106,7 @@ namespace RestaurantCity {
             new CatalogItem("grill","Comet grill",CatalogCategory.Kitchen,45,2,1,0,1,"Burgers and midnight buns. Extra grills add a cooking slot."),
             new CatalogItem("stove","Little red stove",CatalogCategory.Kitchen,55,1,1,0,1,"Simmers Planet soup. Stir it or it scorches.",1,0),
             new CatalogItem("oven","Starlight oven",CatalogCategory.Kitchen,100,2,1,0,2,"LINE COOK gear: cooks patties in six seconds instead of eight.",2,1),
+            new CatalogItem("drink_machine","Swirl & Fizz machine",CatalogCategory.Kitchen,90,1,1,0,2,"Soft serve and soda from one nozzle. Pours the Moonberry Float.",2),
             new CatalogItem("fridge","Mint refrigerator",CatalogCategory.Kitchen,40,1,1,0,1,"Glass-door fridge: patties, greens and soup veg live here, where you can see them. Doubles stock limits; keeps ready dishes fresh longer."),
             new CatalogItem("stool_pair","Counter stools",CatalogCategory.Seating,20,2,2,2,1,"Two inexpensive customer seats."),
             new CatalogItem("cafe_table","Daisy cafe table",CatalogCategory.Seating,30,2,2,2,2,"Two seats and a cheery tabletop."),
@@ -140,6 +151,8 @@ namespace RestaurantCity {
             new DishDefinition("burger","Flats Burger",14,1,1,9,"grill",0,false,"The reliable favorite. Uses 1 protein + 1 produce."),
             new DishDefinition("salad","Stoop Salad",11,0,2,5,"prep_bench",0,false,"Quick vegetarian salad. Uses 2 produce."),
             new DishDefinition("soup","Planet Soup",18,1,1,12,"stove",1,false,"Comfort food for mushroom folk. Needs a stove."),
+            new DishDefinition("cometdog","Comet Dog",16,1,1,6,"grill",1,false,"A sausage trailing a glowing comet tail of orange sauce. Cooks fast, burns fast."),
+            new DishDefinition("float","Moonberry Float",20,0,1,3,"drink_machine",2,false,"Soft serve in fizzing moonberry soda. Serve it before it melts."),
             new DishDefinition("midnight","Midnight Burger",25,2,1,11,"grill",0,true,"Rare city recipe. Aliens and night owls seek it out."),
             new DishDefinition("dessert","Moonberry tart",24,0,2,13,"oven",2,false,"Two-star showpiece. Needs the Starlight oven.")
         };
