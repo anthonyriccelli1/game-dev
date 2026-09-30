@@ -7,9 +7,10 @@ namespace RestaurantCity {
         public const string Dealer = "Zeeb";
         public static readonly StashSpot[] Spots = {
             new StashSpot("the park", 65, -25),
-            new StashSpot("the Bayside waterfront", -210, -31),
-            new StashSpot("the west end of Main Street", -120, 8.5f),
+            new StashSpot("the graffiti alley off South Avenue", -22.5f, -35),
+            new StashSpot("the west end of Main Street", -70, 8.5f),
             new StashSpot("the east end of Main Street", 70, -7.5f),
+            new StashSpot("the market stalls on North Avenue", 6, 68.5f),
         };
         public const int SaucePrice = 8;          // per bottle
         public const float Deposit = .3f;         // paid up front; the rest is owed

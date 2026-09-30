@@ -23,7 +23,7 @@ namespace RestaurantCity {
             if (Game == null || Game.State == null) return;
             if (Game.State.RankUpTo >= 0) {
                 int r = Game.State.RankUpTo; Game.State.RankUpTo = -1; var opened = CityDistricts.OpenedAt(r);
-                Game.Notify("RANK UP!  You're a " + Reputation.Titles[r].ToUpper() + ".  " + (opened != null ? opened.Name + " is now open. Check the Map (M)." : ""), 10);
+                Game.Notify("RANK UP!  You're a " + Reputation.Titles[r].ToUpper() + ".  " + (opened != null && opened.Built ? opened.Name + " is now open. Check the Map (M)." : ""), 10);
                 Refresh();
             } else if (Game.State.RankEarned != shownRank) Refresh();
             if (Suspended) return;

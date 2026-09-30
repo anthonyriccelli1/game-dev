@@ -6,6 +6,8 @@ using UnityEngine;
 // a 160 m x 160 m district with three east-west avenues, two north-south streets, full sidewalks,
 // modular shop/apartment rows, landmark towers, street furniture and a 360-degree skyline.
 // Gameplay locations (stand, Milo's, your restaurant, The Gilded Orbit, rival alley) keep their spots on Main Street.
+// This block IS Old Market (one restaurant per district): Market Row to the north, the home street in the middle,
+// The Flats to the south. Street ends are barricaded; the Docks gate waits at the bottom of West Street.
 public static class CityMap {
     const string City = "Assets/Synty/PolygonCity/Prefabs/";
     public static bool Available => AssetDatabase.IsValidFolder("Assets/Synty/PolygonCity");
@@ -23,6 +25,10 @@ public static class CityMap {
     static readonly Rect[] Reserved = {
         Rect.MinMaxRect(-19.5f, 5, 25, 32),       // Milo's, apartments, alley, rival restaurant, stash
         Rect.MinMaxRect(-17.5f, -26, -2.5f, -5),  // your restaurant and its interior
+        Rect.MinMaxRect(-20, 60, 20, 70),         // Market Row: the street-market square off North Avenue
+        Rect.MinMaxRect(-25, -40, -20, -25),      // The Flats: graffiti alley off South Avenue
+        Rect.MinMaxRect(10, -40, 25, -25),        // The Flats: vacant lot where Greasy Gus parks his truck
+        Rect.MinMaxRect(-25, 35, -15, 40),        // Market Row: The Tin Diner (a one-storey chrome diner)
     };
     static Transform root; static int seed;
 
@@ -315,6 +321,99 @@ public static class CityMap {
         MilosWalkIn(shopBuilding);
     }
 
+    // ---------- Old Market places (see claude/world-map.md) ----------
+    static GameObject FitPack(string pack, string rel, Vector3 pos, float yaw, float width, Transform parent) {
+        var src = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Synty/" + pack + "/Prefabs/" + rel + ".prefab"); if (!src) return null;
+        var go = (GameObject)PrefabUtility.InstantiatePrefab(src, parent ? parent : root);
+        go.transform.SetPositionAndRotation(pos, Quaternion.Euler(0, yaw, 0));
+        var rs = go.GetComponentsInChildren<Renderer>(); if (rs.Length == 0) return go;
+        var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+        go.transform.localScale *= width / Mathf.Max(.01f, Mathf.Max(b.size.x, b.size.z));
+        b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+        go.transform.position += Vector3.up * (pos.y - b.min.y); return go;
+    }
+    // Text on a sign that reads from the side its face points to (0:+Z 1:+X 2:-Z 3:-X).
+    static void SignText(string text, Vector3 pos, int facing, float size, Color color, Transform parent) {
+        var go = PrototypeBuilder.Label(text, pos, size, color, parent);
+        go.transform.rotation = Quaternion.Euler(0, new[] { 180, 270, 0, 90 }[facing], 0);
+    }
+    // Market Row: a square of produce, flower and snack stalls opening onto North Avenue.
+    static void MarketStalls() {
+        var p = new GameObject("Market stalls").transform; p.SetParent(root, false);
+        string[] displays = { "Props/SM_Prop_Market_Food_Display_01", "Props/SM_Prop_Flower_Stand_Preset_01", "Props/SM_Prop_Market_Food_Display_03",
+                              "Props/SM_Prop_Market_Food_Display_05", "Props/SM_Prop_Flower_Stand_Preset_02", "Props/SM_Prop_Market_Food_Display_02" };
+        for (int i = 0; i < displays.Length; i++) {
+            float x = -15 + i * 6;
+            FitPack("PolygonShops", displays[i], new Vector3(x, WalkY, 64.5f), 180, 2.6f, p);
+            var shade = FitPack("PolygonShops", "Props/SM_Prop_Cafe_Parasol_0" + (i % 3 + 1), new Vector3(x, WalkY, 65.6f), 0, 3.2f, p);
+            if (shade) StripColliders(shade.transform);
+            FitPack("PolygonGeneric", "Props/SM_Gen_Prop_Crate_0" + (i % 3 + 1), new Vector3(x + 1.7f, WalkY, 66.2f), i * 30, .8f, p);
+        }
+        Put("Props/SM_Prop_HotdogStand_01", new Vector3(17.5f, WalkY, 67.5f), 180, p);
+        foreach (float x in new[] { -18.5f, 18.5f }) Put("Props/SM_Prop_LightPole_Base_02", new Vector3(x, 0, 61), 0, p);
+        foreach (float x in new[] { -12f, 0, 12 }) Put("Props/SM_Prop_ParkBench_01", new Vector3(x, 0, 69.2f), 180, p);
+        PoleSign("MARKET ROW", new Vector3(-21.5f, 0, 57.6f), "B9703C");
+    }
+    // Market Row: The Tin Diner, a chrome one-storey diner and the two-star rival you can raid.
+    static void TinDiner() {
+        Tower(-25, 35, 0, 0, true, "Buildings/SM_Bld_Shop_02", 7);
+        Tower(-20, 35, 0, 0, true, "Buildings/SM_Bld_Shop_05", 7);
+        var p = new GameObject("The Tin Diner").transform; p.SetParent(root, false);
+        Put("Buildings/SM_Bld_Shop_Cover_03", OnFace(-25, 35, 0, 2.5f, 2.2f, 2.55f), 0, p);
+        Put("Props/SM_Prop_LargeSign_Milkshake_01", OnFace(-25, 35, 0, 2.5f, -2.2f, 3.6f), 0, p);
+        PoleSign("THE TIN DINER", new Vector3(-29, 0, 42.6f), "8FA9BD");
+    }
+    // The Flats: a dead-end alley off South Avenue behind your restaurant, tagged by Zeeb.
+    static void GraffitiAlley() {
+        var p = new GameObject("Graffiti alley").transform; p.SetParent(root, false);
+        var paint = new[] { InteriorMat("TagPink", "E0479A"), InteriorMat("TagTeal", "2FB7A8"), InteriorMat("TagPurple", "8D6AE0"), InteriorMat("TagYellow", "F2C230") };
+        for (int i = 0; i < 6; i++) {
+            float z = -38 + i * 2.2f, h = .9f + (H(i, 3) % 5) * .15f;
+            Slab("Paint", new Vector3(-24.93f, .6f + h / 2 + (i % 2) * .5f, z), new Vector3(.02f, h, 1.4f + (H(i, 5) % 3) * .4f), paint[i % 4], p, false);
+        }
+        SignText("ZEEB WUZ HERE", new Vector3(-24.9f, 2.3f, -33), 1, .22f, new Color(.8f, .65f, 1f), p);
+        Put("Props/SM_Prop_Skip_01", new Vector3(-21.4f, 0, -29.5f), 90, p);
+        foreach (var (x, z, k) in new[] { (-23.9f, -27.2f, 1), (-23.4f, -26.6f, 2), (-24.1f, -36.5f, 3), (-21.2f, -37.5f, 1) })
+            Put("Props/SM_Prop_TrashBag_0" + k, new Vector3(x, 0, z), x * 40, p);
+        Put("Props/SM_Prop_Pallet_01", new Vector3(-21.3f, 0, -34), 80, p);
+        Put("Props/SM_Prop_CardboardBox_03", new Vector3(-23.9f, 0, -31), 20, p);
+        Put("Props/SM_Prop_LightPole_Base_02", new Vector3(-24.3f, 0, -38.8f), 90, p);
+        for (float x = -25; x < -20.01f; x += 5) Put("Environments/SM_Env_Fence_01", new Vector3(x, 0, -25.4f), 0, p);
+    }
+    // The Flats: a fenced vacant lot where Greasy Gus's food truck (the one-star rival) parks.
+    static void VacantLot() {
+        var p = new GameObject("Vacant lot").transform; p.SetParent(root, false);
+        for (float x = 10; x < 24.99f; x += 5) Put("Environments/SM_Env_Fence_01", new Vector3(x, 0, -25.4f), 0, p);
+        for (float z = -35; z < -25.01f; z += 5) { Put("Environments/SM_Env_Fence_01", new Vector3(10.4f, 0, z + 5), 90, p); Put("Environments/SM_Env_Fence_01", new Vector3(24.6f, 0, z + 5), 90, p); }
+        var truck = new GameObject("Greasy Gus's truck").transform; truck.SetParent(p, false);
+        Put("Vehicles/SM_Veh_Car_Van_01", new Vector3(17.5f, WalkY, -31.5f), 180, truck);
+        Put("Props/SM_Prop_LargeSign_Burger_01", new Vector3(17.5f, 2.35f, -31.2f), 180, truck);
+        foreach (int side in new[] { -1, 1 }) SignText("GREASY GUS", new Vector3(17.5f + side * 1.08f, 1.45f, -31.5f), side > 0 ? 1 : 3, .16f, new Color(1, .86f, .3f), truck);
+        Put("Props/SM_Prop_PicnicTable_01", new Vector3(13.5f, WalkY, -35.5f), 0, p);
+        Put("Props/SM_Prop_Trashbin_02", new Vector3(21.8f, WalkY, -36.5f), 0, p);
+        Put("Props/SM_Prop_Skip_02", new Vector3(21.5f, 0, -27.3f), 0, p);
+        foreach (var (x, z) in new[] { (12.2f, -27.2f), (13.1f, -28.1f) }) FitPack("PolygonGeneric", "Props/SM_Gen_Prop_Crate_02", new Vector3(x, WalkY, z), x * 30, .8f, p);
+        Put("Props/SM_Prop_LightPole_Base_02", new Vector3(10.8f, 0, -38.8f), 90, p);
+    }
+    // Barricades where streets leave the block, and the gate to The Docks at the bottom of West Street.
+    static void StreetEnds() {
+        var p = new GameObject("Street ends").transform; p.SetParent(root, false);
+        void Line(Vector3 c, bool acrossX, float length) {
+            var dir = acrossX ? Vector3.right : Vector3.forward; float yaw = acrossX ? 0 : 90;
+            for (float t = -length / 2 + .8f; t <= length / 2 - .7f; t += 1.6f) Put("Props/SM_Prop_Barrier_01", c + dir * t + Vector3.up * RoadY, yaw, p);
+            foreach (float e in new[] { -length / 2 - .6f, length / 2 + .6f }) Put("Props/SM_Prop_Cone_01", c + dir * e + Vector3.up * RoadY, 0, p);
+        }
+        foreach (float z in new[] { 0f, 50, -50 }) foreach (int side in new[] { -1, 1 }) Line(new Vector3(side * 77.5f, 0, z), false, 10);
+        Line(new Vector3(-40, 0, 77.5f), true, 10); Line(new Vector3(40, 0, 77.5f), true, 10); Line(new Vector3(40, 0, -77.5f), true, 10);
+        // The Docks gate: locked until the district is built and you reach Line Cook.
+        var gate = new GameObject("Gate to The Docks").transform; gate.SetParent(p, false);
+        Line(new Vector3(-40, 0, -77.5f), true, 10);
+        var post = InteriorMat("GatePost", "2A2E33"); var board = GlowMat("DOCKSGATE", "3AA0B0", .25f);
+        foreach (float x in new[] { -45.4f, -34.6f }) Slab("Gate post", new Vector3(x, 2.6f, -77.5f), new Vector3(.35f, 5.2f, .35f), post, gate, true);
+        Slab("Gate board", new Vector3(-40, 4.6f, -77.5f), new Vector3(10.4f, 1.6f, .25f), board, gate, false);
+        SignText("THE DOCKS", new Vector3(-40, 4.95f, -77.35f), 0, .5f, Color.white, gate);
+        SignText("Gate opens at LINE COOK", new Vector3(-40, 4.2f, -77.35f), 0, .3f, new Color(1, .92f, .75f), gate);
+    }
     // A street tree in its own planted square: grass and a couple of bushes (the "lived-in" street look).
     public static void StreetTree(Vector3 p, int k, Transform parent = null) {
         Put("Environments/SM_Env_Tree_0" + (k % 3 + 1), p, k * 47, parent);
@@ -450,7 +549,9 @@ public static class CityMap {
         Put("Buildings/SM_Bld_OfficeOctagon_01", new Vector3(-67, 0, 72), 0);
         Put("Buildings/SM_Bld_OfficeOld_Small_01", new Vector3(20, 0, 80), 0);
         Put("Buildings/SM_Bld_Station_01", new Vector3(0, 0, -30), 0);
-        var sky = Put("Environments/Custom/SM_Env_Skyline_01", new Vector3(180, -2, 25), 0); if (sky) sky.transform.localScale = Vector3.one * 3.6f;
+        Put("Environments/Custom/SM_Env_Skyline_01", Vector3.zero, 0);
+        // Old Market's own places (Market Row, The Flats) and the street ends.
+        MarketStalls(); TinDiner(); GraffitiAlley(); VacantLot(); StreetEnds();
         // Street life: parked cars, trees, benches, hydrants, a hotdog cart, bus stop, rooftop signs.
         string[] cars = { "SM_Veh_Car_Sedan_01", "SM_Veh_Car_Taxi_01", "SM_Veh_Car_Van_01", "SM_Veh_Car_Small_01", "SM_Veh_Car_Medium_01", "SM_Veh_Car_Muscle_01" };
         int c = 0;
@@ -471,6 +572,10 @@ public static class CityMap {
         foreach (float x in new[] { -26f, 26, -60, 60 }) Put("Props/SM_Prop_Trashbin_01", new Vector3(x, 0, -6.2f), 0);
         foreach (float x in new[] { -60f, -20, 20, 60 }) { Put("Props/SM_Prop_LightPole_Base_01", new Vector3(x, 0, 44.2f), 0); Put("Props/SM_Prop_LightPole_Base_01", new Vector3(x, 0, -44.2f), 180); }
         Clutter(curbTiles);
-        // The playable edge is now the Saffron Bay shoreline (CityGreybox).
+        // Flat ground beyond the block (under the skyline) and the invisible edge of the playable city.
+        Slab("Outskirts", new Vector3(0, -.36f, 0), new Vector3(900, .2f, 900), InteriorMat("Outskirts", "8E8A82"), root, false);
+        foreach (var (pos, size) in new[] { (new Vector3(0, 5, Half + 1), new Vector3(2 * Half, 10, 1)), (new Vector3(0, 5, -Half - 1), new Vector3(2 * Half, 10, 1)), (new Vector3(Half + 1, 5, 0), new Vector3(1, 10, 2 * Half)), (new Vector3(-Half - 1, 5, 0), new Vector3(1, 10, 2 * Half)) }) {
+            var wall = new GameObject("City edge"); wall.transform.SetParent(root, false); wall.transform.position = pos; wall.AddComponent<BoxCollider>().size = size;
+        }
     }
 }

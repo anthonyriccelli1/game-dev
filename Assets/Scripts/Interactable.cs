@@ -24,7 +24,6 @@ namespace RestaurantCity {
                 case InteractionKind.NightStash: return "Hidden stash";
                 default: {
                     var site = RestaurantSites.Get(Site);
-                    if (!site.Starter) return site.Title + "  /  for sale later  /  view listing";
                     if (s.Restaurant.Owned) return "Manage your restaurant";
                     return "Lease " + site.Title + "  /  $" + site.Price;
                 }

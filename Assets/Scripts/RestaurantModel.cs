@@ -209,8 +209,8 @@ namespace RestaurantCity {
         public int Seats => Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.Seats??0);
         public int ShiftsRun; public int ShiftLevel=>ShiftDifficulty.Level(this);
         public float PatienceOf(RestaurantOrder o)=>o.Patience>0?o.Patience:RestaurantCatalog.Customers[o.CustomerType].Patience;
-        [NonSerialized]public int PlayerRank;public string SiteId="oddtable";public int SiteAmbience=>SiteId=="bayside"?4:0;
-        public int Ambience => Math.Min(40,SiteAmbience+FinishAmbience+Layout.Where(p=>StationUpgrades.CanUpgrade(p.CatalogId)).Sum(p=>StationUpgrades.AmbienceBonus(p.Level))+Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.IsFinish==true?0:RestaurantCatalog.Find(p.CatalogId)?.Ambience??0));
+        [NonSerialized]public int PlayerRank;public string SiteId="oddtable";
+        public int Ambience => Math.Min(40,FinishAmbience+Layout.Where(p=>StationUpgrades.CanUpgrade(p.CatalogId)).Sum(p=>StationUpgrades.AmbienceBonus(p.Level))+Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.IsFinish==true?0:RestaurantCatalog.Find(p.CatalogId)?.Ambience??0));
         public int CookSlots => Math.Max(1,Layout.Count(p=>p.CatalogId=="grill"||p.CatalogId=="stove"||p.CatalogId=="oven"));
         public int StockLimit => (int)Math.Round((HasEquipment("fridge")?48:24)*Layout.Where(p=>p.CatalogId=="pantry").Select(p=>StationUpgrades.StockScale(p.Level)).DefaultIfEmpty(1f).Max());
         // One shared pantry (stand and restaurant) with a count per ingredient; the limit applies to each ingredient.
@@ -447,8 +447,8 @@ namespace RestaurantCity {
         static float Clamp(float value,float min,float max)=>float.IsNaN(value)||float.IsInfinity(value)?min:Math.Max(min,Math.Min(max,value));
         public void SanitizeAfterLoad() {
             Layout=Layout??new List<PlacedItem>();ActiveMenu=ActiveMenu??new List<string>{"burger","salad"};Orders=Orders??new List<RestaurantOrder>();Reviews=Reviews??new List<RestaurantReview>();Workers=Workers??new List<WorkerState>();if(ServedByType==null||ServedByType.Length<10){var grown=new int[10];if(ServedByType!=null)Array.Copy(ServedByType,grown,ServedByType.Length);ServedByType=grown;}
-            Rank=Math.Max(1,Math.Min(2,Rank));
-            SiteId="oddtable"; // v7: the same layout moves to The Odd Table (it is room-relative); The Bayside is bought later as a second restaurant
+            Rank=Math.Max(0,Math.Min(StarGoals.Length-1,Rank));
+            SiteId="oddtable"; // one restaurant per district: every save runs The Odd Table (the layout is room-relative)
             Layout.RemoveAll(p=>p==null||RestaurantCatalog.Find(p.CatalogId)==null);Workers.RemoveAll(w=>w==null||RestaurantCatalog.Worker(w.Id)==null);
             var incoming=Layout;Layout=new List<PlacedItem>();var seenIds=new HashSet<int>();
             NextInstanceId=Math.Max(1,NextInstanceId);
@@ -468,7 +468,7 @@ namespace RestaurantCity {
             // v7: the old protein/produce totals become real ingredients.
             Pantry=Pantry??new List<StockLine>();if(Protein>0||Produce>0){AddStock("patty",Protein);AddStock("bun",Produce);AddStock("greens",Produce/2);Protein=0;Produce=0;}
             Pantry.RemoveAll(l=>l==null||Ingredients.Get(l.Id)==null);foreach(var l in Pantry)l.Count=Math.Max(0,Math.Min(StockLimit,l.Count));
-            if(SiteId!="oddtable"&&SiteId!="bayside")SiteId="oddtable";Cleanliness=Clamp(Cleanliness,0,100);Satisfaction=Clamp(Satisfaction,0,100);Rank=Math.Max(1,Math.Min(2,Rank));Served=Math.Max(0,Served);Lost=Math.Max(0,Lost);UpdateRank();
+            Cleanliness=Clamp(Cleanliness,0,100);Satisfaction=Clamp(Satisfaction,0,100);Served=Math.Max(0,Served);Lost=Math.Max(0,Lost);UpdateRank();
             foreach(var worker in Workers){worker.Energy=Clamp(worker.Energy,0,100);if(worker.Job==StaffJob.Any)worker.Job=RestaurantCatalog.Worker(worker.Id)?.Role??StaffJob.Cook;}
             SanitizeFinishes();
             EnsurePhysicalKit();

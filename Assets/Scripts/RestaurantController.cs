@@ -94,20 +94,12 @@ namespace RestaurantCity {
             Game.Player.Teleport(W(-10, .15f, -10.7f)); Game.Player.LookAt(W(-10, 1.5f, -18)); PlayChime(true);
             Feedback("Welcome to " + RestaurantSites.Get(Data.SiteId).Title + ". Four walls and a lot of dust: press B inside to start buying your kitchen.");
         }
-        // The properties you didn't pick stay on the map as shabby, empty shells with a lease sign.
+        // Other restaurant sites (none yet: one per district) stay on the map as shabby, empty shells.
         void BuildShowrooms() {
             foreach (var other in RestaurantSites.All) {
                 if (other.Id == Data.SiteId) continue;
                 var root = new GameObject("Property for lease / " + other.Title).transform; root.SetParent(transform, false); root.localPosition = other.Offset;
                 RestaurantArt.RestaurantName = other.Sign; RestaurantArt.BuildRoom(root);
-                if (other.Id != "oddtable") {
-                    var sign = GameObject.CreatePrimitive(PrimitiveType.Cube); sign.name = "Lease sign / " + other.Title; sign.transform.SetParent(root, false);
-                    sign.transform.localPosition = new Vector3(-6.2f, 1.25f, -8.7f); sign.transform.localScale = new Vector3(2.9f, 2.2f, .15f);
-                    var signMat = new Material(Shader.Find("Universal Render Pipeline/Lit")); signMat.color = new Color(.12f, .13f, .15f); sign.GetComponent<Renderer>().sharedMaterial = signMat;
-                    var it = sign.AddComponent<Interactable>(); it.Kind = InteractionKind.FutureRestaurant; it.Site = other.Id;
-                    var text = new GameObject("Lease text"); text.transform.SetParent(root, false); text.transform.localPosition = new Vector3(-6.2f, 1.35f, -8.6f); text.transform.localRotation = Quaternion.Euler(0, 180, 0);
-                    WorldCaption(text.transform, other.Sign + "\n\nFOR SALE LATER\nE: VIEW LISTING", Vector3.zero, .03f);
-                }
             }
             RestaurantArt.RestaurantName = RestaurantSites.Get(Data.SiteId).Sign;
             // The scene's original lease board belongs to The Odd Table. Retire both its
@@ -136,14 +128,11 @@ namespace RestaurantCity {
             if (!Game.Paused && Game.Started && Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame && !PlacementActive) { if (PanelOpen && Panel == "Map") ClosePanel(); else ShowPanel("Map"); }
         }
         public void Feedback(string message) { Hint = message; Game.Notify(message, 5); if (UI) UI.Refresh(); }
-        public string ListingSite = "bayside";
         public bool BuyRestaurant() => BuyRestaurant(Game.Player);
         public bool BuyRestaurant(FirstPersonPlayer buyer) => BuyRestaurant(buyer, Data.SiteId);
         public bool BuyRestaurant(FirstPersonPlayer buyer, string siteId) {
             var chosen = RestaurantSites.Get(siteId);
             if (Data.Owned && chosen.Id == Data.SiteId) { ShowPanel("Service"); return true; }
-            // The Bayside is the step up: show what it takes instead of buying it.
-            if (!chosen.Starter) { ListingSite = chosen.Id; ShowPanel("Listing"); return true; }
             bool result = Data.BuyRestaurant(Game.State, out string message);
             Feedback(message);
             if (!result) return false;
@@ -151,7 +140,7 @@ namespace RestaurantCity {
             return true;
         }
         public void ShowPanel(string panel) {
-            bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map" || panel == "Listing" || panel == "Supplies" && Game.State.StandBuilt || panel == "Phone" && Game.State.StandBuilt;
+            bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map" || panel == "Supplies" && Game.State.StandBuilt || panel == "Phone" && Game.State.StandBuilt;
             if (!Data.Owned && !phone) { Feedback("Earn $150 and buy the restaurant at its front sign."); return; }
             if (ServiceInProgress && panel != "Staff" && panel != "Service" && panel != "Map" && panel != "Supplies" && panel != "Phone") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
             if (PlacementActive) CancelPlacement(false);

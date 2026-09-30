@@ -41,12 +41,12 @@ namespace RestaurantCity {
      var metId=st.MetResidents[0];var metDef=ResidentCast.Get(metId);Check(st.Restaurant.Hire(st,metId,out var hm),"recruit a met resident: "+hm);
      Check(st.Flux==flux0+10-metDef.FluxCost,"recruiting costs the resident's Flux price");
      st.Restaurant.Workers.RemoveAll(w=>w.Id==metId);st.Flux=flux0;}
-    // Before owning anything, The Bayside's listing must actually appear on screen (not just be the selected panel).
-    Game.Restaurant.BuyRestaurant(Game.Player,"bayside");Game.Restaurant.UI.Refresh();Check(GameObject.Find("Listing checklist")!=null,"Bayside listing is visible before you own a restaurant");Game.Restaurant.ClosePanel();
+    // One restaurant per district: Old Market is the dressed 160 m block only (no greybox, no second site).
+    Check(RestaurantSites.All.Length==1&&GameObject.Find("Saffron Bay (greybox districts)")==null&&GameObject.Find("Property for lease / The Bayside")==null,"Old Market has one restaurant and no greybox around it");
+    Check(CityDistricts.At(0,0)?.Id=="market"&&CityDistricts.At(-190,-15)==null&&System.Array.TrueForAll(NightStashes.Spots,sp=>System.Math.Abs(sp.X)<78&&System.Math.Abs(sp.Z)<78),"every stash spot and place is inside the block");
     // Pacing: the stand pays cash, not reputation. Earning a lease-and-renovation budget there must stay far from Line Cook (400).
     Check(st.Xp<=60,"stand alone earns only token reputation ("+st.Xp+")");Check(st.RepSources.Exists(r=>r.Source=="Stand sales"),"reputation sources are tracked");Check(Game.Restaurant.BuyRestaurant(),"purchase integration");Game.Restaurant.ClosePanel();
     Check(Game.Restaurant.Data.SiteId=="oddtable","The Odd Table is the starter restaurant");
-    Check(Game.Restaurant.BuyRestaurant(Game.Player,"bayside")&&Game.Restaurant.Panel=="Listing"&&Game.Restaurant.Data.SiteId=="oddtable","The Bayside shows its listing, never moves or reloads the restaurant");Game.Restaurant.ClosePanel();
     // The lease is an empty room now; install the starter kitchen the way a player would from the catalog (test tops up the budget).
     st.Cash=Math.Max(st.Cash,2000);foreach(var (id,x,z) in new[]{("pantry",0,0),("plate_rack",2,0),("prep_bench",4,0),("assembly",8,0),("grill",0,4),("sink",9,4),("cafe_table",8,7)})Check(Game.Restaurant.Data.Place(st,id,x,z,0,out var pm)||InstallFirstFree(id),"install "+id+" "+pm);
     st.Kitchen.EnsureStations(Game.Restaurant.Data);Game.Restaurant.RebuildLayout();Game.Player.Teleport(new Vector3(-10,.15f,-11));Game.Player.LookAt(new Vector3(-11,1,-18));Check(Game.Restaurant.Furnishings.Count>=7,"physical kit rendered");

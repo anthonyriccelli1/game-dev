@@ -55,7 +55,7 @@ public static class PrototypeBuilder {
         if (!city) Building("Corner cafe", -20, -15, 7, 9, Mat("Sage", "8DAB91"), world);
         if (!city) Building("Future Restaurant", -10, -15, 10, 11, Mat("Brick", "BC896D"), world);
         if (!city) { Building("Records", 2, -16, 10, 14, teal, world); Building("Bodega", 16, -15, 13, 10, Mat("Mustard", "CEAE70"), world); }
-        if (city) { CityMap.Build(world); CityGreybox.Build(world); game.gameObject.AddComponent<DistrictLocks>().Game = game; }
+        if (city) { CityMap.Build(world); game.gameObject.AddComponent<DistrictLocks>().Game = game; }
         else {
             Cube("North district boundary", new Vector3(0, 2, 32), new Vector3(58, 4, 1), dark, world);
             Cube("West boundary", new Vector3(-25, 3, 6), new Vector3(1, 6, 54), teal, world);

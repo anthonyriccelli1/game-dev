@@ -100,7 +100,7 @@ namespace RestaurantCity {
             summary.Append(waiting).Append(" waiting  /  ").Append(cooking).Append(" cooking  /  ").Append(ready).Append(" ready\nTab to manage orders");
             orderSummary.text = summary.ToString();
             // The crew "phone" (Staff tab) works before you own the restaurant, as soon as the stand is up.
-            bool panelVisible = visible || ((Owner.Panel == "Map" || Owner.Panel == "Listing" || Owner.Panel == "Supplies" || Owner.Panel == "Phone" || (Owner.Panel == "Staff" && Owner.Game.State.StandBuilt)) && Owner.Game.Started && !Owner.Game.Paused);
+            bool panelVisible = visible || ((Owner.Panel == "Map" || Owner.Panel == "Supplies" || Owner.Panel == "Phone" || (Owner.Panel == "Staff" && Owner.Game.State.StandBuilt)) && Owner.Game.Started && !Owner.Game.Paused);
             if (!Owner.PanelOpen || !panelVisible) {
                 if (modal) { modal.gameObject.SetActive(false); Destroy(modal.gameObject); modal = null; }
                 tickLabels.Clear(); signature = ""; return;
@@ -128,12 +128,12 @@ namespace RestaurantCity {
             modal = Block(canvas.transform, "Restaurant management", 0, 105, 1440, 735, new Color(ink.r, ink.g, ink.b, .60f));
             var sheet = Block(modal, "Order pad", 110, 12, 1220, 710, paper);
             Block(sheet, "Top accent", 0, 0, 1220, 7, teal);
-            Label(sheet, Owner.Panel == "Phone" ? "Your phone." : Owner.Panel == "Listing" ? "For sale later." : Owner.Panel == "Supplies" ? "Milo's Market." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "Recipes." : Owner.Panel == "Staff" ? "Crew and People book." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
+            Label(sheet, Owner.Panel == "Phone" ? "Your phone." : Owner.Panel == "Supplies" ? "Milo's Market." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "Recipes." : Owner.Panel == "Staff" ? "Crew and People book." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
             Button(sheet, "Close  x", 1060, 24, 130, 36, () => Owner.ClosePanel(), ink, paper);
             Label(sheet, "Time pauses while management is open.", 823, 62, 365, 19, 12, muted, false, TextAnchor.MiddleRight);
             string[] panels = { "Catalog", "Service", "Menu", "Cookbook", "Staff", "Map", "Reviews", "Furniture" };
             // Milo's shop and property listings are places in the city, not restaurant management: no tabs.
-            if (Owner.Panel == "Supplies" || Owner.Panel == "Listing" || Owner.Panel == "Phone") panels = new string[0];
+            if (Owner.Panel == "Supplies" || Owner.Panel == "Phone") panels = new string[0];
             for (int i = 0; i < panels.Length; i++) {
                 string tab = panels[i]; bool active = Owner.Panel == tab;
                 Button(sheet, tab == "Catalog" ? "Shop" : tab == "Furniture" ? "Arrange" : tab, 30 + i * 114, 78, 108, 35, () => { Owner.ShowPanel(tab); signature = ""; Refresh(); }, active ? teal : pale, active ? white : ink);
@@ -141,7 +141,6 @@ namespace RestaurantCity {
             Label(sheet, "Your budget  $" + Owner.Game.State.Cash, 950, 82, 236, 28, 17, ink, true, TextAnchor.MiddleRight);
             Block(sheet, "Rule", 30, 124, 1160, 2, pale);
             if (Owner.Panel == "Phone") BuildPhone(sheet);
-            else if (Owner.Panel == "Listing") BuildListing(sheet);
             else if (Owner.Panel == "Supplies") BuildSupplies(sheet);
             else if (Owner.Panel == "Catalog") BuildCatalog(sheet);
             else if (Owner.Panel == "Menu") BuildMenu(sheet);
@@ -330,26 +329,6 @@ namespace RestaurantCity {
             if (st.ZeebDebt > 0) Button(card, "Pay Zeeb $" + Mathf.Min(st.Cash, st.ZeebDebt) + (st.Cash < st.ZeebDebt ? " (all you have)" : ""), 20, 306, 380, 44, () => Owner.PayZeeb(), st.Cash > 0 ? teal : pale, st.Cash > 0 ? white : muted, st.Cash > 0);
         }
 
-        // The second restaurant's listing: what it is, and the checklist that gets you there.
-        void BuildListing(RectTransform sheet) {
-            var site = RestaurantSites.Get(Owner.ListingSite); var d = Owner.Data; var st = Owner.Game.State;
-            Label(sheet, site.Title, 35, 146, 1120, 48, 34, ink, true);
-            Label(sheet, site.Pitch, 35, 200, 1120, 50, 19, muted);
-            var card = Block(sheet, "Listing checklist", 35, 262, 700, 330, white);
-            Label(card, "To buy it, your first restaurant has to run without you:", 24, 20, 650, 30, 19, ink, true);
-            var checks = new (bool done, string text)[] {
-                (d.Owned, "Own The Odd Table"),
-                (d.Stars >= RestaurantSites.SecondSiteStars, "The Odd Table at " + RestaurantSites.SecondSiteStars + " stars (now " + d.Stars + ")"),
-                (d.Workers.Count >= RestaurantSites.SecondSiteCrew, "A crew of " + RestaurantSites.SecondSiteCrew + " to keep it running while you're away (now " + d.Workers.Count + ")"),
-                (st.Cash >= site.Price, "$" + site.Price + " (you have $" + st.Cash + ")"),
-            };
-            float y = 68; foreach (var c in checks) { Label(card, (c.done ? "DONE    " : "TO DO   ") + c.text, 24, y, 650, 30, 18, c.done ? teal : coral, true); y += 44; }
-            Label(card, "Running both restaurants is the fastest way to reach Line Cook.", 24, 262, 650, 40, 16, muted);
-            var soon = Block(sheet, "Listing note", 755, 262, 430, 330, ink);
-            Label(soon, "Coming soon", 24, 20, 380, 34, 24, paper, true);
-            Label(soon, "Buying a second restaurant arrives once workers can keep The Odd Table running while you're across town. Everything on the checklist still counts toward it.", 24, 66, 382, 200, 17, paper);
-        }
-
         // Milo's shop: picture cards by category, a cart, and one Purchase at the counter. Groceries go home in a bag.
         string shopCategory = "All";
         readonly List<StockLine> cart = new List<StockLine>();
@@ -533,37 +512,25 @@ namespace RestaurantCity {
             var st = Owner.Game.State; int xp = st.Xp, rank = st.RankEarned;
             float mx = 30, my = 138, mh = 520, sc = mh / (CityDistricts.MaxZ - CityDistricts.MinZ), mw = (CityDistricts.MaxX - CityDistricts.MinX) * sc;
             Vector2 P(float x, float z) => new Vector2(mx + (x - CityDistricts.MinX) * sc, my + (CityDistricts.MaxZ - z) * sc);
-            Block(sheet, "Bay", mx, my, mw, mh, new Color(.17f, .36f, .44f));
-            foreach (var d in CityDistricts.All) {
-                ColorUtility.TryParseHtmlString("#" + d.Hex, out var c); bool open = rank >= d.Rank;
-                // Drawn shapes follow the plan (boundary roads included); lock areas are slightly smaller.
-                float x0 = d.X0, x1 = d.X1, z0 = d.Z0, z1 = d.Z1;
-                switch (d.Id) {
-                    case "docks": z1 = -110; break;
-                    case "neon": x0 = 160; x1 = 420; z0 = -110; break;
-                    case "greenleaf": z0 = 130; x1 = 420; break;
-                    case "gold": x0 = 420; break;
-                    case "nebula": z1 = -190; break;
-                }
-                var a = P(x0, z1);
-                var b = Block(sheet, d.Name, a.x, a.y, (x1 - x0) * sc, (z1 - z0) * sc, open ? Color.Lerp(c, white, .12f) : Color.Lerp(c, new Color(.16f, .18f, .21f), .7f));
-                Label(b, d.Name.ToUpper(), 6, 4, 220, 20, 13, white, true);
-                if (!open) Label(b, "LOCKED  /  " + Reputation.Titles[d.Rank], 6, 21, 230, 18, 11, new Color(1, .88f, .62f));
+            // Old Market: the block, its three areas, and the five streets.
+            Block(sheet, "Old Market", mx, my, mw, mh, new Color(.80f, .74f, .64f));
+            for (int i = 0; i < CityDistricts.Areas.Length; i++) {
+                var (areaName, z0, z1) = CityDistricts.Areas[i]; var a = P(CityDistricts.MinX, z1);
+                Block(sheet, areaName, a.x, a.y, mw, (z1 - z0) * sc, i == 1 ? new Color(.95f, .80f, .55f, .28f) : i == 0 ? new Color(.85f, .55f, .35f, .22f) : new Color(.45f, .45f, .52f, .25f));
+                Label(sheet, areaName, a.x + 8, a.y + 4, 240, 18, 11, new Color(.30f, .24f, .20f), true);
             }
-            var bridgeA = P(434, -126); Block(sheet, "Bridge", bridgeA.x, bridgeA.y, 12 * sc, 64 * sc, new Color(.78f, .76f, .70f));
+            foreach (var (x0, z0, x1, z1) in CityDistricts.Roads) { var a = P(x0, z1); Block(sheet, "Street", a.x, a.y, (x1 - x0) * sc, (z1 - z0) * sc, new Color(.24f, .26f, .29f)); }
             foreach (var place in CityDistricts.Places) {
                 var d = CityDistricts.At(place.X, place.Z); bool open = CityDistricts.Unlocked(d, rank);
-                Color k = place.Kind == "rival" ? coral : place.Kind == "supply" ? teal : place.Kind == "restaurant" ? new Color(.95f, .76f, .3f) : place.Kind == "recipe" ? new Color(.62f, .45f, .9f) : place.Kind == "you" ? white : new Color(.35f, .55f, .9f);
+                Color k = place.Kind == "rival" ? coral : place.Kind == "supply" ? teal : place.Kind == "restaurant" ? new Color(.95f, .76f, .3f) : place.Kind == "recipe" ? new Color(.62f, .45f, .9f) : place.Kind == "you" ? white : place.Kind == "gate" ? new Color(.2f, .2f, .22f) : new Color(.35f, .55f, .9f);
                 var q = P(place.X, place.Z);
-                Block(sheet, place.Name, q.x - 4, q.y - 4, 8, 8, open ? k : new Color(k.r, k.g, k.b, .45f));
-                // Your home block is crowded at this scale: label only The Odd Table there.
-                bool home = Mathf.Abs(place.X) < 40 && Mathf.Abs(place.Z) < 40 && place.Name != "The Odd Table";
-                bool right = place.X > 480;
-                if ((open || place.Kind == "rival") && !home) Label(sheet, place.Name, right ? q.x - 136 : q.x + 6, q.y - 8, 130, 16, 10, open ? white : new Color(1, 1, 1, .55f), false, right ? TextAnchor.UpperRight : TextAnchor.UpperLeft);
+                Block(sheet, place.Name, q.x - 5, q.y - 5, 10, 10, open ? k : new Color(k.r, k.g, k.b, .45f));
+                bool right = place.X > 40;
+                Label(sheet, place.Name, right ? q.x - 146 : q.x + 8, q.y - 8, 140, 16, 11, new Color(.13f, .12f, .12f), true, right ? TextAnchor.UpperRight : TextAnchor.UpperLeft);
             }
             // Tonight's stash: a purple circle around the rough area, not the exact spot.
             if (st.StashActive) {
-                var spot = NightStashes.Spots[st.StashSpot]; var c = P(spot.X + 9, spot.Z - 7); float r = 26 * sc;
+                var spot = NightStashes.Spots[st.StashSpot]; var c = P(spot.X + 4, spot.Z - 3); float r = 12 * sc;
                 Block(sheet, "Stash area", c.x - r, c.y - r, r * 2, r * 2, new Color(.62f, .45f, .9f, .35f));
                 Label(sheet, "Zeeb's drop: near " + spot.Hint, c.x + r + 2, c.y - 8, 190, 16, 10, new Color(.85f, .75f, 1f), true);
             }
@@ -572,7 +539,6 @@ namespace RestaurantCity {
             else if (Owner.Game.Player) markers.Add((Block(sheet, "You", 0, 0, 12, 12, coral), Owner.Game.Player.transform));
             tickLabels.Add(() => { foreach (var (m, t) in markers) if (m && t) { var q = P(t.position.x, t.position.z); m.anchoredPosition = new Vector2(q.x - 6, -(q.y - 6)); } });
             tickLabels[tickLabels.Count - 1]();
-            var homeSpot = P(-8, 12); Label(sheet, "Stand, Milo's, Gilded Orbit", homeSpot.x - 60, homeSpot.y - 30, 150, 16, 10, white, true);
 
             float rx = mx + mw + 26, rw = 1190 - rx;
             Label(sheet, "REPUTATION", rx, 140, rw, 20, 13, muted, true);
@@ -595,7 +561,7 @@ namespace RestaurantCity {
                 Label(sheet, (got ? "OPEN   " : Reputation.Thresholds[i] + "   ") + Reputation.Titles[i], rx + 10, y + 3, rw - 20, 18, 14, got ? teal : ink, true);
                 Label(sheet, d != null ? d.Name : "", rx + 10, y + 20, rw - 20, 16, 12, muted);
             }
-            Label(sheet, "Map key:  red rival   green supplier   gold restaurant   purple recipe   blue service", rx, 588, rw, 36, 11, muted);
+            Label(sheet, "Map key:  red rival   green supplier   gold restaurant   purple recipe   blue place   black gate", rx, 588, rw, 36, 11, muted);
         }
 
         void BuildReviews(RectTransform sheet) {

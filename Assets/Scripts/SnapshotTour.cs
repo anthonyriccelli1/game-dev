@@ -35,20 +35,15 @@ namespace RestaurantCity {
             ("16_main_east_day", new Vector3(30, 0, -3), 90, 0, 60),
             ("17_alley_night", new Vector3(8, 0, 11), 25, -6, 190),
             ("18_restaurant_street_day", new Vector3(-10, 0, 4), 180, -14, 60),
-            ("00_city_map_day", new Vector3(180, 620, 25), 0, 90, 60),
-            ("24_aerial_day", new Vector3(-260, 200, -330), 42, 28, 60),
-            ("19_docks_day", new Vector3(-40, 0, -150), 180, 0, 60),
-            ("20_neon_night", new Vector3(172, 0, -2), 90, 0, 190),
-            ("21_greenleaf_day", new Vector3(40, 0, 150), 0, 0, 60),
-            ("22_gold_day", new Vector3(420, 0, 60), 0, -6, 60),
-            ("23_bridge_day", new Vector3(440, 0, -100), 180, 4, 60),
-            ("25_docks_lock_day", new Vector3(-40, 0, -96), 180, 6, 60),
+            ("00_city_map_day", new Vector3(0, 200, 0), 0, 90, 60),
+            ("24_aerial_day", new Vector3(-105, 75, -105), 45, 28, 60),
+            ("19_docks_gate_day", new Vector3(-40, 0, -62), 180, -4, 60),
             ("26_phone_map", new Vector3(0, 0, 3), 0, 0, 60),
-            ("27_bayside_day", new Vector3(-182, 0, 5), 200, -8, 60),
-            ("28_bayside_night", new Vector3(-182, 0, 5), 200, -8, 190),
+            ("27_market_row_day", new Vector3(0, 0, 52), 0, 2, 60),
+            ("28_market_row_night", new Vector3(0, 0, 52), 0, 2, 190),
             ("29_milo_front_day", new Vector3(-15.5f, 0, 8), 0, -4, 60),
             ("30_milo_inside_day", new Vector3(-15.5f, 0, 14.2f), 0, 6, 60),
-            ("31_bayside_listing", new Vector3(-186, 0, -6), 180, 4, 60),
+            ("31_tin_diner_day", new Vector3(-20, 0, 49), 180, -8, 60),
             ("32_stand_tables", new Vector3(-6.7f, 0, 7.4f), 0, 18, 60),
             ("33_milo_shop", new Vector3(-15.5f, 0, 14.2f), 0, 6, 60),
             ("34_stand_pantry", new Vector3(-2.4f, 0, 10.4f), 180, 14, 60),
@@ -57,9 +52,13 @@ namespace RestaurantCity {
             ("37_menu_tab", new Vector3(-10, 0, -11), 180, 0, 60),
             ("38_cookbook_tab", new Vector3(-10, 0, -11), 180, 0, 60),
             ("39_stash_park", new Vector3(65, 0, -31), 0, 14, 195),
-            ("40_stash_waterfront", new Vector3(-210, 0, -37), 0, 14, 195),
-            ("41_stash_main_west", new Vector3(-120, 0, 2.5f), 0, 14, 195),
+            ("40_stash_alley", new Vector3(-22.5f, 0, -41), 0, 14, 195),
+            ("41_stash_main_west", new Vector3(-70, 0, 2.5f), 0, 14, 195),
             ("42_stash_main_east", new Vector3(70, 0, -13.5f), 0, 14, 195),
+            ("80_stash_market", new Vector3(6, 0, 62), 0, 14, 195),
+            ("77_graffiti_alley_day", new Vector3(-22.5f, 0, -43), 0, 2, 60),
+            ("78_vacant_lot_day", new Vector3(17.5f, 0, -44), 0, 4, 60),
+            ("79_street_end_day", new Vector3(58, 0, 0), 90, 2, 60),
             ("43_phone_zeeb", new Vector3(0, 0, 3), 0, 0, 60),
             ("44_style_kit_new", new Vector3(-9.5f, 0, 4.6f), 180, 6, 70),
             ("45_style_kit_old", new Vector3(-9.5f, 0, 4.6f), 180, 6, 70),
@@ -121,7 +120,7 @@ namespace RestaurantCity {
                 if (rc && (shot.name.Contains("stand_pantry") || shot.name.Contains("pantry_from_street"))) { foreach (var i in new[] { "patty", "bun" }) rc.Data.AddStock(i, 14); rc.Advance(.05f); }
                 if (rc && (shot.name.Contains("menu_tab") || shot.name.Contains("cookbook_tab"))) { rc.Data.Owned = true; Game.State.Cash = 120; rc.ShowPanel(shot.name.Contains("menu") ? "Menu" : "Cookbook"); }
                 if (rc && shot.name.Contains("stash_")) {
-                    int spot = shot.name.Contains("park") ? 0 : shot.name.Contains("waterfront") ? 1 : shot.name.Contains("west") ? 2 : 3;
+                    int spot = shot.name.Contains("park") ? 0 : shot.name.Contains("alley") ? 1 : shot.name.Contains("west") ? 2 : shot.name.Contains("market") ? 4 : 3;
                     Game.State.Learn("midnight"); Game.State.DropBottles = 6; Game.State.DropPlaced = true; Game.State.StashSpot = spot; rc.Advance(.01f);
                     yield return null;
                     var crate = GameObject.Find("Night stash"); if (crate) { var c = crate.transform.position; p.transform.position = new Vector3(c.x, 0, c.z - 5.5f); Debug.LogWarning("STASH_SPOT " + spot + " at " + c); }
@@ -307,7 +306,6 @@ namespace RestaurantCity {
                     Debug.LogWarning("PEOPLE_BOOK scroll=" + (sr ? sr.verticalNormalizedPosition : -1));
                 }
                 if (rc && shot.name.Contains("milo_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); }
-                if (rc && shot.name.Contains("listing")) { Game.State.Cash = 95; rc.BuyRestaurant(Game.Player, "bayside"); }
                 if (rc && shot.name.Contains("stand_tables")) {
                     // Two seated stand guests (one served and eating) and a dirty plate: walk them in, then shoot.
                     var st = Game.State; st.StandOpen = false; st.StandQueue.Clear();
