@@ -36,7 +36,7 @@ public static class PrototypeBuilder {
         game.gameObject.AddComponent<CityHud>().Game = game;
         var world = new GameObject("Market Row / World").transform;
         bool city = CityMap.Available;
-        if (city) Cube("Ground", new Vector3(0, -.6f, 0), new Vector3(170, .6f, 170), stone, world);
+        if (city) Cube("Ground", new Vector3(0, -.6f, -20), new Vector3(170, .6f, 210), stone, world);
         else {
         Cube("Ground", new Vector3(0, -.35f, 8), new Vector3(60, .6f, 62), stone, world);
         Cube("Street", new Vector3(0, -.025f, 0), new Vector3(48, .05f, 10), asphalt, world);

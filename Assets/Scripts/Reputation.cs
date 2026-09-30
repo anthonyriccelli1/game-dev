@@ -31,9 +31,9 @@ namespace RestaurantCity {
     // Saffron Bay is built one small, dense district at a time. Old Market is the dressed 160 m block (CityMap);
     // the other districts keep their place on the reputation ladder and open behind their gates once they exist.
     public static class CityDistricts {
-        public const float MinX = -80, MaxX = 80, MinZ = -80, MaxZ = 80;
+        public const float MinX = -80, MaxX = 80, MinZ = -120, MaxZ = 80;   // v3: down to the harbour promenade
         public static readonly CityDistrict[] All = {
-            new CityDistrict { Id = "market", Name = "Old Market", Rank = 0, X0 = -80, Z0 = -80, X1 = 80, Z1 = 80, Hex = "C8553D" },
+            new CityDistrict { Id = "market", Name = "Old Market", Rank = 0, X0 = -80, Z0 = -120, X1 = 80, Z1 = 80, Hex = "C8553D" },
             new CityDistrict { Id = "docks", Name = "The Docks", Rank = 1, Hex = "3AA0B0" },
             new CityDistrict { Id = "neon", Name = "Neon Row", Rank = 2, Hex = "E0479A" },
             new CityDistrict { Id = "greenleaf", Name = "Greenleaf", Rank = 3, Hex = "74B35A" },
@@ -45,16 +45,17 @@ namespace RestaurantCity {
         public static bool Unlocked(CityDistrict d, int rank) => d == null || rank >= d.Rank;
         public static CityDistrict OpenedAt(int rank) { foreach (var d in All) if (d.Rank == rank) return d; return null; }
         // Old Market's three areas, north to south (drawn on the phone map).
-        public static readonly (string name, float z0, float z1)[] Areas = { ("MARKET ROW", 45, 80), ("THE HOME STREET", -5, 45), ("THE FLATS", -80, -5) };
+        public static readonly (string name, float z0, float z1)[] Areas = { ("MARKET ROW", 45, 80), ("THE HOME STREET", -5, 45), ("THE FLATS", -100, -5), ("THE HARBOUR", -120, -100) };
         // Streets as x0, z0, x1, z1 (matches CityMap.Roads).
-        public static readonly (float x0, float z0, float x1, float z1)[] Roads = { (-80, -5, 80, 5), (-80, 45, 80, 55), (-80, -55, 80, -45), (-45, -80, -35, 80), (35, -80, 45, 80) };
+        public static readonly (float x0, float z0, float x1, float z1)[] Roads = { (-80, -5, 80, 5), (-80, 45, 80, 55), (-80, -55, 80, -45), (-80, -110, 80, -100), (-45, -110, -35, 80), (35, -110, 45, 80) };
         public static readonly CityPlace[] Places = {
             new CityPlace("Your stand", "you", 0, 8), new CityPlace("Milo's", "supply", -12, 10), new CityPlace("The Odd Table", "restaurant", -10, -15),
             new CityPlace("Gilded Orbit", "rival", 19, 22), new CityPlace("Rival Alley", "recipe", 11.6f, 24),
             new CityPlace("The Tin Diner", "rival", -22, 38), new CityPlace("Market stalls", "supply", 0, 64),
             new CityPlace("Greasy Gus's truck", "rival", 17, -31), new CityPlace("Graffiti alley", "recipe", -22.5f, -33),
             new CityPlace("The park", "service", 65, -25), new CityPlace("City Hall", "service", -67, 25), new CityPlace("Bus stop", "service", -30, -7),
-            new CityPlace("Gate to The Docks", "gate", -40, -76),
+            new CityPlace("Truck Park", "service", 0, -80), new CityPlace("Corner courts", "service", 65, -78),
+            new CityPlace("Bridge to The Docks", "gate", -76, -105),
         };
     }
     // One line of the "where did my reputation come from" breakdown.

@@ -108,7 +108,7 @@ namespace RestaurantCity {
      Check(standShelves.Contains("protein")&&standShelves.Contains("bun")&&standShelves.Contains("greens")&&!standShelves.Contains("egg")&&!standShelves.Contains("soup")&&!standShelves.Contains("sausage"),"the stand only stocks starter food (patties, buns, greens, sauce)");}
     // One restaurant per district: Old Market is the dressed 160 m block only (no greybox, no second site).
     Check(RestaurantSites.All.Length==1&&GameObject.Find("Saffron Bay (greybox districts)")==null&&GameObject.Find("Property for lease / The Bayside")==null,"Old Market has one restaurant and no greybox around it");
-    Check(CityDistricts.At(0,0)?.Id=="market"&&CityDistricts.At(-190,-15)==null&&System.Array.TrueForAll(NightStashes.Spots,sp=>System.Math.Abs(sp.X)<78&&System.Math.Abs(sp.Z)<78),"every stash spot and place is inside the block");
+    Check(CityDistricts.At(0,0)?.Id=="market"&&CityDistricts.At(-190,-15)==null&&System.Array.TrueForAll(NightStashes.Spots,sp=>System.Math.Abs(sp.X)<78&&sp.Z<78&&sp.Z>-119),"every stash spot and place is inside the block");
     // Pacing: the stand pays cash, not reputation. Earning a lease-and-renovation budget there must stay far from Line Cook (400).
     Check(st.Xp<=60,"stand alone earns only token reputation ("+st.Xp+")");Check(st.RepSources.Exists(r=>r.Source=="Stand sales"),"reputation sources are tracked");Check(Game.Restaurant.BuyRestaurant(),"purchase integration");Game.Restaurant.ClosePanel();
     Check(Game.Restaurant.Data.SiteId=="oddtable","The Odd Table is the starter restaurant");

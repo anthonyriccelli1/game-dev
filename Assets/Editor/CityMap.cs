@@ -12,14 +12,17 @@ public static class CityMap {
     const string City = "Assets/Synty/PolygonCity/Prefabs/";
     public static bool Available => AssetDatabase.IsValidFolder("Assets/Synty/PolygonCity");
     const float Cell = 5, RoadY = -.16f, WalkY = -.07f, Half = 80;
+    // v3 (2026-09-30): the block runs south past Harbor Road to a harbour promenade; water beyond.
+    const float South = -120, HarborZ = -105;
 
     // Road rectangles (x0, x1, z0, z1)
     static readonly Rect[] Roads = {
         Rect.MinMaxRect(-Half, -5, Half, 5),      // Main Street
         Rect.MinMaxRect(-Half, 45, Half, 55),     // North Avenue
         Rect.MinMaxRect(-Half, -55, Half, -45),   // South Avenue
-        Rect.MinMaxRect(-45, -Half, -35, Half),   // West Street
-        Rect.MinMaxRect(35, -Half, 45, Half),     // East Street
+        Rect.MinMaxRect(-45, -110, -35, Half),    // West Street
+        Rect.MinMaxRect(35, -110, 45, Half),      // East Street
+        Rect.MinMaxRect(-Half, -110, Half, -100), // Harbor Road (new): behind Gus's lot, Truck Park to its north
     };
     // Areas the generator must leave alone (gameplay buildings and interiors).
     static readonly Rect[] Reserved = {
@@ -30,6 +33,8 @@ public static class CityMap {
         Rect.MinMaxRect(10, -40, 25, -25),        // The Flats: vacant lot where Greasy Gus parks his truck
         Rect.MinMaxRect(-25, 35, -15, 40),        // Market Row: The Tin Diner (a one-storey chrome diner)
         Rect.MinMaxRect(25, -30, 30, -20),        // The Flats: the pawn shop on East Street
+        Rect.MinMaxRect(-30, -95, 30, -60),       // Truck Park: the plaza around your food truck
+        Rect.MinMaxRect(50, -95, 80, -60),        // Corner courts
     };
     static Transform root; static int seed;
 
@@ -118,7 +123,8 @@ public static class CityMap {
     // Awnings, shop signs and the odd ATM on a street-level shop.
     static void Storefront(Transform b, float x0, float z0, int facing, int s) {
         float yaw = 90 * facing; int k = H(s, 7) % 10, g = H(s, 11) % 12;
-        if (k < 4) Put("Buildings/SM_Bld_Shop_Cover_03", OnFace(x0, z0, facing, 0, 2.2f, 2.55f), yaw, b);
+        // Street rule: awnings hang on the shopfront above head height; they never reach across the sidewalk.
+        if (k < 4) ShopAwning(b, x0, z0, facing, s);
         else if (k < 6) Put("Buildings/SM_Bld_Shop_Cover_04", OnFace(x0, z0, facing, 0, .45f, 3f), yaw, b);
         string[] flat = { "Sign_Cafe_01", "Sign_Pub_01", "Sign_Bar_01", "Sign_Chinese_Noodles_01" };
         if (g < 4 && k >= 4) Put("Props/SM_Prop_" + flat[g], OnFace(x0, z0, facing, 0, .7f, 2.75f), yaw, b);
@@ -215,6 +221,7 @@ public static class CityMap {
         var p = new GameObject("Street clutter").transform; p.SetParent(root, false);
         foreach (var (x, z, f) in tiles) {
             if (x > -25 && x < 30 && z > -14 && z < 12) continue;    // hand-dressed gameplay stretch of Main Street
+            if (z < -99 || (x > -31 && x < 30 && z > -61 && z < -54)) continue;   // the promenade and the front of Truck Park stay clear
             if (IsReserved(new Rect(x, z, 5, 5))) continue;
             int r = H((int)x, (int)z, 5) % 100; float yaw = 90 * f;
             if (r < 6) { Put("Props/SM_Prop_Newspaper_02", OnFace(x, z, f, -1, -.8f, 0), yaw + 180, p); Put("Props/SM_Prop_Mailbox_01", OnFace(x, z, f, .2f, -.8f, 0), yaw + 180, p); }
@@ -360,7 +367,7 @@ public static class CityMap {
         Tower(-25, 35, 0, 0, true, "Buildings/SM_Bld_Shop_02", 7);
         Tower(-20, 35, 0, 0, true, "Buildings/SM_Bld_Shop_05", 7);
         var p = new GameObject("The Tin Diner").transform; p.SetParent(root, false);
-        Put("Buildings/SM_Bld_Shop_Cover_03", OnFace(-25, 35, 0, 2.5f, 2.2f, 2.55f), 0, p);
+        var da = FitPack("PolygonShops", "Buildings/SM_Bld_Awning_02_Small", OnFace(-25, 35, 0, 2.5f, .05f, 2.7f), 0, 6f, p); if (da) StripColliders(da.transform);
         Put("Props/SM_Prop_LargeSign_Milkshake_01", OnFace(-25, 35, 0, 2.5f, -2.2f, 3.6f), 0, p);
         PoleSign("THE TIN DINER", new Vector3(-29, 0, 42.6f), "8FA9BD");
     }
@@ -449,7 +456,7 @@ public static class CityMap {
         Tower(25, -30, 1, 1, true, "Buildings/SM_Bld_Shop_03", 5);
         Tower(25, -25, 1, 1, true, "Buildings/SM_Bld_Shop_04", 5);
         var p = new GameObject("Pawn shop").transform; p.SetParent(root, false);
-        Put("Buildings/SM_Bld_Shop_Cover_03", OnFace(25, -30, 1, -2.5f, 2.2f, 2.55f), 90, p);
+        var pa = FitPack("PolygonShops", "Buildings/SM_Bld_Awning_04_Small", OnFace(25, -30, 1, -2.5f, .05f, 2.7f), 90, 6f, p); if (pa) StripColliders(pa.transform);
         PoleSign("PAWN", new Vector3(33.6f, 0, -21.5f), "3D7F4E");
         var counter = FitPack("PolygonShops", "Props/SM_Prop_Market_Checkout_Large_01", new Vector3(31.4f, WalkY, -25), 90, 2.2f, p);
         if (!counter) counter = Slab("Pawn counter", new Vector3(31.4f, .5f, -25), new Vector3(.9f, 1f, 2.2f), InteriorMat("PawnCounter", "5C4633"), p, true);
@@ -459,7 +466,106 @@ public static class CityMap {
         SignText("WEAPONS  /  CASH ONLY", new Vector3(31.9f, 1.55f, -25), 1, .07f, new Color(1f, .9f, .6f), p);
     }
 
-    // Barricades where streets leave the block, and the gate to The Docks at the bottom of West Street.
+    static void ShopAwning(Transform b, float x0, float z0, int facing, int s) {
+        var a = FitPack("PolygonShops", "Buildings/SM_Bld_Awning_0" + (H(s, 41) % 5 + 1) + "_Small", OnFace(x0, z0, facing, 0, .05f, 2.7f), 90 * facing, 3.6f, b);
+        if (a) StripColliders(a.transform);
+    }
+
+    // ---------- v3: Truck Park, Harbor Road, the harbour (see the Old Market layout map v3) ----------
+    // Truck Park: the plaza between South Avenue and Harbor Road, laid out around your food truck. The truck parks
+    // along the north edge (z -62.5) with its hatch facing south; the four picnic tables sit south of it, then a lawn.
+    public static readonly Vector3 TruckSpot = new Vector3(0, 0, -62.5f);
+    static void TruckPark() {
+        var p = new GameObject("Truck Park").transform; p.SetParent(root, false);
+        for (float x = -20; x < 20; x += 5) for (float z = -90; z < -75; z += 5)
+            Put("Environments/SM_Env_Grass_01", new Vector3(x, WalkY + .03f, z + 5), 0, p);
+        int k = 40;
+        foreach (float z in new[] { -64f, -78, -92 }) { StreetTree(new Vector3(-27.5f, 0, z), k++, p); StreetTree(new Vector3(27.5f, 0, z), k++, p); }
+        foreach (float x in new[] { -12f, 12 }) StreetTree(new Vector3(x, 0, -93), k++, p);
+        foreach (float x in new[] { -10f, 10 }) Put("Props/SM_Prop_ParkBench_01", new Vector3(x, 0, -74.3f), 180, p);
+        foreach (var (x, z) in new[] { (-24f, -61f), (24f, -61f), (-24f, -94f), (24f, -94f) }) Put("Props/SM_Prop_Trashbin_01", new Vector3(x, 0, z), 0, p);
+        // String lights: two warm catenaries between four poles, plus two soft lights.
+        var pole = InteriorMat("LightPole", "2A2E33"); var bulb = GlowMat("PARKBULB", "FFD98A", 1.6f); var cable = InteriorMat("Cable", "1E1F22");
+        foreach (float z in new[] { -66f, -84 }) {
+            foreach (float x in new[] { -24f, 24 }) Slab("String light pole", new Vector3(x, 2.4f, z), new Vector3(.14f, 4.8f, .14f), pole, p, true);
+            Vector3 prev = new Vector3(-24, 4.6f, z);
+            for (int i = 1; i <= 16; i++) {
+                float t = i / 16f; var pt = new Vector3(Mathf.Lerp(-24, 24, t), 4.6f - Mathf.Sin(t * Mathf.PI) * 1.1f, z);
+                var seg = Slab("Cable", (prev + pt) / 2, new Vector3(.035f, .035f, Vector3.Distance(prev, pt)), cable, p, false); seg.transform.rotation = Quaternion.LookRotation(pt - prev);
+                var bl = GameObject.CreatePrimitive(PrimitiveType.Sphere); bl.name = "Bulb"; Object.DestroyImmediate(bl.GetComponent<Collider>()); bl.transform.SetParent(p, false);
+                bl.transform.position = pt + Vector3.down * .12f; bl.transform.localScale = Vector3.one * .16f; bl.GetComponent<Renderer>().sharedMaterial = bulb; prev = pt;
+            }
+            var glow = new GameObject("String light glow").AddComponent<Light>(); glow.transform.SetParent(p, false); glow.transform.position = new Vector3(0, 3.6f, z);
+            glow.type = LightType.Point; glow.color = new Color(1f, .83f, .55f); glow.intensity = 1.6f; glow.range = 16;
+        }
+        // Mural wall at the south-west corner, bollards along the south edge.
+        var wallMat = InteriorMat("MuralWall", "C9B8A0"); Slab("Mural wall", new Vector3(-21, 1.6f, -93), new Vector3(9, 3.2f, .4f), wallMat, p, true);
+        var paint = new[] { InteriorMat("TagPink", "E0479A"), InteriorMat("TagTeal", "2FB7A8"), InteriorMat("TagYellow", "F2C230"), InteriorMat("TagPurple", "8D6AE0") };
+        for (int i = 0; i < 5; i++) Slab("Mural paint", new Vector3(-24.6f + i * 1.8f, 1.5f + (i % 2) * .4f, -92.78f), new Vector3(1.6f, 1.6f + (i % 3) * .4f, .03f), paint[i % 4], p, false);
+        SignText("EAT LATE  /  OLD MARKET", new Vector3(-21, 2.85f, -92.76f), 0, .16f, new Color(.16f, .12f, .1f), p);
+        for (float x = 16; x <= 25; x += 1.5f) Slab("Bollard", new Vector3(x, .45f, -93.5f), new Vector3(.22f, .9f, .22f), pole, p, true);
+    }
+    // Corner courts: a fenced basketball court with benches, where residents hang out.
+    static void CornerCourts() {
+        var p = new GameObject("Corner courts").transform; p.SetParent(root, false);
+        var court = InteriorMat("Court", "3F7F7A"); var line = InteriorMat("CourtLine", "EDE8DA"); var steel = InteriorMat("HoopSteel", "C9CED3"); var board = InteriorMat("Backboard", "F4F1E8"); var rim = InteriorMat("Rim", "E0692E");
+        var c = new Vector3(65, 0, -78);
+        Slab("Court", c + Vector3.up * -.03f, new Vector3(26, .06f, 15), court, p, false);
+        foreach (var (o, s) in new[] { (new Vector3(0, 0, 7.4f), new Vector3(26, .01f, .12f)), (new Vector3(0, 0, -7.4f), new Vector3(26, .01f, .12f)), (new Vector3(12.9f, 0, 0), new Vector3(.12f, .01f, 15)), (new Vector3(-12.9f, 0, 0), new Vector3(.12f, .01f, 15)), (Vector3.zero, new Vector3(.12f, .01f, 15)) })
+            Slab("Court line", c + o + Vector3.up * .005f, s, line, p, false);
+        foreach (int side in new[] { -1, 1 }) {
+            var basePos = c + new Vector3(side * 12.3f, 0, 0);
+            Slab("Hoop pole", basePos + Vector3.up * 1.6f, new Vector3(.18f, 3.2f, .18f), steel, p, true);
+            Slab("Backboard", basePos + new Vector3(-side * .5f, 3.3f, 0), new Vector3(.08f, 1.1f, 1.8f), board, p, false);
+            var r = GameObject.CreatePrimitive(PrimitiveType.Cylinder); r.name = "Rim"; Object.DestroyImmediate(r.GetComponent<Collider>()); r.transform.SetParent(p, false);
+            r.transform.position = basePos + new Vector3(-side * .9f, 3.05f, 0); r.transform.localScale = new Vector3(.46f, .02f, .46f); r.GetComponent<Renderer>().sharedMaterial = rim;
+        }
+        for (float x = 50; x < 79.99f; x += 5) { Put("Environments/SM_Env_Fence_01", new Vector3(x, 0, -69.6f), 0, p); Put("Environments/SM_Env_Fence_01", new Vector3(x, 0, -86.4f), 0, p); }
+        foreach (float x in new[] { 56f, 66, 74 }) Put("Props/SM_Prop_ParkBench_01", new Vector3(x, 0, -67.6f), 180, p);
+        int k = 70; foreach (float x in new[] { 53f, 77 }) StreetTree(new Vector3(x, 0, -91), k++, p);
+        SignText("CORNER COURTS", new Vector3(65, 2.2f, -69.4f), 0, .14f, new Color(1f, .9f, .6f), p);
+    }
+    // The harbour: promenade railing, benches and lamps along the quay; water; the Docks' cranes across it; and the
+    // locked bridge to The Docks at the west end of Harbor Road.
+    static void Harbour() {
+        var p = new GameObject("Harbour").transform; p.SetParent(root, false);
+        var stone = InteriorMat("QuayStone", "6F6A62");
+        Slab("Quay wall", new Vector3(0, -.75f, -120.3f), new Vector3(2 * Half + 60, 1.4f, .6f), stone, p, true);
+        var water = AssetDatabase.LoadAssetAtPath<Material>("Assets/Synty/PolygonCity/Materials/Misc/Water_01.mat") ?? InteriorMat("Water", "2A6A80");
+        Slab("Bay water", new Vector3(0, -1.25f, -320), new Vector3(1000, .1f, 400), water, p, false);
+        for (float x = -Half; x < Half - .01f; x += 5) Put("Environments/SM_Env_Fence_01", new Vector3(x, 0, -119.5f), 0, p);
+        for (float x = -70; x <= 70; x += 20) { Put("Props/SM_Prop_ParkBench_01", new Vector3(x, 0, -117.6f), 180, p); Put("Props/SM_Prop_LightPole_Base_02", new Vector3(x + 10, 0, -110.8f), 180, p); }
+        // The Docks across the water: cranes and container stacks, just shapes on the horizon.
+        var crane = InteriorMat("Crane", "D8A032"); string[] cols = { "B8402F", "2F6DB8", "D1A33A", "3F8F5A", "7A7F86" };
+        foreach (float x in new[] { -60f, -10, 45 }) {
+            foreach (float dx in new[] { -4f, 4 }) foreach (float dz in new[] { -205f, -197 }) Slab("Crane leg", new Vector3(x + dx, 9, dz), new Vector3(.8f, 20, .8f), crane, p, false);
+            Slab("Crane beam", new Vector3(x, 19.5f, -190), new Vector3(1.4f, 1.4f, 34), crane, p, false);
+        }
+        for (int i = 0; i < 10; i++) for (int j = 0; j <= H(i, 3) % 3; j++)
+            Slab("Container", new Vector3(-75 + i * 15, .1f + j * 2.6f, -215 + (i % 2) * 6), new Vector3(6, 2.6f, 2.4f), InteriorMat("Box" + cols[H(i, j) % 5], cols[H(i, j) % 5]), p, false);
+        Slab("Docks ground", new Vector3(0, -1.1f, -225), new Vector3(220, .4f, 50), stone, p, false);
+        // Bridge to The Docks off the west end of Harbor Road (locked; the gate is in StreetEnds).
+        Slab("Bridge deck", new Vector3(-110, -.2f, HarborZ), new Vector3(60, .4f, 10), stone, p, false);
+        foreach (float dz in new[] { -5f, 5 }) Slab("Bridge rail", new Vector3(-110, .5f, HarborZ + dz), new Vector3(60, 1, .2f), InteriorMat("BridgeRail", "D9D4C8"), p, false);
+        Put("Props/SM_Prop_BusStop_01", new Vector3(-65, 0, -97.2f), 180, p);
+    }
+    // Zebra crossings at every corner (street rule), plus the mid-block one from Truck Park to Gus's lot.
+    static void Crosswalks() {
+        var p = new GameObject("Crosswalks").transform; p.SetParent(root, false); var paint = InteriorMat("Crosswalk", "E8E4D8");
+        void Band(float cx, float cz, bool alongX) {
+            // alongX: the crossing runs across an east-west road (bars lie along x, stacked across z).
+            for (float o = -4f; o <= 4.01f; o += 1.1f)
+                Slab("Zebra", new Vector3(cx + (alongX ? 0 : o), -.03f, cz + (alongX ? o : 0)), alongX ? new Vector3(3f, .01f, .55f) : new Vector3(.55f, .01f, 3f), paint, p, false);
+        }
+        foreach (float ix in new[] { -40f, 40 }) foreach (float iz in new[] { 50f, 0, -50, HarborZ }) {
+            Band(ix - 7.5f, iz, true); Band(ix + 7.5f, iz, true);
+            if (iz != HarborZ) Band(ix, iz - 7.5f, false);
+            Band(ix, iz + 7.5f, false);
+        }
+        Band(19, -50, true);
+    }
+
+    // Barricades where streets leave the block, and the gate to The Docks at the west end of Harbor Road.
     static void StreetEnds() {
         var p = new GameObject("Street ends").transform; p.SetParent(root, false);
         void Line(Vector3 c, bool acrossX, float length) {
@@ -468,15 +574,15 @@ public static class CityMap {
             foreach (float e in new[] { -length / 2 - .6f, length / 2 + .6f }) Put("Props/SM_Prop_Cone_01", c + dir * e + Vector3.up * RoadY, 0, p);
         }
         foreach (float z in new[] { 0f, 50, -50 }) foreach (int side in new[] { -1, 1 }) Line(new Vector3(side * 77.5f, 0, z), false, 10);
-        Line(new Vector3(-40, 0, 77.5f), true, 10); Line(new Vector3(40, 0, 77.5f), true, 10); Line(new Vector3(40, 0, -77.5f), true, 10);
-        // The Docks gate: locked until the district is built and you reach Line Cook.
+        Line(new Vector3(-40, 0, 77.5f), true, 10); Line(new Vector3(40, 0, 77.5f), true, 10); Line(new Vector3(77.5f, 0, HarborZ), false, 10);
+        // The Docks gate at the west end of Harbor Road, before the bridge: locked until you reach Line Cook.
         var gate = new GameObject("Gate to The Docks").transform; gate.SetParent(p, false);
-        Line(new Vector3(-40, 0, -77.5f), true, 10);
+        Line(new Vector3(-77.5f, 0, HarborZ), false, 10);
         var post = InteriorMat("GatePost", "2A2E33"); var board = GlowMat("DOCKSGATE", "3AA0B0", .25f);
-        foreach (float x in new[] { -45.4f, -34.6f }) Slab("Gate post", new Vector3(x, 2.6f, -77.5f), new Vector3(.35f, 5.2f, .35f), post, gate, true);
-        Slab("Gate board", new Vector3(-40, 4.6f, -77.5f), new Vector3(10.4f, 1.6f, .25f), board, gate, false);
-        SignText("THE DOCKS", new Vector3(-40, 4.95f, -77.35f), 0, .5f, Color.white, gate);
-        SignText("Gate opens at LINE COOK", new Vector3(-40, 4.2f, -77.35f), 0, .3f, new Color(1, .92f, .75f), gate);
+        foreach (float z in new[] { HarborZ - 5.4f, HarborZ + 5.4f }) Slab("Gate post", new Vector3(-77.5f, 2.6f, z), new Vector3(.35f, 5.2f, .35f), post, gate, true);
+        Slab("Gate board", new Vector3(-77.5f, 4.6f, HarborZ), new Vector3(.25f, 1.6f, 10.4f), board, gate, false);
+        SignText("THE DOCKS", new Vector3(-77.35f, 4.95f, HarborZ), 1, .5f, Color.white, gate);
+        SignText("Bridge opens at LINE COOK", new Vector3(-77.35f, 4.2f, HarborZ), 1, .3f, new Color(1, .92f, .75f), gate);
     }
     // A street tree in its own planted square: grass and a couple of bushes (the "lived-in" street look).
     public static void StreetTree(Vector3 p, int k, Transform parent = null) {
@@ -574,7 +680,7 @@ public static class CityMap {
         var ground = new GameObject("Ground and streets").transform; ground.SetParent(root, false);
         var curbTiles = new List<(float x, float z, int f)>();
         // Roads and sidewalks on the 5 m grid.
-        for (float x = -Half; x < Half; x += Cell) for (float z = -Half; z < Half; z += Cell) {
+        for (float x = -Half; x < Half; x += Cell) for (float z = South; z < Half; z += Cell) {
             float cx = x + 2.5f, cz = z + 2.5f;
             if (IsRoad(cx, cz)) { Put("Environments/SM_Env_Road_01", new Vector3(x + 5, RoadY, z + 5), 0, ground); continue; }
             // Pave everywhere; under your restaurant the paving sits 2 cm lower so its own floor wins.
@@ -603,9 +709,8 @@ public static class CityMap {
         Block(-80, -50,  60, 80,  false, true,  true,  false, false, 1, 3, 0);
         Block(-30, 30,   60, 80,  false, true,  true,  true,  true,  1, 3, 20);
         Block( 50, 80,   60, 80,  true,  true,  true,  true,  false, 1, 3, 0);
-        Block(-80, -50, -80, -60, true,  true,  true,  true,  false, 1, 3, 0);
-        Block(-30, 30,  -80, -60, true,  true,  true,  true,  true,  1, 3, 20);
-        Block( 50, 80,  -80, -60, true,  true,  true,  true,  false, 1, 3, 0);
+        Block(-80, -50, -95, -60, true,  true,  true,  false, false, 1, 2, 0);   // Cannery lofts (south of South Avenue)
+        // Truck Park (-30..30) and the corner courts (50..80) fill the other southern blocks.
         // Landmarks in the outer blocks.
         Put("Buildings/SM_Bld_CityHall_01", new Vector3(-67, 0, 25), 180);
         Put("Buildings/SM_Bld_OfficeRound_01", new Vector3(-67, 0, -25), 0);
@@ -615,7 +720,7 @@ public static class CityMap {
         Put("Buildings/SM_Bld_Station_01", new Vector3(0, 0, -30), 0);
         Put("Environments/Custom/SM_Env_Skyline_01", Vector3.zero, 0);
         // Old Market's own places (Market Row, The Flats) and the street ends.
-        MarketStalls(); TinDiner(); GraffitiAlley(); VacantLot(); PawnShop(); StreetEnds();
+        MarketStalls(); TinDiner(); GraffitiAlley(); VacantLot(); PawnShop(); TruckPark(); CornerCourts(); Harbour(); Crosswalks(); StreetEnds();
         // Street life: parked cars, trees, benches, hydrants, a hotdog cart, bus stop, rooftop signs.
         string[] cars = { "SM_Veh_Car_Sedan_01", "SM_Veh_Car_Taxi_01", "SM_Veh_Car_Van_01", "SM_Veh_Car_Small_01", "SM_Veh_Car_Medium_01", "SM_Veh_Car_Muscle_01" };
         int c = 0;
@@ -625,10 +730,10 @@ public static class CityMap {
         int t = 0;
         for (float x = -75; x <= 75; x += 15) {
             if (Mathf.Abs(x) < 30 || Mathf.Abs(Mathf.Abs(x) - 40) < 6) continue;
-            StreetTree(new Vector3(x, 0, 7.5f), t++); StreetTree(new Vector3(x + 5, 0, -7.5f), t++);
+            StreetTree(new Vector3(x, 0, 6.3f), t++); StreetTree(new Vector3(x + 5, 0, -6.3f), t++);   // street rule: trees in pits at the curb
         }
-        for (float x = -75; x <= 75; x += 20) { if (Mathf.Abs(Mathf.Abs(x) - 40) < 6) continue; StreetTree(new Vector3(x, 0, 57.5f), t++); StreetTree(new Vector3(x, 0, -57.5f), t++); }
-        for (float z = -75; z <= 75; z += 20) { if (Mathf.Abs(z) < 12 || Mathf.Abs(Mathf.Abs(z) - 50) < 6) continue; StreetTree(new Vector3(-32.5f, 0, z), t++); StreetTree(new Vector3(32.5f, 0, z), t++); }
+        for (float x = -75; x <= 75; x += 20) { if (Mathf.Abs(Mathf.Abs(x) - 40) < 6) continue; StreetTree(new Vector3(x, 0, 56.3f), t++); if (Mathf.Abs(x) > 32) StreetTree(new Vector3(x, 0, -56.3f), t++); }
+        for (float z = -95; z <= 75; z += 20) { if (Mathf.Abs(z) < 12 || Mathf.Abs(Mathf.Abs(z) - 50) < 6) continue; StreetTree(new Vector3(-33.7f, 0, z), t++); StreetTree(new Vector3(33.7f, 0, z), t++); }
         Put("Props/SM_Prop_HotdogStand_01", new Vector3(30, 0, 8), 180);
         Put("Props/SM_Prop_BusStop_01", new Vector3(-30, 0, -7.2f), 0);
         foreach (float x in new[] { -28f, 27, -55, 60 }) { Put("Props/SM_Prop_ParkBench_01", new Vector3(x, 0, x > 0 ? 8.6f : -8.6f), x > 0 ? 180 : 0); }
@@ -637,8 +742,8 @@ public static class CityMap {
         foreach (float x in new[] { -60f, -20, 20, 60 }) { Put("Props/SM_Prop_LightPole_Base_01", new Vector3(x, 0, 44.2f), 0); Put("Props/SM_Prop_LightPole_Base_01", new Vector3(x, 0, -44.2f), 180); }
         Clutter(curbTiles);
         // Flat ground beyond the block (under the skyline) and the invisible edge of the playable city.
-        Slab("Outskirts", new Vector3(0, -.36f, 0), new Vector3(900, .2f, 900), InteriorMat("Outskirts", "8E8A82"), root, false);
-        foreach (var (pos, size) in new[] { (new Vector3(0, 5, Half + 1), new Vector3(2 * Half, 10, 1)), (new Vector3(0, 5, -Half - 1), new Vector3(2 * Half, 10, 1)), (new Vector3(Half + 1, 5, 0), new Vector3(1, 10, 2 * Half)), (new Vector3(-Half - 1, 5, 0), new Vector3(1, 10, 2 * Half)) }) {
+        Slab("Outskirts", new Vector3(0, -.36f, 165), new Vector3(900, .2f, 570), InteriorMat("Outskirts", "8E8A82"), root, false);   // stops at the quay; water beyond
+        foreach (var (pos, size) in new[] { (new Vector3(0, 5, Half + 1), new Vector3(2 * Half, 10, 1)), (new Vector3(0, 5, South - .8f), new Vector3(2 * Half, 10, 1)), (new Vector3(Half + 1, 5, (Half + South) / 2), new Vector3(1, 10, Half - South)), (new Vector3(-Half - 1, 5, (Half + South) / 2), new Vector3(1, 10, Half - South)) }) {
             var wall = new GameObject("City edge"); wall.transform.SetParent(root, false); wall.transform.position = pos; wall.AddComponent<BoxCollider>().size = size;
         }
     }

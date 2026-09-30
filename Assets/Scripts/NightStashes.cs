@@ -11,6 +11,8 @@ namespace RestaurantCity {
             new StashSpot("the west end of Main Street", -70, 8.5f),
             new StashSpot("the east end of Main Street", 70, -7.5f),
             new StashSpot("the market stalls on North Avenue", 6, 68.5f),
+            new StashSpot("the bike racks in Truck Park", 22, -91),
+            new StashSpot("the harbour promenade", -50, -116),
         };
         public const int SaucePrice = 8;          // per bottle
         public const float Deposit = .3f;         // paid up front; the rest is owed
