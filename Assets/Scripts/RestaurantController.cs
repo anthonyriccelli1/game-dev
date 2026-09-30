@@ -87,6 +87,7 @@ namespace RestaurantCity {
             WorldCaption(desk.transform, "LITTLE FLAME\n[E] MANAGE", new Vector3(0, 1.15f, 0), .024f);
             UI = gameObject.AddComponent<RestaurantUI>(); UI.Owner = this; UI.Rebuild();
             PhysicalSetup();
+            AttachRaidTargets();
             if (ArriveAfterReload) { ArriveAfterReload = false; StartCoroutine(ArriveAtNewRestaurant()); }
         }
         System.Collections.IEnumerator ArriveAtNewRestaurant() {
@@ -140,9 +141,9 @@ namespace RestaurantCity {
             return true;
         }
         public void ShowPanel(string panel) {
-            bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map" || panel == "Supplies" && Game.State.StandBuilt || panel == "Phone" && Game.State.StandBuilt;
+            bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map" || panel == "Supplies" && Game.State.StandBuilt || panel == "Phone" && Game.State.StandBuilt || panel == "Raid" && (Game.State.StandBuilt || Data.Owned);
             if (!Data.Owned && !phone) { Feedback("Earn $150 and buy the restaurant at its front sign."); return; }
-            if (ServiceInProgress && panel != "Staff" && panel != "Service" && panel != "Map" && panel != "Supplies" && panel != "Phone") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
+            if (ServiceInProgress && panel != "Staff" && panel != "Service" && panel != "Map" && panel != "Supplies" && panel != "Phone" && panel != "Raid") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
             if (PlacementActive) CancelPlacement(false);
             Panel = panel; PanelOpen = true;
             if (Game.CoOp) Game.CoOp.RefreshViews();

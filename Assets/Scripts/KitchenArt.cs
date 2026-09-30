@@ -69,7 +69,7 @@ namespace RestaurantCity {
                 // resolve exactly which ingredient the player is looking at, replacing the hidden Q cycle.
                 PantryShelf(p,"protein",-.48f,0,.62f); PantryShelf(p,"greens",.48f,0,.62f);
                 PantryShelf(p,"bun",-.48f,.62f,1.12f); PantryShelf(p,"sauce",.48f,.62f,1.12f);
-                PantryShelf(p,"soup",-.48f,1.12f,1.8f); PantryShelf(p,"sausage",.48f,1.12f,1.8f);
+                PantryShelf(p,"soup",-.62f,1.12f,1.8f,.58f); PantryShelf(p,"sausage",0,1.12f,1.8f,.58f); PantryShelf(p,"egg",.62f,1.12f,1.8f,.58f);
             } else if(id=="plate_rack") {
                 Bench(p,width,"317E79");
                 for(int stack=0;stack<2;stack++)for(int n=0;n<5;n++)Plate(p,new Vector3(stack==0?-.21f:.21f,1+n*.04f,0),.8f);
@@ -181,6 +181,10 @@ namespace RestaurantCity {
             else if(kind=="RawSausage"||kind=="CookedSausage"||kind=="BurntSausage") {
                 var link=S("Sausage",p,Profile("sausage",new[]{0f,.02f,.28f,.3f},new[]{0f,.04f,.04f,0f},8),new Vector3(0,.04f,-.15f),Vector3.one,M(kind=="RawSausage"?"D9776E":kind=="CookedSausage"?"A8542A":"2E2320"));link.transform.localRotation=Quaternion.Euler(90,0,0);
             }
+            else if(kind=="RawEgg"||kind=="FriedEgg"||kind=="BurntEgg"||kind=="EggWhole") {
+                if(kind=="EggWhole"){var shell=S("Egg",p,Profile("egg",new[]{0f,.03f,.06f,.08f},new[]{0f,.03f,.028f,0f},8),Vector3.zero,Vector3.one,M("F2E6CF"));}
+                else{Disk("Egg white",p,new Vector3(0,.008f,0),new Vector3(.2f,.012f,.18f),kind=="BurntEgg"?"3A2E26":kind=="FriedEgg"?"FBF7EC":"E9E6DA");Disk("Yolk",p,new Vector3(0,.02f,0),new Vector3(.07f,.03f,.07f),kind=="BurntEgg"?"2E2320":"F7B21E");}
+            }
             else if(kind=="FloatCup") {
                 S("Empty float cup",p,Profile("cup",new[]{0f,.01f,.24f,.26f},new[]{.06f,.07f,.085f,.085f},10),Vector3.zero,Vector3.one,M("5E7BE0"));
             }
@@ -188,9 +192,9 @@ namespace RestaurantCity {
             else Patty(p,Vector3.zero,kind);
             return ArtOverrides.Apply(root,"Items",kind);
         }
-        static void PantryShelf(Transform parent,string subId,float x,float yLow,float yHigh) {
+        static void PantryShelf(Transform parent,string subId,float x,float yLow,float yHigh,float width=.85f) {
             var zone=G("Pantry shelf "+subId,parent,new Vector3(x,(yLow+yHigh)*.5f,.44f));
-            var box=zone.AddComponent<BoxCollider>(); box.size=new Vector3(.85f,yHigh-yLow,.42f);
+            var box=zone.AddComponent<BoxCollider>(); box.size=new Vector3(width,yHigh-yLow,.42f);
             var target=zone.AddComponent<RestaurantTarget>(); target.Kind="Furniture"; target.SubId=subId;
         }
         static void Crate(Transform p,Vector3 position,string contents,float scale=1) {

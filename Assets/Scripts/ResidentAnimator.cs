@@ -8,14 +8,14 @@ namespace RestaurantCity {
     // Missing clips fall back gracefully (sitting falls back to a procedural leg pose), so a checkout without
     // the Mixamo files still runs.
     public class ResidentAnimator : MonoBehaviour {
-        public enum State { Idle, Walk, Sit, Eat, Work, Run }
+        public enum State { Idle, Walk, Sit, Eat, Work, Run, Fight }
         public State Current;
         public Gait Gait;
         Animator animator; PlayableGraph graph; AnimationMixerPlayable mixer;
-        const int Loops = 6;
+        const int Loops = 7;
         readonly float[] weights = new float[Loops + 1];
         AnimationClip[] loops; bool hasSit;
-        float oneShotUntil, oneShotLength;
+        float oneShotUntil, oneShotLength; bool holdOneShot;
         const int OneShotInput = Loops;
 
         static readonly Dictionary<string, AnimationClip> cache = new Dictionary<string, AnimationClip>();
@@ -31,7 +31,7 @@ namespace RestaurantCity {
             string idle = gait == Gait.Zombie ? "ZombieIdle" : gait == Gait.Light ? "IdleB" : "Idle";
             string walk = gait == Gait.Zombie ? "ZombieWalk" : gait == Gait.Light ? "WalkB" : "Walk";
             var idleClip = Clip(idle) ?? Clip("Idle"); var sit = Clip("Sit"); hasSit = sit;
-            loops = new[] { idleClip, Clip(walk) ?? Clip("Walk") ?? idleClip, sit ?? idleClip, Clip("Eat") ?? sit ?? idleClip, Clip("Work") ?? idleClip, gait == Gait.Zombie ? Clip("ZombieRun") ?? Clip(walk) ?? idleClip : Clip("Run") ?? Clip(walk) ?? idleClip };
+            loops = new[] { idleClip, Clip(walk) ?? Clip("Walk") ?? idleClip, sit ?? idleClip, Clip("Eat") ?? sit ?? idleClip, Clip("Work") ?? idleClip, gait == Gait.Zombie ? Clip("ZombieRun") ?? Clip(walk) ?? idleClip : Clip("Run") ?? Clip(walk) ?? idleClip, Clip("FightIdle") ?? idleClip };
             graph = PlayableGraph.Create(name + " anim"); graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
             mixer = AnimationMixerPlayable.Create(graph, Loops + 1);
             float offset = Random.value * 3;   // so a crowd doesn't move in lockstep
@@ -44,18 +44,28 @@ namespace RestaurantCity {
         }
         // Poses the model immediately (for portraits taken outside the normal frame loop).
         public void Pose(float seconds) { if (graph.IsValid()) graph.Evaluate(seconds); }
+        // Plays a clip once and freezes on its last frame (a knockout stays on the ground).
+        public void PlayAndHold(AnimationClip clip) {
+            PlayOnce(clip); if (!clip || !graph.IsValid()) return; holdOneShot = true;
+            var p = (AnimationClipPlayable)mixer.GetInput(OneShotInput); p.SetDuration(clip.length);
+            StartCoroutine(Freeze(p, clip.length));
+        }
+        System.Collections.IEnumerator Freeze(AnimationClipPlayable p, float length) {
+            yield return new WaitForSeconds(Mathf.Max(0, length - .05f));
+            if (p.IsValid()) { p.SetTime(length - .02f); p.SetSpeed(0); }
+        }
         public void React(bool happy) => PlayOnce(happy ? (Clip("Cheer") ?? Clip("Happy")) : Clip("Angry"));
         public void PlayOnce(AnimationClip clip) {
             if (!clip || !graph.IsValid()) return;
             var old = mixer.GetInput(OneShotInput); if (old.IsValid()) { graph.Disconnect(mixer, OneShotInput); old.Destroy(); }
             var p = AnimationClipPlayable.Create(graph, clip); graph.Connect(p, 0, mixer, OneShotInput);
-            oneShotLength = Mathf.Min(clip.length, 2.2f); oneShotUntil = Time.time + oneShotLength;
+            oneShotLength = Mathf.Min(clip.length, 2.2f); oneShotUntil = Time.time + oneShotLength; holdOneShot = false;
         }
         void Update() {
             if (!graph.IsValid()) return;
             float dt = Time.deltaTime * 6;
             for (int i = 0; i < Loops; i++) weights[i] = Mathf.MoveTowards(weights[i], i == (int)Current ? 1 : 0, dt);
-            bool shot = Time.time < oneShotUntil && Current != State.Sit && Current != State.Eat;
+            bool shot = holdOneShot || Time.time < oneShotUntil && Current != State.Sit && Current != State.Eat;
             weights[OneShotInput] = Mathf.MoveTowards(weights[OneShotInput], shot ? 1 : 0, dt);
             Apply();
         }

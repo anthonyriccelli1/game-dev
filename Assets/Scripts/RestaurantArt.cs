@@ -237,9 +237,9 @@ namespace RestaurantCity {
             var floorWear=room.transform.Find("ShabbyFloorWear");if(floorWear)floorWear.gameObject.SetActive(shabbyFloor);
             var a=room.transform.Find("UpgradeAwning");if(a)a.gameObject.SetActive(awning);var n=room.transform.Find("UpgradeNeon");if(n)n.gameObject.SetActive(neon);
         }
-        static void FridgeShelf(Transform p,string subId,float yLow,float yHigh) {
-            var zone=Group("Pantry shelf "+subId,p,new Vector3(0,(yLow+yHigh)*.5f,.32f));
-            var box=zone.AddComponent<BoxCollider>();box.size=new Vector3(.8f,yHigh-yLow,.4f);
+        static void FridgeShelf(Transform p,string subId,float yLow,float yHigh,float x=0,float width=.8f) {
+            var zone=Group("Pantry shelf "+subId,p,new Vector3(x,(yLow+yHigh)*.5f,.32f));
+            var box=zone.AddComponent<BoxCollider>();box.size=new Vector3(width,yHigh-yLow,.4f);
             var target=zone.AddComponent<RestaurantTarget>();target.Kind="Furniture";target.SubId=subId;
         }
         static void Feet(Transform p,float width,float depth,float height,Color c) {foreach(float x in new[]{-width*.4f,width*.4f})foreach(float z in new[]{-depth*.4f,depth*.4f})Box("TaperedFoot",p,new Vector3(x,height*.5f,z),new Vector3(.1f,height,.1f),c);}
@@ -284,7 +284,7 @@ namespace RestaurantCity {
             case "fridge":
                 h=2;Box("RetroFridge",p,new Vector3(0,.99f,0),new Vector3(.91f,1.96f,.83f),Teal);Box("FridgeDoor",p,new Vector3(0,.78f,.43f),new Vector3(.84f,1.35f,.08f),Cream);Box("FreezerDoor",p,new Vector3(0,1.72f,.43f),new Vector3(.84f,.45f,.08f),Cream);Box("Handle",p,new Vector3(.3f,1.05f,.53f),new Vector3(.05f,.45f,.06f),Brass);Box("Magnet",p,new Vector3(-.16f,1.14f,.49f),new Vector3(.21f,.27f,.01f),Coral);Label("COLD",p,new Vector3(0,1.74f,.49f),.052f,Teal);
                 // Aimable cold shelves (patties, greens, soup veg) at the glass-door fridge's shelf heights; stock is drawn by PantryDisplay.
-                FridgeShelf(p,"protein",.56f,.9f);FridgeShelf(p,"greens",.9f,1.24f);FridgeShelf(p,"soup",1.24f,1.6f);FridgeShelf(p,"sausage",1.6f,1.95f);break;
+                FridgeShelf(p,"protein",.56f,.9f);FridgeShelf(p,"greens",.9f,1.24f);FridgeShelf(p,"soup",1.24f,1.6f);FridgeShelf(p,"sausage",1.6f,1.95f,-.2f,.4f);FridgeShelf(p,"egg",1.6f,1.95f,.2f,.4f);break;
             case "drink_machine":
                 // Swirl & Fizz: soft serve and soda from one nozzle. The cup sits on the drip tray at "PourPoint".
                 // It stands on its own steel counter so the nozzle is at working height.

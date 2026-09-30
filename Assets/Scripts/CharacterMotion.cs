@@ -3,7 +3,7 @@ using UnityEngine;
 namespace RestaurantCity {
     /// <summary>Presentation only: movement/state are supplied by the restaurant simulation.</summary>
     public class CharacterMotion : MonoBehaviour {
-        public bool Walking, Seated, Working, Eating, Running;
+        public bool Walking, Seated, Working, Eating, Running, Fighting;
         ResidentAnimator resident;
         Transform body, head, leftArm, rightArm, leftLeg, rightLeg, leftKnee, rightKnee, mouth;
         Vector3 bodyOrigin, headOrigin;
@@ -26,10 +26,24 @@ namespace RestaurantCity {
         float cheerUntil, stompUntil;
         public void Cheer() { cheerUntil = Time.time + 1.3f; mood = 1; if (resident) resident.React(true); }
         public void Jump() { if (resident) resident.PlayOnce(ResidentAnimator.Clip("Jump")); }
+        // Raid moves (Mixamo clips when present). Each returns false when there is no clip, so callers can fake it.
+        static int punchVariant;
+        bool Zombie => resident && resident.Gait == Gait.Zombie;
+        public bool Punch() {
+            if (!resident) { Stomp(); return false; }
+            var clip = Zombie ? ResidentAnimator.Clip("ZombiePunch") : ResidentAnimator.Clip(new[] { "Punch", "Punch2", "Punch3" }[punchVariant++ % 3]);
+            if (!clip) { Stomp(); return false; } resident.PlayOnce(clip); return true;
+        }
+        public bool Headbutt() { var clip = resident ? ResidentAnimator.Clip("Headbutt") : null; if (!clip) { Stomp(); return false; } resident.PlayOnce(clip); return true; }
+        public bool Flinch() {
+            var clip = resident ? ResidentAnimator.Clip(Zombie ? "ZombieHitReact" : "HitReact") ?? ResidentAnimator.Clip("HitReact") : null;
+            if (!clip) { Stomp(); return false; } resident.PlayOnce(clip); return true;
+        }
+        public bool KnockOut() { var clip = resident ? ResidentAnimator.Clip(punchVariant++ % 2 == 0 ? "KnockedOut" : "KnockedOut2") ?? ResidentAnimator.Clip("KnockedOut") : null; if (!clip) return false; resident.PlayAndHold(clip); return true; }
         public void Stomp() { stompUntil = Time.time + 1.1f; mood = .1f; if (resident) resident.React(false); }
         void Update() {
             if (resident) {
-                resident.Current = Seated ? (Eating ? ResidentAnimator.State.Eat : ResidentAnimator.State.Sit) : Walking ? (Running ? ResidentAnimator.State.Run : ResidentAnimator.State.Walk) : Working ? ResidentAnimator.State.Work : ResidentAnimator.State.Idle;
+                resident.Current = Seated ? (Eating ? ResidentAnimator.State.Eat : ResidentAnimator.State.Sit) : Walking ? (Running ? ResidentAnimator.State.Run : ResidentAnimator.State.Walk) : Working ? ResidentAnimator.State.Work : Fighting ? ResidentAnimator.State.Fight : ResidentAnimator.State.Idle;
                 return;
             }
             if (!body) return;

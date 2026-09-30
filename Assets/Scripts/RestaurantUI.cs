@@ -100,7 +100,7 @@ namespace RestaurantCity {
             summary.Append(waiting).Append(" waiting  /  ").Append(cooking).Append(" cooking  /  ").Append(ready).Append(" ready\nTab to manage orders");
             orderSummary.text = summary.ToString();
             // The crew "phone" (Staff tab) works before you own the restaurant, as soon as the stand is up.
-            bool panelVisible = visible || ((Owner.Panel == "Map" || Owner.Panel == "Supplies" || Owner.Panel == "Phone" || (Owner.Panel == "Staff" && Owner.Game.State.StandBuilt)) && Owner.Game.Started && !Owner.Game.Paused);
+            bool panelVisible = visible || ((Owner.Panel == "Map" || Owner.Panel == "Raid" || Owner.Panel == "Supplies" || Owner.Panel == "Phone" || (Owner.Panel == "Staff" && Owner.Game.State.StandBuilt)) && Owner.Game.Started && !Owner.Game.Paused);
             if (!Owner.PanelOpen || !panelVisible) {
                 if (modal) { modal.gameObject.SetActive(false); Destroy(modal.gameObject); modal = null; }
                 tickLabels.Clear(); signature = ""; return;
@@ -118,6 +118,7 @@ namespace RestaurantCity {
             foreach (var order in s.Orders) key.Append('|').Append(order.Id).Append(':').Append(order.Stage);
             // Worker assignments and purchases are infrequent, but must immediately update controls.
             foreach (var worker in s.Workers) key.Append(worker.Id).Append(worker.Job);
+            key.Append("|raid:").Append(string.Join(",", Owner.RaidCrew)).Append(Owner.Game.State.IsNight);
             return key.ToString();
         }
 
@@ -128,19 +129,20 @@ namespace RestaurantCity {
             modal = Block(canvas.transform, "Restaurant management", 0, 105, 1440, 735, new Color(ink.r, ink.g, ink.b, .60f));
             var sheet = Block(modal, "Order pad", 110, 12, 1220, 710, paper);
             Block(sheet, "Top accent", 0, 0, 1220, 7, teal);
-            Label(sheet, Owner.Panel == "Phone" ? "Your phone." : Owner.Panel == "Supplies" ? "Milo's Market." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "Recipes." : Owner.Panel == "Staff" ? "Crew and People book." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
+            Label(sheet, Owner.Panel == "Raid" ? "Plan a raid." : Owner.Panel == "Phone" ? "Your phone." : Owner.Panel == "Supplies" ? "Milo's Market." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "Recipes." : Owner.Panel == "Staff" ? "Crew and People book." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
             Button(sheet, "Close  x", 1060, 24, 130, 36, () => Owner.ClosePanel(), ink, paper);
             Label(sheet, "Time pauses while management is open.", 823, 62, 365, 19, 12, muted, false, TextAnchor.MiddleRight);
             string[] panels = { "Catalog", "Service", "Menu", "Cookbook", "Staff", "Map", "Reviews", "Furniture" };
             // Milo's shop and property listings are places in the city, not restaurant management: no tabs.
-            if (Owner.Panel == "Supplies" || Owner.Panel == "Phone") panels = new string[0];
+            if (Owner.Panel == "Supplies" || Owner.Panel == "Phone" || Owner.Panel == "Raid") panels = new string[0];
             for (int i = 0; i < panels.Length; i++) {
                 string tab = panels[i]; bool active = Owner.Panel == tab;
                 Button(sheet, tab == "Catalog" ? "Shop" : tab == "Furniture" ? "Arrange" : tab, 30 + i * 114, 78, 108, 35, () => { Owner.ShowPanel(tab); signature = ""; Refresh(); }, active ? teal : pale, active ? white : ink);
             }
             Label(sheet, "Your budget  $" + Owner.Game.State.Cash, 950, 82, 236, 28, 17, ink, true, TextAnchor.MiddleRight);
             Block(sheet, "Rule", 30, 124, 1160, 2, pale);
-            if (Owner.Panel == "Phone") BuildPhone(sheet);
+            if (Owner.Panel == "Raid") BuildRaid(sheet);
+            else if (Owner.Panel == "Phone") BuildPhone(sheet);
             else if (Owner.Panel == "Supplies") BuildSupplies(sheet);
             else if (Owner.Panel == "Catalog") BuildCatalog(sheet);
             else if (Owner.Panel == "Menu") BuildMenu(sheet);
@@ -491,6 +493,41 @@ namespace RestaurantCity {
                 Label(card, "25 Flux    /    Rival exclusive", 25, 172, 520, 28, 16, paper, true);
                 Button(card, "Locked: they only work for a three-star restaurant", 25, 233, 508, 43, () => { }, pale, ink, false);
             }
+        }
+
+        // The raid planner (opened at the rival's place): who you're up against, what you can win, and your crew picks.
+        void BuildRaid(RectTransform sheet) {
+            var st = Owner.Game.State; var rival = Rivals.Get(Owner.RaidRivalId); var rec = RaidRules.Record(st, rival.Id);
+            bool ok = RaidRules.CanRaid(st, rival, Owner.ServiceInProgress, out var why);
+            Label(sheet, rival.Name + "   " + StarText.Of(rival.Stars), 35, 138, 800, 40, 30, ink, true);
+            Label(sheet, rival.Pitch, 35, 180, 780, 44, 16, muted);
+            bool known = st.Knows(rival.RecipeId); var dish = RestaurantCatalog.Dish(rival.RecipeId);
+            var prize = Block(sheet, "Raid prize", 835, 138, 355, 150, ink);
+            Label(prize, "WIN", 18, 12, 300, 22, 14, gold, true);
+            Label(prize, "Always: $" + rival.CashMin + "-" + rival.CashMax + " and " + rival.Flux + " Flux", 18, 36, 330, 24, 16, paper, true);
+            Label(prize, known ? "Recipe: " + dish.Name + " (already yours)" : "Chance: the " + dish.Name + " recipe (" + Mathf.RoundToInt(rival.DropChance * 100) + "%, guaranteed by win " + rival.Pity + ")", 18, 64, 330, 44, 15, known ? paper : gold, true);
+            Label(prize, "Wins " + rec.Wins + "  /  raids " + rec.Attempts, 18, 116, 330, 22, 13, paper);
+            Label(sheet, "THE FIGHT", 35, 232, 600, 22, 14, muted, true);
+            Label(sheet, "You vs " + rival.Boss + ": " + rival.BossHits + " spatula hits (left click / RB). Step back when he winds up.\nYour crew vs his " + rival.GoonModels.Length + " fry cooks (Brawn " + rival.GoonStats.Brawn + ", Stamina " + rival.GoonStats.Stamina + " each). They fight on their own.", 35, 254, 780, 50, 15, ink);
+            Label(sheet, "PICK YOUR CREW  (up to " + RaidRules.MaxCrew + "; needs " + RaidRules.MinEnergy + "+ energy; anyone knocked out needs rest after)", 35, 312, 1100, 22, 14, muted, true);
+            var workers = Owner.Data.Workers; float x = 35;
+            if (workers.Count == 0) Label(sheet, "No crew yet. Recruit residents in the Staff tab, or go in alone against the fry cooks too.", 35, 340, 1100, 30, 16, coral, true);
+            foreach (var w in workers) {
+                string id = w.Id; bool picked = Owner.RaidCrew.Contains(id), can = RaidRules.CanFight(w); var s = StaffStats.For(id);
+                var card = Block(sheet, "Crew " + id, x, 340, 220, 150, picked ? new Color(.86f, .95f, .9f) : can ? white : pale);
+                Label(card, RestaurantCatalog.Worker(id)?.Name ?? id, 12, 8, 200, 26, 18, ink, true);
+                StatPips(card, s, 12, 38, 50);
+                Label(card, "Energy " + Mathf.RoundToInt(w.Energy) + (s.Perk == Perk.Brawler || s.Perk == Perk.Tough || s.Perk == Perk.Rally ? "   " + StaffStats.PerkName(s.Perk) : ""), 12, 72, 200, 20, 13, can ? ink : coral, true);
+                Button(card, picked ? "In the crew  (remove)" : can ? "Add to raid" : (w.Job == StaffJob.Stand ? "On the stand" : "Too tired"), 12, 100, 196, 38, () => Owner.ToggleRaidCrew(id), picked ? teal : pale, picked ? white : ink, can || picked);
+                x += 232; if (x > 1000) break;
+            }
+            var crewStats = Owner.RaidCrew.Select(id => StaffStats.For(id)).ToList();
+            var goons = Enumerable.Repeat(rival.GoonStats, rival.GoonModels.Length).ToList();
+            float mine = RaidRules.Power(crewStats), theirs = RaidRules.Power(goons);
+            string odds = crewStats.Count == 0 ? "Alone: the fry cooks will come for you too." : mine >= theirs * 1.3f ? "Your crew should win their fight." : mine >= theirs * .8f ? "An even brawl. Help them with your spatula." : "Your crew is outmatched. Bring more Brawn or Stamina.";
+            Label(sheet, "Crew power " + mine.ToString("0") + "  vs  fry cooks " + theirs.ToString("0") + "    " + odds, 35, 504, 900, 26, 16, mine >= theirs ? teal : coral, true);
+            if (!ok) Label(sheet, why, 35, 540, 900, 30, 17, coral, true);
+            Button(sheet, ok ? "Start the raid" : "Can't raid right now", 35, 580, 360, 54, () => Owner.StartRaid(out _), ok ? coral : pale, ok ? white : ink, ok);
         }
 
         // Four stats as labelled pips (1-5): COOK, SPEED, STAMINA, BRAWN.

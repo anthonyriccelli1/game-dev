@@ -87,6 +87,18 @@ namespace RestaurantCity {
    Check(dk.Work(dogWallet,"p2",Id2("drink_machine"),KitchenState.PourSeconds+.1f,out _)&&dk.RecipeOf(dk.At(Id2("drink_machine")))=="float","holding E pours a Moonberry Float");
    var flt=dk.At(Id2("drink_machine"));dk.Tick(dogWallet,KitchenState.MeltStart+10);
    Check(flt.Quality<1&&KitchenState.Melting(flt),"a float left too long melts and loses value");
+   // Cyclops Stack (Greasy Gus raid prize): eggs live in the fridge row, fry fast on the grill, and crown a burger.
+   Check(dog.Place(dogWallet,"grill",0,4,0,out var gw),"second grill for the egg: "+gw);int eggGrill=dog.Layout.Last(p=>p.CatalogId=="grill").InstanceId;
+   dog.AddStock("egg",2);
+   Check(dk.Preview(dogWallet,"p3",Id2("pantry"),"egg").Kind!=KitchenActionKind.Tap&&dk.Preview(dogWallet,"p3",Id2("pantry"),"egg").FailReason.Contains("Greasy Gus"),"eggs need the Cyclops Stack, won from Greasy Gus");
+   dogWallet.Learn("cyclops");
+   Check(dk.Act(dogWallet,"p3",Id2("pantry"),"egg",out _)&&dk.Hold("p3")?.Kind==KitchenItemKind.RawEgg,"take an egg");
+   Check(dk.Act(dogWallet,"p3",eggGrill,"",out _),"the egg goes on the grill");
+   dk.Tick(dogWallet,4.2f);Check(dk.At(eggGrill)?.Kind==KitchenItemKind.FriedEgg,"the egg fries in about 4 seconds");
+   Check(dk.Act(dogWallet,"p3",eggGrill,"",out _)&&dk.Hold("p3")?.Kind==KitchenItemKind.FriedEgg,"take the fried egg");
+   var eyePlate=new KitchenItem{Id=998,Kind=KitchenItemKind.Plate,Holder="p1",Components=new System.Collections.Generic.List<string>{"bun","cooked_patty","fried_egg"}};
+   Check(dk.RecipeOf(eyePlate)=="cyclops"&&Ingredients.For("cyclops").Length==3,"bun + patty + fried egg is a Cyclops Stack");
+   Check(Ingredients.Get("egg").Cold&&KitchenState.ShelvesOf(dog,Id2("pantry"),"pantry").Contains("egg"),"eggs are cold food (pantry holds them until you own a fridge)");
    wallet.Cash=10000;wallet.RankEarned=5;data.Rank=2;
    Check(Paint(Id(premium),Id(premium).StartsWith("wall_")?"wall:back:0":"floor:0:1"),"earned rank and stars unlock premium finish purchases");
 

@@ -55,7 +55,16 @@ public static class PrototypeBuilder {
         if (!city) Building("Corner cafe", -20, -15, 7, 9, Mat("Sage", "8DAB91"), world);
         if (!city) Building("Future Restaurant", -10, -15, 10, 11, Mat("Brick", "BC896D"), world);
         if (!city) { Building("Records", 2, -16, 10, 14, teal, world); Building("Bodega", 16, -15, 13, 10, Mat("Mustard", "CEAE70"), world); }
-        if (city) { CityMap.Build(world); game.gameObject.AddComponent<DistrictLocks>().Game = game; }
+        if (city) {
+            CityMap.Build(world); game.gameObject.AddComponent<DistrictLocks>().Game = game;
+            // Rival raid targets (Raids.cs): the rival's truck/door opens the raid planner.
+            foreach (var rival in Rivals.All) {
+                var spot = GameObject.Find(rival.Name) ?? new GameObject(rival.Name);
+                if (!spot.transform.parent) spot.transform.SetParent(world, false);
+                var box = spot.AddComponent<BoxCollider>(); box.center = new Vector3(rival.X, 1.2f, rival.Z) - spot.transform.position; box.size = new Vector3(2.6f, 2.4f, 5.4f);
+                var it = spot.AddComponent<Interactable>(); it.Kind = InteractionKind.Raid; it.Site = rival.Id;
+            }
+        }
         else {
             Cube("North district boundary", new Vector3(0, 2, 32), new Vector3(58, 4, 1), dark, world);
             Cube("West boundary", new Vector3(-25, 3, 6), new Vector3(1, 6, 54), teal, world);

@@ -25,7 +25,7 @@ namespace RestaurantCity {
             E("soup", "Planet Soup", RecipeSource.Cookbook, 1, 60, "Buy it here at 1 star.", "Simmer soup veg in the pot and keep stirring or it scorches.", true),
             E("cometdog", "Comet Dog", RecipeSource.Cookbook, 1, 70, "Buy it here at 1 star.", "A sausage trailing a glowing orange sauce tail and star sprinkles. Hot as a comet: cooks fast, burns fast.", true),
             E("float", "Moonberry Float", RecipeSource.Cookbook, 2, 110, "Buy it here at 2 stars. Needs the drink machine.", "Soft serve drowned in fizzing moonberry soda. Serve it before it melts.", true),
-            E("cyclops", "Cyclops Stack", RecipeSource.Raid, 0, 0, "Won by raiding Greasy Gus's food truck.", "One huge fried egg staring up off the toast, bacon for eyelashes. Mornings only.", false),
+            E("cyclops", "Cyclops Stack", RecipeSource.Raid, 0, 0, "Won by raiding Greasy Gus's food truck (the vacant lot, after dark).", "A burger crowned with one huge fried egg staring up at you, bacon for eyelashes. The patty and the egg share the grill.", true),
             E("twinmoons", "Twin Moons", RecipeSource.Raid, 0, 0, "Won by raiding The Tin Diner. Cook it on a chrome grill.", "Two patties, each under a slice of cheese glowing like a moon. Both cook at once.", false),
             E("hoard", "Dragon's Hoard", RecipeSource.Raid, 0, 0, "Won by raiding The Gilded Orbit.", "The Gilded Orbit's showpiece: a mini burger, salad and soup piled on a gold tray with cheese coins.", false),
             E("midnight", "Midnight Burger", RecipeSource.Found, 0, 0, "Found in the city after dark. Zeeb sells the sauce.", "A burger with Zeeb's glowing Midnight Sauce. Contraband.", true),

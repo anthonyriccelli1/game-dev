@@ -58,7 +58,30 @@ namespace RestaurantCity {
                 if (bun) { y = Put("Cheese", p, y, 45) - .004f; }
             }
             if (midnight) y = MidnightGlaze(p, y);
+            if (Has("fried_egg")) { CyclopsEye(p, y); return; }   // the egg IS the lid: no top bun
             if (bun) Put("BunTop", p, y - .005f, 20);
+        }
+
+        // Cyclops Stack: one huge fried egg crowning the burger, its yolk a staring eye (with a pupil), bacon eyelashes.
+        static void CyclopsEye(Transform p, float y) {
+            float top = Put("Egg", p, y - .004f, 0, null, 1.35f);
+            if (top <= y) { Shape(PrimitiveType.Cylinder, "Egg white", p, new Vector3(0, y + .006f, 0), new Vector3(.3f, .006f, .27f), Mat(C("FBF7EC"))); top = y + .012f; }
+            Shape(PrimitiveType.Sphere, "Yolk eye", p, new Vector3(0, top + .012f, 0), new Vector3(.11f, .06f, .11f), Mat(C("F7B21E"), .25f));
+            Shape(PrimitiveType.Sphere, "Pupil", p, new Vector3(0, top + .04f, .018f), new Vector3(.042f, .018f, .042f), Mat(C("1E1A1A")));
+            Shape(PrimitiveType.Sphere, "Glint", p, new Vector3(-.012f, top + .047f, .03f), new Vector3(.012f, .006f, .012f), Mat(C("FFFFFF"), .6f));
+            var bacon = Mat(C("A8452C"));
+            for (int i = 0; i < 4; i++) {
+                float a = (-50 + i * 33) * Mathf.Deg2Rad; var at = new Vector3(Mathf.Sin(a) * .1f, top + .02f, -Mathf.Cos(a) * .1f + .01f);
+                if (!PutAt("Bacon", p, at, (-50 + i * 33), .55f)) Shape(PrimitiveType.Cube, "Bacon lash", p, at, new Vector3(.018f, .01f, .07f), bacon, new Vector3(0, -50 + i * 33, 0));
+            }
+        }
+        // A pack part at an exact local position (true if the part exists).
+        static bool PutAt(string name, Transform p, Vector3 at, float yaw, float scale) {
+            var prefab = Part(name); if (!prefab) return false;
+            var go = Object.Instantiate(prefab, p, false); go.name = name; go.transform.localPosition = at; go.transform.localRotation = Quaternion.Euler(0, yaw, 0);
+            go.transform.localScale = prefab.transform.localScale * scale;
+            foreach (var c in go.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
+            return true;
         }
 
         // Glowing purple sauce layer with drips down the side and little stars floating up.

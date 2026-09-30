@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 namespace RestaurantCity {
- public enum KitchenItemKind { RawProtein,PreparedPatty,CookedPatty,BurntPatty,RawGreens,ChoppedGreens,RawSauce,MidnightSauce,Bun,Plate,DirtyPlate,GroceryBag,SoupVeg,SoupPot,Soup,ScorchedSoup,RawSausage,CookedSausage,BurntSausage,FloatCup }
+ public enum KitchenItemKind { RawProtein,PreparedPatty,CookedPatty,BurntPatty,RawGreens,ChoppedGreens,RawSauce,MidnightSauce,Bun,Plate,DirtyPlate,GroceryBag,SoupVeg,SoupPot,Soup,ScorchedSoup,RawSausage,CookedSausage,BurntSausage,FloatCup,RawEgg,FriedEgg,BurntEgg }
  public enum KitchenActionKind { None,Tap,Hold }
  // Preview describes exactly what a single interact press will do; Act performs it by calling Preview and
  // invoking the very same Apply callback it returned, so the on-screen prompt and the executed action can
@@ -51,6 +51,7 @@ namespace RestaurantCity {
    switch(kind){
     case KitchenItemKind.CookedPatty:return "cooked_patty";
     case KitchenItemKind.CookedSausage:return "cooked_sausage";
+    case KitchenItemKind.FriedEgg:return "fried_egg";
     case KitchenItemKind.ChoppedGreens:return "chopped_greens";
     case KitchenItemKind.MidnightSauce:return "midnight_sauce";
     case KitchenItemKind.Bun:return "bun";
@@ -59,8 +60,8 @@ namespace RestaurantCity {
    }
   }
   static bool IsCounter(string id)=>id=="assembly"||id=="counter";
-  static string ComponentLabel(string id)=>id=="cooked_sausage"?"the cooked sausage":id=="float"?"the float":id=="bun"?"a bun":id=="cooked_patty"?"the cooked patty":id=="chopped_greens"?"chopped greens":id=="midnight_sauce"?"midnight sauce":id;
-  static string PantryLabel(string choice)=>choice=="sausage"?"a raw sausage":choice=="soup"?"soup vegetables":choice=="protein"?"a raw patty":choice=="greens"?"greens":choice=="bun"?"a bun":"sauce ingredients";
+  static string ComponentLabel(string id)=>id=="fried_egg"?"the fried egg":id=="cooked_sausage"?"the cooked sausage":id=="float"?"the float":id=="bun"?"a bun":id=="cooked_patty"?"the cooked patty":id=="chopped_greens"?"chopped greens":id=="midnight_sauce"?"midnight sauce":id;
+  static string PantryLabel(string choice)=>choice=="egg"?"an egg":choice=="sausage"?"a raw sausage":choice=="soup"?"soup vegetables":choice=="protein"?"a raw patty":choice=="greens"?"greens":choice=="bun"?"a bun":"sauce ingredients";
   bool CanAddComponent(KitchenItem plate,string component,out string message){
    if(plate.Components.Contains(component))return Fail("This plate already has "+ComponentLabel(component)+".",out message);
    if(RecipeBook.Recipes.Any(r=>r.Components.Contains(component)&&plate.Components.All(c=>r.Components.Contains(c)))){message="";return true;}
@@ -69,7 +70,7 @@ namespace RestaurantCity {
    return Fail(name+" doesn't use "+ComponentLabel(component)+".",out message);
   }
   // Each pantry shelf holds one real ingredient; stock is counted and runs out per ingredient.
-  static KitchenItemKind ShelfKind(string shelf)=>shelf=="sausage"?KitchenItemKind.RawSausage:shelf=="soup"?KitchenItemKind.SoupVeg:shelf=="protein"?KitchenItemKind.RawProtein:shelf=="greens"?KitchenItemKind.RawGreens:shelf=="bun"?KitchenItemKind.Bun:KitchenItemKind.RawSauce;
+  static KitchenItemKind ShelfKind(string shelf)=>shelf=="egg"?KitchenItemKind.RawEgg:shelf=="sausage"?KitchenItemKind.RawSausage:shelf=="soup"?KitchenItemKind.SoupVeg:shelf=="protein"?KitchenItemKind.RawProtein:shelf=="greens"?KitchenItemKind.RawGreens:shelf=="bun"?KitchenItemKind.Bun:KitchenItemKind.RawSauce;
   static string OutOf(IngredientDef ing)=>ing.Source==Ingredients.Stash?"Out of "+ing.Name.ToLower()+". Call Zeeb on your phone (P).":"Out of "+ing.Name.ToLower()+". Buy more at Milo's.";
   // Which shelves a storage station holds: the fridge keeps cold food; a restaurant pantry keeps dry goods once there is
   // a fridge (until then it holds everything); the street stand's cart pantry always holds everything.
@@ -91,7 +92,7 @@ namespace RestaurantCity {
    if(ing!=null&&!shelves.Contains(choice))return Blocked(ing.Name+(ing.Cold?" are kept in the fridge.":" are kept in the pantry."));
    if(ing==null)return Blocked("Look at a shelf: patties, greens, buns, sauce or soup veg.");
    if(choice=="sauce"&&!game.Knows("midnight"))return Blocked("Needs the midnight recipe.");
-   if(!string.IsNullOrEmpty(ing.Recipe)&&choice!="sauce"&&!game.Knows(ing.Recipe))return Blocked("Buy the "+RestaurantCatalog.Dish(ing.Recipe).Name+" recipe in the Cookbook first.");
+   if(!string.IsNullOrEmpty(ing.Recipe)&&choice!="sauce"&&!game.Knows(ing.Recipe))return Blocked(DistrictCookbook.Find(ing.Recipe)?.Source==RecipeSource.Cookbook||DistrictCookbook.Find(ing.Recipe)==null?"Buy the "+RestaurantCatalog.Dish(ing.Recipe).Name+" recipe in the Cookbook first.":"You don't know the "+RestaurantCatalog.Dish(ing.Recipe).Name+" yet. "+DistrictCookbook.Find(ing.Recipe).Hint);
    if(hand!=null&&hand.Kind==KitchenItemKind.Plate&&choice=="bun"){
     // Fewer-press shortcut: a bun needs no prep, so it can go straight onto a plate you are already carrying.
     if(!CanAddComponent(hand,"bun",out string reason))return Blocked(reason);
@@ -212,13 +213,13 @@ namespace RestaurantCity {
    if(hand==null)return Blocked("Bring an ingredient or plate here.");
    if(item!=null){
     if(!IsCounter(s.CatalogId)||item.Kind!=KitchenItemKind.Plate)return Blocked(IsCounter(s.CatalogId)?"Counter is full. Put a plate here to build on it.":"Station occupied.");
-    string part=hand.Kind==KitchenItemKind.Soup?"soup":hand.Kind==KitchenItemKind.CookedSausage?"cooked_sausage":hand.Kind==KitchenItemKind.CookedPatty?"cooked_patty":hand.Kind==KitchenItemKind.Bun?"bun":hand.Kind==KitchenItemKind.ChoppedGreens?"chopped_greens":hand.Kind==KitchenItemKind.MidnightSauce?"midnight_sauce":null;
+    string part=hand.Kind==KitchenItemKind.Soup?"soup":hand.Kind==KitchenItemKind.FriedEgg?"fried_egg":hand.Kind==KitchenItemKind.CookedSausage?"cooked_sausage":hand.Kind==KitchenItemKind.CookedPatty?"cooked_patty":hand.Kind==KitchenItemKind.Bun?"bun":hand.Kind==KitchenItemKind.ChoppedGreens?"chopped_greens":hand.Kind==KitchenItemKind.MidnightSauce?"midnight_sauce":null;
     if(part==null)return Blocked(hand.Kind==KitchenItemKind.RawSauce?"Raw sauce ingredients: trash these, then hold the PLATE and press E on the sauce shelf.":"Prepare the ingredient first. Discard burnt food.");
     if(!CanAddComponent(item,part,out string why))return Blocked(why);
     var plate=item;var carried=hand;
     return Tap("Add "+ComponentLabel(part)+" to plate",()=>{plate.Components.Add(part);plate.Quality=Math.Min(plate.Quality,carried.Quality);Items.Remove(carried);return "Added "+ComponentLabel(part)+" to the plate.";});
    }
-   bool allowed=s.CatalogId=="prep_bench"&&Raw(hand.Kind)||(s.CatalogId=="grill"||s.CatalogId=="oven")&&(hand.Kind==KitchenItemKind.RawProtein||s.CatalogId=="grill"&&hand.Kind==KitchenItemKind.RawSausage)||s.CatalogId=="stove"&&hand.Kind==KitchenItemKind.SoupVeg||IsCounter(s.CatalogId)||s.CatalogId=="sink"&&hand.Kind==KitchenItemKind.DirtyPlate;
+   bool allowed=s.CatalogId=="prep_bench"&&Raw(hand.Kind)||(s.CatalogId=="grill"||s.CatalogId=="oven")&&(hand.Kind==KitchenItemKind.RawProtein||s.CatalogId=="grill"&&(hand.Kind==KitchenItemKind.RawSausage||hand.Kind==KitchenItemKind.RawEgg))||s.CatalogId=="stove"&&hand.Kind==KitchenItemKind.SoupVeg||IsCounter(s.CatalogId)||s.CatalogId=="sink"&&hand.Kind==KitchenItemKind.DirtyPlate;
    if(!allowed)return Blocked("Use the correct station for this item.");
    var carriedItem=hand;
    return Tap("Place "+Label(hand).ToLower(),()=>{carriedItem.Holder="station:"+stationId;carriedItem.Age=0;s.Progress=0;s.WorkOwner=null;return "Placed "+Label(carriedItem);});
@@ -328,12 +329,18 @@ namespace RestaurantCity {
   public const float PourSeconds=2.5f,MeltStart=18,MeltRate=.04f;
   public static bool Melting(KitchenItem i)=>i!=null&&i.Components!=null&&i.Components.Contains("float")&&i.Age>MeltStart;
   public string RecipeOf(KitchenItem item)=>item==null||item.Kind!=KitchenItemKind.Plate?"":RecipeBook.Match(item.Components);
-  public string Label(KitchenItem item){if(item==null)return "Empty hands";string dish=RecipeOf(item);if(dish!="")return RestaurantCatalog.Dish(dish).Name+(Melting(item)?" (melting!)":"");switch(item.Kind){case KitchenItemKind.RawSausage:return "Raw sausage";case KitchenItemKind.CookedSausage:return "Cooked sausage";case KitchenItemKind.BurntSausage:return "Burnt sausage";case KitchenItemKind.FloatCup:return "Cup under the nozzle";case KitchenItemKind.GroceryBag:return "Grocery bag ("+item.Components.Count+" items)";case KitchenItemKind.SoupVeg:return "Soup vegetables";case KitchenItemKind.SoupPot:return "Simmering soup";case KitchenItemKind.Soup:return "Pot of Planet soup";case KitchenItemKind.ScorchedSoup:return "Scorched soup";case KitchenItemKind.RawProtein:return "Raw patty";case KitchenItemKind.PreparedPatty:return "Prepared patty";case KitchenItemKind.CookedPatty:return "Cooked patty";case KitchenItemKind.BurntPatty:return "Burnt patty";case KitchenItemKind.RawGreens:return "Uncut greens";case KitchenItemKind.ChoppedGreens:return "Chopped greens";case KitchenItemKind.RawSauce:return "Midnight ingredients";case KitchenItemKind.MidnightSauce:return "Midnight sauce";case KitchenItemKind.DirtyPlate:return "Dirty plate";case KitchenItemKind.Plate:return item.Components.Count==0?(item.Disposable?"Paper plate":"Clean plate"):"Partly assembled dish";default:return "Bun";}}
+  public string Label(KitchenItem item){if(item==null)return "Empty hands";string dish=RecipeOf(item);if(dish!="")return RestaurantCatalog.Dish(dish).Name+(Melting(item)?" (melting!)":"");switch(item.Kind){case KitchenItemKind.RawEgg:return "Raw egg";case KitchenItemKind.FriedEgg:return "Fried egg";case KitchenItemKind.BurntEgg:return "Burnt egg";case KitchenItemKind.RawSausage:return "Raw sausage";case KitchenItemKind.CookedSausage:return "Cooked sausage";case KitchenItemKind.BurntSausage:return "Burnt sausage";case KitchenItemKind.FloatCup:return "Cup under the nozzle";case KitchenItemKind.GroceryBag:return "Grocery bag ("+item.Components.Count+" items)";case KitchenItemKind.SoupVeg:return "Soup vegetables";case KitchenItemKind.SoupPot:return "Simmering soup";case KitchenItemKind.Soup:return "Pot of Planet soup";case KitchenItemKind.ScorchedSoup:return "Scorched soup";case KitchenItemKind.RawProtein:return "Raw patty";case KitchenItemKind.PreparedPatty:return "Prepared patty";case KitchenItemKind.CookedPatty:return "Cooked patty";case KitchenItemKind.BurntPatty:return "Burnt patty";case KitchenItemKind.RawGreens:return "Uncut greens";case KitchenItemKind.ChoppedGreens:return "Chopped greens";case KitchenItemKind.RawSauce:return "Midnight ingredients";case KitchenItemKind.MidnightSauce:return "Midnight sauce";case KitchenItemKind.DirtyPlate:return "Dirty plate";case KitchenItemKind.Plate:return item.Components.Count==0?(item.Disposable?"Paper plate":"Clean plate"):"Partly assembled dish";default:return "Bun";}}
   // Planet soup on the stove: veg in the pot simmers to soup in SoupSeconds, but scorches if nobody stirs for ScorchSeconds.
-  public const float SoupSeconds=14,ScorchSeconds=9,StirWarning=5,SausageCook=.6f,SausageBurn=.5f;
+  public const float SoupSeconds=14,ScorchSeconds=9,StirWarning=5,SausageCook=.6f,SausageBurn=.5f,EggCook=.45f,EggBurn=.55f;
   public static bool Sausage(KitchenItemKind k)=>k==KitchenItemKind.RawSausage||k==KitchenItemKind.CookedSausage||k==KitchenItemKind.BurntSausage;
+  public static bool Egg(KitchenItemKind k)=>k==KitchenItemKind.RawEgg||k==KitchenItemKind.FriedEgg||k==KitchenItemKind.BurntEgg;
+  // Grill food that is never flipped: sausages roll themselves, the Cyclops egg is sunny side up.
+  public static bool NoFlip(KitchenItemKind k)=>Sausage(k)||Egg(k);
+  public static bool GrillRaw(KitchenItemKind k)=>k==KitchenItemKind.RawProtein||k==KitchenItemKind.RawSausage||k==KitchenItemKind.RawEgg;
+  public static bool GrillDone(KitchenItemKind k)=>k==KitchenItemKind.CookedPatty||k==KitchenItemKind.CookedSausage||k==KitchenItemKind.FriedEgg;
+  public static bool GrillBurnt(KitchenItemKind k)=>k==KitchenItemKind.BurntPatty||k==KitchenItemKind.BurntSausage||k==KitchenItemKind.BurntEgg;
   // Seconds until this item is cooked and until it burns on this grill/oven (level and food type included).
-  public static (float cook,float burn) GrillTimes(string catalogId,int level,KitchenItemKind kind){float c=StationUpgrades.CookSeconds(catalogId,level),b=StationUpgrades.BurnSeconds(level);return Sausage(kind)?(c*SausageCook,b*SausageBurn):(c,b);}
+  public static (float cook,float burn) GrillTimes(string catalogId,int level,KitchenItemKind kind){float c=StationUpgrades.CookSeconds(catalogId,level),b=StationUpgrades.BurnSeconds(level);return Sausage(kind)?(c*SausageCook,b*SausageBurn):Egg(kind)?(c*EggCook,b*EggBurn):(c,b);}
   public void StirPot(int stationId){var item=At(stationId);if(item!=null&&item.Kind==KitchenItemKind.SoupPot)item.Stir=0;}
   void TickStove(GameState game,KitchenStation s,KitchenItem item,float seconds){
    if(item.Kind==KitchenItemKind.SoupVeg){item.Kind=KitchenItemKind.SoupPot;item.Stir=0;s.Progress=0;}
@@ -348,7 +355,9 @@ namespace RestaurantCity {
    foreach(var s in Stations){if(s.CatalogId!="stove")continue;var pot=At(s.InstanceId);if(pot!=null)TickStove(game,s,pot,seconds*StationUpgrades.SoupSpeed(game.Restaurant.LevelOf(s.InstanceId)));}
    foreach(var s in Stations){var item=At(s.InstanceId);if((s.CatalogId!="grill"&&s.CatalogId!="oven")||item==null)continue;if(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.CookedPatty){int lvl=game.Restaurant.LevelOf(s.InstanceId);s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=StationUpgrades.BurnSeconds(lvl)){if(item.Kind!=KitchenItemKind.BurntPatty)game.Emit("burn:"+s.InstanceId);item.Kind=KitchenItemKind.BurntPatty;item.Quality=0;}else if(s.Progress>=StationUpgrades.CookSeconds(s.CatalogId,lvl))item.Kind=KitchenItemKind.CookedPatty;}
     // Comet Dog sausages: hot as a comet. They cook in 60% of a patty's time and burn in half the time.
-    else if(item.Kind==KitchenItemKind.RawSausage||item.Kind==KitchenItemKind.CookedSausage){int lvl=game.Restaurant.LevelOf(s.InstanceId);s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=StationUpgrades.BurnSeconds(lvl)*SausageBurn){if(item.Kind!=KitchenItemKind.BurntSausage)game.Emit("burn:"+s.InstanceId);item.Kind=KitchenItemKind.BurntSausage;item.Quality=0;}else if(s.Progress>=StationUpgrades.CookSeconds(s.CatalogId,lvl)*SausageCook)item.Kind=KitchenItemKind.CookedSausage;}}
+    else if(item.Kind==KitchenItemKind.RawSausage||item.Kind==KitchenItemKind.CookedSausage){int lvl=game.Restaurant.LevelOf(s.InstanceId);s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=StationUpgrades.BurnSeconds(lvl)*SausageBurn){if(item.Kind!=KitchenItemKind.BurntSausage)game.Emit("burn:"+s.InstanceId);item.Kind=KitchenItemKind.BurntSausage;item.Quality=0;}else if(s.Progress>=StationUpgrades.CookSeconds(s.CatalogId,lvl)*SausageCook)item.Kind=KitchenItemKind.CookedSausage;}
+    // The Cyclops egg: fries in under half a patty's time; take it off before the yolk goes hard and black.
+    else if(item.Kind==KitchenItemKind.RawEgg||item.Kind==KitchenItemKind.FriedEgg){int lvl=game.Restaurant.LevelOf(s.InstanceId);s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=StationUpgrades.BurnSeconds(lvl)*EggBurn){game.Emit("burn:"+s.InstanceId);item.Kind=KitchenItemKind.BurntEgg;item.Quality=0;}else if(s.Progress>=StationUpgrades.CookSeconds(s.CatalogId,lvl)*EggCook)item.Kind=KitchenItemKind.FriedEgg;}}
    foreach(var item in Items)if(item.Components!=null&&item.Components.Contains("float")){if(item.Holder.StartsWith("station:"))item.Age+=seconds;if(item.Age>MeltStart)item.Quality=Math.Min(item.Quality,Math.Max(.35f,1-(item.Age-MeltStart)*MeltRate));}
    foreach(var item in Items){if(!item.Holder.StartsWith("table:"))continue;int id;if(!int.TryParse(item.Holder.Substring(6),out id))continue;var order=game.Restaurant.Orders.Find(o=>o.Id==id);if(order==null||order.Stage==RestaurantOrderStage.Leaving){item.Kind=KitchenItemKind.DirtyPlate;item.Components.Clear();}}
    foreach(var item in Items)if(!item.Holder.StartsWith("station:")&&(item.Kind==KitchenItemKind.CookedPatty||item.Kind==KitchenItemKind.Plate&&item.Components.Count>0)){item.Age+=seconds;item.Quality=Math.Min(item.Quality,Math.Max(.4f,1-Math.Max(0,item.Age-40)*.008f));}

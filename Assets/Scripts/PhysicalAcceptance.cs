@@ -51,6 +51,28 @@ namespace RestaurantCity {
      Check(StaffStats.DrainMultiplier(StaffStats.For("033_Franky"))<.5f*StaffStats.DrainMultiplier(StaffStats.For("008_Hugo")),"Tireless Franky drains energy far slower than Hugo");
      var tired=new WorkerState{Id="070_Robert",Energy=10};var tired2=new WorkerState{Id="008_Hugo",Energy=10};
      Check(RestaurantController.WorkerSpeed(tired,"grill")>.9f&&RestaurantController.WorkerSpeed(tired2,"grill")<.5f,"Steady Robert keeps his speed when tired; Hugo slows down");}
+    // Raids: Greasy Gus (1 star) after dark. A strong crew beats his fry cooks; five spatula hits drop Gus; cash and Flux always, the recipe by win 3.
+    {var g=st;var rc=Game.Restaurant;var gus=Rivals.GreasyGus;float clock0=g.Clock;int cash0=g.Cash,flux0=g.Flux,rank0=rc.Data.Rank,xp0=g.Xp;bool knew=g.Knows("cyclops");
+     rc.Data.Rank=0;g.Clock=60;Check(!RaidRules.CanRaid(g,gus,false,out _),"Gus's truck is only there after dark");
+     g.Clock=180;Check(!RaidRules.CanRaid(g,gus,true,out _),"no raids while your restaurant is mid-service");
+     Check(RaidRules.CanRaid(g,gus,false,out var why0),"a zero-star restaurant may raid one-star Gus: "+why0);
+     Check(GameObject.Find("Greasy Gus's truck")?.GetComponent<Interactable>()?.Kind==InteractionKind.Raid,"Gus's truck in the vacant lot opens the raid planner");
+     string[] crewIds={"091_BigBro_a","046_Mafiossini","035_Wolfman"};
+     foreach(var id in crewIds)if(!rc.Data.Workers.Exists(w=>w.Id==id))rc.Data.Workers.Add(new WorkerState{Id=id,Job=StaffJob.Cook,Energy=100});
+     rc.RaidCrew.Clear();rc.OpenRaid("gus");rc.UI.Refresh();Check(GameObject.Find("Raid prize")!=null,"the raid planner shows the prize");
+     foreach(var id in crewIds)rc.ToggleRaidCrew(id);Check(rc.RaidCrew.Count==3,"pick a crew of three");
+     Check(rc.StartRaid(out var rm)&&rc.ActiveRaid!=null,"the raid starts: "+rm);
+     var b=rc.ActiveRaid;b.BossPassive=true;b.enabled=false;
+     Check(b.Fighters.Count(f=>f.Ours)==3&&b.Fighters.Count(f=>!f.Ours&&!f.Boss)==2&&b.BossFighter!=null,"crew, two fry cooks and Gus stand in the lot");
+     for(int i=0;i<1200&&b.Fighters.Any(f=>!f.Ours&&!f.Boss&&!f.Down);i++)b.Step(.05f);
+     Check(b.Fighters.Where(f=>!f.Ours&&!f.Boss).All(f=>f.Down),"a strong crew knocks out the fry cooks by themselves");
+     for(int i=0;i<gus.BossHits;i++)b.PlayerHit(b.BossFighter,Game.Player);b.Step(.05f);
+     Check(b.Over&&b.Won&&g.Cash>=cash0+gus.CashMin&&g.Flux==flux0+gus.Flux,"five spatula hits beat Gus: cash and Flux paid");
+     Check(!RaidRules.CanRaid(g,gus,false,out _),"one raid per rival per day");
+     Check(rc.Data.Workers.Where(w=>crewIds.Contains(w.Id)).All(w=>w.Energy<100),"the crew comes back tired");
+     for(int i=0;i<3&&!g.Knows("cyclops");i++)RaidRules.Win(g,gus,i);Check(g.Knows("cyclops"),"the Cyclops Stack drops by the third win at the latest");
+     b.Cleanup();Check(rc.ActiveRaid==null,"the raid is over and its fighters are cleared away");
+     rc.Data.Workers.RemoveAll(w=>crewIds.Contains(w.Id));g.Clock=clock0;g.Cash=cash0;g.Flux=flux0;rc.Data.Rank=rank0;g.Raids.Clear();if(!knew)g.KnownRecipes.Remove("cyclops");g.Xp=xp0;g.RepSources.RemoveAll(r=>r.Source=="Beating rivals");}
     // One restaurant per district: Old Market is the dressed 160 m block only (no greybox, no second site).
     Check(RestaurantSites.All.Length==1&&GameObject.Find("Saffron Bay (greybox districts)")==null&&GameObject.Find("Property for lease / The Bayside")==null,"Old Market has one restaurant and no greybox around it");
     Check(CityDistricts.At(0,0)?.Id=="market"&&CityDistricts.At(-190,-15)==null&&System.Array.TrueForAll(NightStashes.Spots,sp=>System.Math.Abs(sp.X)<78&&System.Math.Abs(sp.Z)<78),"every stash spot and place is inside the block");

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 
 namespace RestaurantCity {
@@ -59,6 +60,9 @@ namespace RestaurantCity {
             ("77_graffiti_alley_day", new Vector3(-22.5f, 0, -43), 0, 2, 60),
             ("78_vacant_lot_day", new Vector3(17.5f, 0, -44), 0, 4, 60),
             ("79_street_end_day", new Vector3(58, 0, 0), 90, 2, 60),
+            ("81_raid_planner", new Vector3(17.5f, 0, -40), 0, 4, 190),
+            ("82_raid_fight", new Vector3(17.5f, 0, -45.5f), 0, 6, 190),
+            ("83_raid_ko", new Vector3(17.5f, 0, -45.5f), 0, 8, 190),
             ("43_phone_zeeb", new Vector3(0, 0, 3), 0, 0, 60),
             ("44_style_kit_new", new Vector3(-9.5f, 0, 4.6f), 180, 6, 70),
             ("45_style_kit_old", new Vector3(-9.5f, 0, 4.6f), 180, 6, 70),
@@ -304,6 +308,21 @@ namespace RestaurantCity {
                     for (int i = 0; i < 3; i++) yield return null;
                     var sr = FindAnyObjectByType<UnityEngine.UI.ScrollRect>(); if (sr) sr.verticalNormalizedPosition = shot.name.Contains("top") ? 1f : .45f;
                     Debug.LogWarning("PEOPLE_BOOK scroll=" + (sr ? sr.verticalNormalizedPosition : -1));
+                }
+                if (rc && shot.name.Contains("raid_")) {
+                    var gs = Game.State; rc.Data.Rank = 0; string[] crewIds = { "091_BigBro_a", "046_Mafiossini", "035_Wolfman" };
+                    foreach (var id in crewIds) if (!rc.Data.Workers.Exists(w => w.Id == id)) rc.Data.Workers.Add(new WorkerState { Id = id, Job = StaffJob.Cook, Energy = 100 });
+                    if (shot.name.Contains("planner")) { gs.Raids.Clear(); rc.RaidCrew.Clear(); rc.OpenRaid("gus"); rc.ToggleRaidCrew(crewIds[0]); rc.ToggleRaidCrew(crewIds[1]); }
+                    else {
+                        if (!rc.ActiveRaid) { gs.Raids.Clear(); rc.RaidCrew.Clear(); foreach (var id in crewIds) rc.ToggleRaidCrew(id); rc.StartRaid(out var rm); Debug.LogWarning("RAID_START " + rm); }
+                        var b = rc.ActiveRaid;
+                        if (b) {
+                            b.BossPassive = true;
+                            if (shot.name.Contains("fight")) yield return new WaitForSeconds(3.2f);
+                            else { float t = 0; while (t < 30 && b.Fighters.Any(f => !f.Ours && !f.Boss && !f.Down)) { t += Time.deltaTime; yield return null; } yield return new WaitForSeconds(2.5f); }
+                            Debug.LogWarning("RAID_STATE goons down " + b.Fighters.Count(f => !f.Ours && !f.Boss && f.Down) + " crew down " + b.Fighters.Count(f => f.Ours && f.Down));
+                        }
+                    }
                 }
                 if (rc && shot.name.Contains("milo_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); }
                 if (rc && shot.name.Contains("stand_tables")) {

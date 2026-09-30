@@ -17,7 +17,8 @@ public class ResidentImport : AssetPostprocessor {
         if (!IsClip(assetPath)) return;
         var importer = (ModelImporter)assetImporter;
         string file = System.IO.Path.GetFileNameWithoutExtension(assetPath);
-        bool loop = !(file.StartsWith("Angry") || file.StartsWith("Happy") || file.StartsWith("Cheer") || file.StartsWith("Jump"));
+        bool loop = !(file.StartsWith("Angry") || file.StartsWith("Happy") || file.StartsWith("Cheer") || file.StartsWith("Jump") ||
+            file.StartsWith("Punch") || file.StartsWith("ZombiePunch") || file.Contains("HitReact") || file.StartsWith("Headbutt") || file.StartsWith("KnockedOut"));
         var clips = importer.defaultClipAnimations;
         foreach (var c in clips) {
             c.loopTime = loop; c.loopPose = loop;

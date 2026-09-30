@@ -28,6 +28,7 @@ namespace RestaurantCity {
         public List<string> KnownRecipes = new List<string> { "burger", "salad" };
         // The People book: residents you've fed at least once. Only they can be recruited (with Flux).
         public List<string> MetResidents = new List<string>();
+        public List<RaidRecord> Raids = new List<RaidRecord>();   // per-rival raid history (Raids.cs)
         public int StarRating => Restaurant != null ? Math.Max(1, Restaurant.Stars) : 1;
         public string PickVisitor(int seed, int ambience = ResidentCast.StandAmbience) => ResidentCast.Visitor(seed, IsNight, StarRating, MetResidents, ambience).Id;
         public bool HasMet(string id) => MetResidents.Contains(id);
@@ -210,6 +211,7 @@ namespace RestaurantCity {
             Cash = Math.Max(StandBuilt ? 0 : 10, Cash - 10); Health = 100; Discard(); HasOrder = false; ClearStandGuests(); NextCustomer = 8;
         }
         public void SanitizeAfterLoad() {
+            Raids = Raids ?? new List<RaidRecord>(); Raids.RemoveAll(r => r == null || Rivals.Get(r.RivalId) == null);
             // Saves from before reputation existed get credit for what their restaurant already earned.
             // v5 briefly counted dollars as reputation; v6 counts customers, stars and discoveries, so cap the carried-over amount.
             if (Version == 5) Xp = Math.Min(Xp, Reputation.Thresholds[1] - 1);

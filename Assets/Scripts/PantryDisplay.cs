@@ -8,12 +8,12 @@ namespace RestaurantCity {
         static readonly (string shelf, string ingredient, string kind, float x, float y, string title)[] PantrySpots = {
             ("protein", "patty", "RawProtein", -.48f, .265f, "Patties"), ("greens", "greens", "RawGreens", .48f, .265f, "Greens"),
             ("bun", "bun", "Bun", -.48f, .805f, "Buns"), ("sauce", "midnight_sauce", "RawSauce", .48f, .805f, "Sauce"),
-            ("soup", "soup_veg", "SoupVeg", -.48f, 1.345f, "Soup veg"), ("sausage", "sausage", "RawSausage", .48f, 1.345f, "Sausages"),
+            ("soup", "soup_veg", "SoupVeg", -.62f, 1.345f, "Soup veg"), ("sausage", "sausage", "RawSausage", 0f, 1.345f, "Sausages"), ("egg", "egg", "EggWhole", .62f, 1.345f, "Eggs"),
         };
         // The glass-door fridge: one shelf per cold ingredient, at the pack fridge's own shelf heights.
         static readonly (string shelf, string ingredient, string kind, float x, float y, string title)[] FridgeSpots = {
             ("protein", "patty", "RawProtein", 0f, .565f, "Patties"), ("greens", "greens", "RawGreens", 0f, .905f, "Greens"),
-            ("soup", "soup_veg", "SoupVeg", 0f, 1.245f, "Soup veg"), ("sausage", "sausage", "RawSausage", 0f, 1.605f, "Sausages"),
+            ("soup", "soup_veg", "SoupVeg", 0f, 1.245f, "Soup veg"), ("sausage", "sausage", "RawSausage", -.2f, 1.605f, "Sausages"), ("egg", "egg", "EggWhole", .2f, 1.605f, "Eggs"),
         };
         readonly Dictionary<GameObject, Dictionary<string, ShelfView>> pantryViews = new Dictionary<GameObject, Dictionary<string, ShelfView>>();
         IEnumerable<(GameObject obj, int id, string catalogId)> PantryObjects() {

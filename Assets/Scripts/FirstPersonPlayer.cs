@@ -168,6 +168,8 @@ namespace RestaurantCity {
             if (Physics.SphereCast(ray.origin, .25f, ray.direction, out var strike, 3, ~OwnBodyMask, QueryTriggerInteraction.Ignore)) {
                 var guard = strike.collider.GetComponentInParent<StreetGuard>();
                 if (guard) { guard.Hit(); return true; }
+                var fighter = strike.collider.GetComponentInParent<RaidFighter>();
+                if (fighter) { fighter.PlayerHit(this); return true; }
             }
             return false;
         }

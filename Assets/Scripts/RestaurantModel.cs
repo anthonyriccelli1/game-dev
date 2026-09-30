@@ -63,6 +63,11 @@ namespace RestaurantCity {
                 "Put it on the grill. It cooks fast and burns fast: stay close.",
                 "Plate it with a bun.",
                 "Carry the Comet Dog to the matching guest."}),
+            new RecipeDefinition("cyclops",new[]{"bun","cooked_patty","fried_egg"},new[]{
+                "Won by raiding Greasy Gus. Buy eggs from Milo; they live in the fridge.",
+                "Put a patty AND an egg on the grill. The egg fries fast: pull it before the yolk burns.",
+                "Plate the patty and a bun, then crown it with the fried egg.",
+                "Carry the Cyclops Stack to the matching guest."}),
             new RecipeDefinition("float",new[]{"float"},new[]{
                 "Needs the Swirl & Fizz machine and moonberries from Milo.",
                 "Press E at the machine to set a cup under the nozzle.",
@@ -152,6 +157,7 @@ namespace RestaurantCity {
             new DishDefinition("salad","Stoop Salad",11,0,2,5,"prep_bench",0,false,"Quick vegetarian salad. Uses 2 produce."),
             new DishDefinition("soup","Planet Soup",18,1,1,12,"stove",1,false,"Comfort food for mushroom folk. Needs a stove."),
             new DishDefinition("cometdog","Comet Dog",16,1,1,6,"grill",1,false,"A sausage trailing a glowing comet tail of orange sauce. Cooks fast, burns fast."),
+            new DishDefinition("cyclops","Cyclops Stack",24,1,1,10,"grill",0,false,"A burger crowned with one huge fried egg staring up at you, bacon for eyelashes. Patty and egg share the grill."),
             new DishDefinition("float","Moonberry Float",20,0,1,3,"drink_machine",2,false,"Soft serve in fizzing moonberry soda. Serve it before it melts."),
             new DishDefinition("midnight","Midnight Burger",25,2,1,11,"grill",0,true,"Rare city recipe. Aliens and night owls seek it out."),
             new DishDefinition("dessert","Moonberry tart",24,0,2,13,"oven",2,false,"Two-star showpiece. Needs the Starlight oven.")
@@ -462,7 +468,7 @@ namespace RestaurantCity {
                 seenIds.Add(p.InstanceId);Layout.Add(p);
             }
             NextInstanceId=Math.Max(NextInstanceId,Layout.Count==0?1:Layout.Max(p=>p.InstanceId)+1);
-            ActiveMenu=ActiveMenu.Where(id=>id=="burger"||id=="salad"||id=="midnight").Distinct().ToList();if(ActiveMenu.Count==0)ActiveMenu.Add("burger");
+            ActiveMenu=ActiveMenu.Where(id=>RestaurantCatalog.Dish(id)!=null).Distinct().ToList();if(ActiveMenu.Count==0)ActiveMenu.Add("burger");
             // Unfinished service ends on load; durable restaurant layout, finances, menu, stock, reviews and workers survive.
             Orders.Clear();Open=false;
             // v7: the old protein/produce totals become real ingredients.
