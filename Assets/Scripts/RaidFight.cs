@@ -5,7 +5,7 @@ namespace RestaurantCity {
     // One fighter in a raid: your crew, the rival's fry cooks, or the boss. Players hit them with PlayerCombat.
     public class RaidFighter : MonoBehaviour {
         public RaidBattle Battle; public bool Ours, Boss; public string Name; public WorkerState Worker; public RaidFighter Opponent;
-        public float Hp, MaxHp, Damage, Interval, Speed, Armor = 1, Cool, Stagger, Windup;
+        public float Hp, MaxHp, Damage, Interval, Speed, Armor = 1, Cool, Stagger, Windup, PoiseReady, Dash, DashCool = 3; public bool Enraged, ComboNext;
         public Vector3 Knock; public CharacterMotion Motion; public TextMesh Caption; public Transform Bar, BarFill;
         public List<(Material m, Color c)> Tints = new List<(Material, Color)>(); public float Flash;
         public bool Down => Hp <= 0;
@@ -32,12 +32,13 @@ namespace RestaurantCity {
             lamp.transform.position = Center + Vector3.up * 7; lamp.type = LightType.Point; lamp.range = 22; lamp.intensity = 5f; lamp.color = new Color(1f, .86f, .62f); lamp.shadows = LightShadows.None;
             // Gus steps out beside his serving hatch.
             var boss = Spawn(rival.BossModel, rival.Boss, 1.95f, new Vector3(rival.X - 2.6f, 0, rival.Z - 1.5f), 180, false, true);
-            boss.Hp = boss.MaxHp = rival.BossHealth; boss.Damage = rival.BossDamage; boss.Interval = 1.5f; boss.Speed = 2.6f;
+            boss.Hp = boss.MaxHp = rival.BossHealth; boss.Damage = rival.BossDamage; boss.Interval = 1.15f; boss.Speed = 2.9f;
             bool rally = crew.Any(w => StaffStats.For(w.Id).Perk == Perk.Rally);
             for (int i = 0; i < crew.Count; i++) {
                 float x = rival.X + (i - (crew.Count - 1) / 2f) * 3f;
-                var g = Spawn(rival.GoonModels[i % rival.GoonModels.Length], "Fry cook", 1.72f, new Vector3(x, 0, rival.Z - 5.5f), 180, false, false);
-                Stats(g, rival.GoonStats); FryCookUniform(g);
+                var rf = rival.Roster[i % rival.Roster.Length];
+                var g = Spawn(rf.Model, rf.Name, 1.72f, new Vector3(x, 0, rival.Z - 5.5f), 180, false, false);
+                Stats(g, rf.Stats); FryCookUniform(g);
                 var w = crew[i]; var s = StaffStats.For(w.Id); var def = ResidentCast.ForWorker(w.Id);
                 var f = Spawn(def.Id, RestaurantCatalog.Worker(w.Id)?.Name ?? def.Name, def.Height, new Vector3(x, 0, rival.Z - 11f), 0, true, false);
                 f.Worker = w; Stats(f, s); if (rally) f.Damage *= 1.15f; if (s.Perk == Perk.Tough) f.Armor = .7f;
@@ -124,29 +125,48 @@ namespace RestaurantCity {
             if (victim) { Telegraphed(f, victim, dt, GoonWindup, f.Damage * .6f, 1.5f); return; }
             Engage(f, target, dt, () => { if (f.Motion) f.Motion.Punch(); Hit(foe, f.Damage); });
         }
+        // Gus: shrugs off light hits (only a heavy hit staggers him, and then not again for a few seconds), charges you
+        // when you back off, sometimes follows a headbutt with a quick jab, and gets faster when badly hurt.
         void BossStep(RaidFighter b, List<FirstPersonPlayer> players, float dt) {
             if (BossPassive) { Idle(b); return; }
             var victim = players.Where(p => Flat(p.transform.position - Center).magnitude < 18).OrderBy(p => (p.transform.position - b.transform.position).sqrMagnitude).FirstOrDefault();
             if (!victim) { Idle(b); return; }
-            Telegraphed(b, victim, dt, BossWindup, b.Damage, 1.9f);
+            if (!b.Enraged && b.Hp < b.MaxHp * .4f) { b.Enraged = true; b.Interval *= .7f; b.Speed *= 1.3f; Owner.Game.Notify(Rival.Boss + " is ENRAGED! Faster hits, keep your guard up.", 2.5f); }
+            var to = Flat(victim.transform.position - b.transform.position); b.DashCool -= dt;
+            if (b.Dash > 0) {
+                b.Dash -= dt; if (to.sqrMagnitude > .01f) b.transform.rotation = Quaternion.LookRotation(to);
+                b.transform.position += to.normalized * Mathf.Min(to.magnitude - 1.2f, 8f * dt); if (b.Motion) { b.Motion.Walking = true; b.Motion.Running = true; }
+                if (to.magnitude < 1.7f) { b.Dash = 0; b.Cool = 0; b.ComboNext = true; }   // arrives swinging: a quick hit
+                return;
+            }
+            if (b.Motion) b.Motion.Running = false;
+            if (b.Windup <= 0 && b.Stagger <= 0 && b.DashCool <= 0 && to.magnitude > 4 && to.magnitude < 13) { b.Dash = .6f; b.DashCool = b.Enraged ? 3.5f : 5.5f; Owner.Game.Notify(Rival.Boss + " charges!", 1.2f); return; }
+            bool quick = b.ComboNext;
+            if (Telegraphed(b, victim, dt, quick ? .3f : b.Enraged ? .45f : BossWindup, quick ? b.Damage * .55f : b.Damage, 1.9f)) {
+                if (quick) b.ComboNext = false;
+                else if (Random.value < (b.Enraged ? .6f : .4f)) { b.ComboNext = true; b.Cool = .25f; }
+            }
         }
         // Anyone attacking a player winds up first (they glow yellow): step back, block, or hit them to interrupt.
-        void Telegraphed(RaidFighter f, FirstPersonPlayer victim, float dt, float windup, float damage, float reach) {
+        // Returns true on the frame the blow resolves.
+        bool Telegraphed(RaidFighter f, FirstPersonPlayer victim, float dt, float windup, float damage, float reach) {
             var to = Flat(victim.transform.position - f.transform.position);
             if (f.Windup > 0) {
-                if (f.Stagger > 0) { f.Windup = 0; return; }
+                if (f.Stagger > 0) { f.Windup = 0; return false; }
                 f.transform.rotation = Quaternion.Slerp(f.transform.rotation, Quaternion.LookRotation(to), dt * 4);
                 f.Windup -= dt;
                 if (f.Windup <= 0) {
                     f.Cool = f.Interval;
                     if (to.magnitude < reach + .7f) {
                         bool parried = Owner.Game.HurtPlayer(victim, damage, f.transform.position);
-                        if (parried) { f.Stagger = 1.3f; if (f.Motion) f.Motion.Flinch(); }
+                        if (parried) { f.Stagger = 1.3f; f.ComboNext = false; if (f.Motion) f.Motion.Flinch(); }
                     }
+                    return true;
                 }
-                return;
+                return false;
             }
-            Engage(f, victim.transform, dt, () => { f.Windup = windup; if (f.Motion) { if (f.Boss) f.Motion.Headbutt(); else f.Motion.Punch(); } }, reach);
+            Engage(f, victim.transform, dt, () => { f.Windup = windup; if (f.Motion) { if (f.Boss && windup > .35f) f.Motion.Headbutt(); else f.Motion.Punch(); } }, reach);
+            return false;
         }
         void Idle(RaidFighter f) { if (f.Motion) { f.Motion.Walking = false; f.Motion.Working = false; f.Motion.Fighting = !Over; } }
         void Engage(RaidFighter f, Transform target, float dt, System.Action strike, float reach = 1.35f) {
@@ -164,9 +184,15 @@ namespace RestaurantCity {
         }
         public void PlayerHit(RaidFighter target, FirstPersonPlayer player, float damage, Vector3 knock, bool heavy) {
             if (Over || target.Down || target.Ours) return;
-            target.Hp = Mathf.Max(0, target.Hp - damage); target.Flash = 1; target.Knock += knock * .35f;
-            // Hitting someone mid wind-up interrupts them; heavy hits stagger longer.
-            target.Stagger = Mathf.Max(target.Stagger, heavy ? .75f : .3f); if (target.Windup > 0 && (heavy || !target.Boss)) target.Windup = 0;
+            target.Hp = Mathf.Max(0, target.Hp - damage); target.Flash = 1; target.Knock += knock * (target.Boss ? .12f : .35f);
+            if (target.Boss) {
+                // Poise: light hits don't stop him. A heavy hit staggers and interrupts, then he's unstaggerable for a moment.
+                if (heavy && Time.time >= target.PoiseReady) { target.Stagger = .55f; target.Windup = 0; target.Dash = 0; target.ComboNext = false; target.PoiseReady = Time.time + 2.5f; if (target.Motion && !target.Down) target.Motion.Flinch(); }
+                if (target.Down) { KnockOut(target); Owner.Game.Notify(Rival.Boss + " is down!", 2); }
+                return;
+            }
+            // Fry cooks: a jab only flinches them; a heavy hit knocks them off their swing.
+            target.Stagger = Mathf.Max(target.Stagger, heavy ? .7f : .15f); if (target.Windup > 0 && heavy) target.Windup = 0;
             if (target.Down) KnockOut(target); else if (target.Motion) target.Motion.Flinch();
             if (target.Boss && target.Down) Owner.Game.Notify(Rival.Boss + " is down!", 2);
         }

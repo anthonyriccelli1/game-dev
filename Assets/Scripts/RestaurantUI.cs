@@ -532,7 +532,7 @@ namespace RestaurantCity {
             Label(prize, known ? "Recipe: " + dish.Name + " (already yours)" : "Chance: the " + dish.Name + " recipe (" + Mathf.RoundToInt(rival.DropChance * 100) + "%, guaranteed by win " + rival.Pity + ")", 18, 64, 330, 44, 15, known ? paper : gold, true);
             Label(prize, "Wins " + rec.Wins + "  /  raids " + rec.Attempts, 18, 116, 330, 22, 13, paper);
             Label(sheet, "THE FIGHT", 35, 232, 600, 22, 14, muted, true);
-            Label(sheet, "You always fight " + rival.Boss + " (" + rival.BossHealth + " health). Click to jab, hold to wind up a heavy, right click to block (block just before a hit to parry).\nHe brings one fry cook per crew member (Brawn " + rival.GoonStats.Brawn + ", Stamina " + rival.GoonStats.Stamina + "); if your crew member goes down, their fry cook comes for you. If YOU go down you lose $" + RaidRules.CashLoss(st.Cash) + " and your crew's energy.", 35, 250, 790, 58, 14, ink);
+            Label(sheet, "You always fight " + rival.Boss + " (" + rival.BossHealth + " health). Click to jab, hold to wind up a heavy, right click to block (block just before a hit to parry).\nHe sends one of his crew against each of yours (below); if your crew member goes down, their fry cook comes for you. If YOU go down you lose $" + RaidRules.CashLoss(st.Cash) + " and your crew's energy.", 35, 250, 790, 58, 14, ink);
             Label(sheet, "PICK YOUR CREW  (up to " + RaidRules.MaxCrew + "; needs " + RaidRules.MinEnergy + "+ energy; anyone knocked out needs rest after)", 35, 312, 1100, 22, 14, muted, true);
             var workers = Owner.Data.Workers; float x = 35;
             if (workers.Count == 0) Label(sheet, "No crew yet. Recruit residents in the Staff tab, or go in alone against the fry cooks too.", 35, 340, 1100, 30, 16, coral, true);
@@ -546,12 +546,16 @@ namespace RestaurantCity {
                 x += 232; if (x > 1000) break;
             }
             var crewStats = Owner.RaidCrew.Select(id => StaffStats.For(id)).ToList();
-            var goons = Enumerable.Repeat(rival.GoonStats, rival.GoonModels.Length).ToList();
-            float mine = RaidRules.Power(crewStats), theirs = RaidRules.Power(goons);
-            string odds = crewStats.Count == 0 ? "Alone: the fry cooks will come for you too." : mine >= theirs * 1.3f ? "Your crew should win their fight." : mine >= theirs * .8f ? "An even brawl. Help them with your spatula." : "Your crew is outmatched. Bring more Brawn or Stamina.";
-            Label(sheet, "Crew power " + mine.ToString("0") + "  vs  fry cooks " + theirs.ToString("0") + "    " + odds, 35, 504, 900, 26, 16, mine >= theirs ? teal : coral, true);
-            if (!ok) Label(sheet, why, 35, 540, 900, 30, 17, coral, true);
-            Button(sheet, ok ? "Start the raid" : "Can't raid right now", 35, 580, 360, 54, () => Owner.StartRaid(out _), ok ? coral : pale, ok ? white : ink, ok);
+            // The matchups: who each of your crew will face, and how that duel looks on paper.
+            bool rally = crewStats.Any(c => c.Perk == Perk.Rally);
+            if (Owner.RaidCrew.Count == 0) Label(sheet, "Just you and " + rival.Boss + ". His crew stays in the truck.", 35, 500, 900, 24, 16, ink, true);
+            for (int i = 0; i < Owner.RaidCrew.Count; i++) {
+                var foe = rival.Roster[i % rival.Roster.Length]; float edge = RaidRules.Duel(crewStats[i], foe.Stats, rally); string verdict = RaidRules.DuelWord(edge);
+                Label(sheet, (RestaurantCatalog.Worker(Owner.RaidCrew[i])?.Name ?? Owner.RaidCrew[i]) + "  vs  " + foe.Name + "  (Brawn " + foe.Stats.Brawn + ", Speed " + foe.Stats.Speed + ", Stamina " + foe.Stats.Stamina + ")    " + verdict,
+                    35, 500 + i * 24, 1000, 24, 15, verdict == "FAVOURED" ? teal : verdict == "EVEN FIGHT" ? gold : coral, true);
+            }
+            if (!ok) Label(sheet, why, 35, 580, 900, 26, 16, coral, true);
+            Button(sheet, ok ? "Start the raid" : "Can't raid right now", 35, 612, 360, 50, () => Owner.StartRaid(out _), ok ? coral : pale, ok ? white : ink, ok);
         }
 
         // Four stats as labelled pips (1-5): COOK, SPEED, STAMINA, BRAWN.

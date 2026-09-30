@@ -27,6 +27,8 @@ namespace RestaurantCity {
         public static IngredientDef Get(string id) => Array.Find(All, i => i.Id == id);
         public static IngredientDef ForShelf(string shelf) => Array.Find(All, i => i.Shelf == shelf);
         public static readonly string[] ColdShelves = { "protein", "greens", "soup", "sausage", "egg" }, DryShelves = { "bun", "sauce" };
+        // The street stand only stocks what it cooks: burgers, salad, and the Midnight burger once you know it.
+        public static readonly string[] StandShelves = { "protein", "greens", "bun", "sauce" };
         // What one portion of each dish uses from the pantry.
         public static string[] For(string dish) =>
             dish == "burger" ? new[] { "patty", "bun" } : dish == "salad" ? new[] { "greens" } : dish == "soup" ? new[] { "soup_veg" } :

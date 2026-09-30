@@ -76,7 +76,8 @@ namespace RestaurantCity {
   // a fridge (until then it holds everything); the street stand's cart pantry always holds everything.
   public static string[] ShelvesOf(RestaurantState r,int instanceId,string catalogId){
    if(catalogId=="fridge")return Ingredients.ColdShelves;
-   if(IsStandStation(instanceId)||r==null||!r.HasEquipment("fridge"))return Ingredients.ColdShelves.Concat(Ingredients.DryShelves).ToArray();
+   if(IsStandStation(instanceId))return Ingredients.StandShelves;
+   if(r==null||!r.HasEquipment("fridge"))return Ingredients.ColdShelves.Concat(Ingredients.DryShelves).ToArray();
    return Ingredients.DryShelves;
   }
   KitchenAction PreviewPantry(GameState game,string actor,KitchenItem hand,string subId,KitchenStation station){

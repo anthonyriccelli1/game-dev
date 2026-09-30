@@ -8,16 +8,23 @@ namespace RestaurantCity {
         public string Id, Name, Place, Boss, BossModel, RecipeId, Pitch;
         public int Stars, BossHealth, BossDamage, CashMin, CashMax, Flux, Pity;
         public float X, Z, DropChance; public bool NightOnly;
-        public string[] GoonModels; public ResidentStats GoonStats;
+        public RivalFighter[] Roster;   // the rival's own crew, sent out in this order against yours
     }
+    public class RivalFighter { public string Name, Model; public ResidentStats Stats; public RivalFighter(string name, string model, ResidentStats stats) { Name = name; Model = model; Stats = stats; } }
     [Serializable] public class RaidRecord { public string RivalId; public int LastDay = -1, Wins, Attempts; }
     public class RaidLoot { public int Cash, Flux; public string Recipe; public string Message; }
 
     public static class Rivals {
         public static readonly RivalDef GreasyGus = new RivalDef {
             Id = "gus", Name = "Greasy Gus's truck", Place = "the vacant lot off South Avenue", Boss = "Greasy Gus", BossModel = "087_HotDog",
-            Stars = 1, X = 17.5f, Z = -31.5f, NightOnly = true, BossHealth = 130, BossDamage = 16,
-            GoonModels = new[] { "002_CoolAlien", "057_Rose", "007_Observer" }, GoonStats = new ResidentStats(1, 2, 2, 2, Perk.None),
+            Stars = 1, X = 17.5f, Z = -31.5f, NightOnly = true, BossHealth = 240, BossDamage = 18,
+            // A one-star rival's crew: commons-level fighters (10 stat points). A common of yours is an even fight; bring
+            // someone with more Brawn or Stamina and you're favoured.
+            Roster = new[] {
+                new RivalFighter("Deep-fry Dom", "002_CoolAlien", new ResidentStats(1, 2, 3, 4, Perk.None)),
+                new RivalFighter("Marla", "057_Rose", new ResidentStats(2, 3, 2, 3, Perk.None)),
+                new RivalFighter("Slick", "007_Observer", new ResidentStats(1, 4, 2, 3, Perk.None)),
+            },
             CashMin = 45, CashMax = 70, Flux = 2, RecipeId = "cyclops", DropChance = .4f, Pity = 3,
             Pitch = "A one-star food truck that parks in the vacant lot after dark. Gus fights dirty and headbutts hard. He brings one fry cook for every crew member you bring.",
         };
@@ -69,6 +76,13 @@ namespace RestaurantCity {
             if (w == null) return;
             w.Energy = knockedOut ? 0 : Math.Max(0, w.Energy - 15 - (1 - healthLeft01) * 45);
         }
+        // One-on-one preview: how much faster your fighter drops theirs than the other way round (>1 favours you).
+        public static float Duel(ResidentStats mine, ResidentStats theirs, bool rally = false) {
+            float myDps = StaffStats.RaidDamage(mine) * (rally ? 1.15f : 1) / StaffStats.RaidInterval(mine), theirDps = StaffStats.RaidDamage(theirs) / StaffStats.RaidInterval(theirs);
+            float myHp = StaffStats.RaidHealth(mine) / (mine.Perk == Perk.Tough ? .7f : 1), theirHp = StaffStats.RaidHealth(theirs);
+            return (myHp / theirDps) / (theirHp / myDps);
+        }
+        public static string DuelWord(float edge) => edge >= 1.15f ? "FAVOURED" : edge >= .87f ? "EVEN FIGHT" : "OUTMATCHED";
         // Rough fight preview: total crew damage per second vs the rival's goons.
         public static float Power(IEnumerable<ResidentStats> side) {
             float p = 0; bool rally = false; foreach (var s in side) if (s.Perk == Perk.Rally) rally = true;

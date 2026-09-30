@@ -19,7 +19,8 @@ namespace RestaurantCity {
   void StandSalad(){ActId(S(4));ActId(S(3));ActId(S(1),"greens");ActId(S(7));Check(Game.State.Kitchen.Work(Game.State,"player:0",S(7),3.1f,out var m),"chop at the stand: "+m);ActId(S(7));ActId(S(3));ActId(S(3));}
   void WashStand(){while(Game.State.StandDirty>0){ActId(S(5));Check(Game.State.Kitchen.Work(Game.State,"player:0",S(5),KitchenState.WashSeconds+.1f,out var m),"stand wash: "+m);}}
   bool InstallFirstFree(string id){var d=Game.Restaurant.Data;for(int z=0;z<RestaurantState.GridD;z++)for(int x=0;x<12;x++)if(d.CanPlace(id,x,z,0,-1,out _))return d.Place(Game.State,id,x,z,0,out _);return false;}
-  int Station(string id)=>Game.State.Kitchen.Stations.First(s=>s.CatalogId==id).InstanceId;
+  // Restaurant stations first; the street stand's cart only stocks starter food.
+  int Station(string id)=>(Game.State.Kitchen.Stations.FirstOrDefault(s=>s.CatalogId==id&&!KitchenState.IsStandStation(s.InstanceId))??Game.State.Kitchen.Stations.First(s=>s.CatalogId==id)).InstanceId;
   void Act(string station,string action="",string actor="player:0"){Check(Game.State.Kitchen.Act(Game.State,actor,Station(station),action,out var m),m);}
   // Raw protein now goes straight from the pantry to the grill; greens and midnight sauce still chop/prepare
   // at the prep bench first (Stage A workflow change).
@@ -68,7 +69,8 @@ namespace RestaurantCity {
      for(int i=0;i<1200&&b.Fighters.Any(f=>!f.Ours&&!f.Boss&&!f.Down);i++)b.Step(.05f);
      Check(b.Fighters.Where(f=>!f.Ours&&!f.Boss).All(f=>f.Down),"a strong crew wins their one-on-ones");
      int blows=0;while(!b.BossFighter.Down&&blows<40){b.PlayerHit(b.BossFighter,Game.Player,Weapons.Fists.Damage*2,Vector3.zero,true);blows++;}b.Step(.05f);
-     Check(blows>=5&&blows<=8,"Gus takes several heavy punches, not one ("+blows+")");
+     Check(blows>=10&&blows<=13,"Gus soaks about a dozen heavy punches ("+blows+")");
+     Check(RaidRules.Duel(StaffStats.For("091_BigBro_a"),gus.Roster[0].Stats)>=1.15f&&RaidRules.Duel(StaffStats.For("003_Jimmy"),gus.Roster[0].Stats)<1,"Big Bro is favoured against Deep-fry Dom; Jimmy is not");
      Check(b.Over&&b.Won&&g.Cash>=cash0+gus.CashMin&&g.Flux==flux0+gus.Flux,"beating Gus pays cash and Flux");
      Check(!RaidRules.CanRaid(g,gus,false,out _),"one raid per rival per day");
      Check(rc.Data.Workers.Where(w=>crewIds.Contains(w.Id)).All(w=>w.Energy<100),"the crew comes back tired");
@@ -102,6 +104,8 @@ namespace RestaurantCity {
      int cashP=g.Cash;g.Cash=500;Game.Restaurant.PawnBuyer=0;Check(Game.Restaurant.BuyWeapon("pan",out var pm)&&inv.Has("pan")&&g.Cash==500-35,"buy a frying pan at the pawn shop: "+pm);
      Check(!Game.Restaurant.BuyWeapon("pan",out _),"you only need one frying pan");g.Cash=cashP;
      for(int i=0;i<inv.Slots.Count;i++){inv.Slots[i].Item=saved[i].Item;inv.Slots[i].KitchenItemId=saved[i].KitchenItemId;}inv.Selected=sel0;}
+    {var standShelves=KitchenState.ShelvesOf(st.Restaurant,KitchenState.StandBase+1,"pantry");
+     Check(standShelves.Contains("protein")&&standShelves.Contains("bun")&&standShelves.Contains("greens")&&!standShelves.Contains("egg")&&!standShelves.Contains("soup")&&!standShelves.Contains("sausage"),"the stand only stocks starter food (patties, buns, greens, sauce)");}
     // One restaurant per district: Old Market is the dressed 160 m block only (no greybox, no second site).
     Check(RestaurantSites.All.Length==1&&GameObject.Find("Saffron Bay (greybox districts)")==null&&GameObject.Find("Property for lease / The Bayside")==null,"Old Market has one restaurant and no greybox around it");
     Check(CityDistricts.At(0,0)?.Id=="market"&&CityDistricts.At(-190,-15)==null&&System.Array.TrueForAll(NightStashes.Spots,sp=>System.Math.Abs(sp.X)<78&&System.Math.Abs(sp.Z)<78),"every stash spot and place is inside the block");
