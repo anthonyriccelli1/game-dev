@@ -120,7 +120,8 @@ namespace RestaurantCity {
     string barColor=ratio>.55f?"#4FCB7A":ratio>.25f?"#E8C34A":"#E1543B";
     int filled=Mathf.CeilToInt(ratio*8);string bar="<color="+barColor+">"+new string('|',Mathf.Max(1,filled))+"</color>"+new string('.',8-Mathf.Max(1,filled));
     string parts=recipe==null?"":string.Join("+",recipe.Components.Select(c=>c=="cooked_patty"?"patty":c=="chopped_greens"?"greens":c=="midnight_sauce"?"sauce":c));
-    lines.Add("#"+o.Id+" Table "+o.SeatInstanceId+" — "+dish.Name+" ["+parts+"]  "+bar+" "+(int)left+"s");
+    var who=ResidentCast.Get(o.ResidentId);string guest=who!=null?who.Name:customer.Name;int table=r.TableNumber(o.SeatInstanceId);
+    lines.Add("<b>TABLE "+(table>0?table.ToString():"?")+"</b>  "+guest+" — "+dish.Name+" ["+parts+"]  "+bar+" "+(int)left+"s");
    }
    if(waiting.Count>5)lines.Add("+"+(waiting.Count-5)+" more waiting");
    return string.Join("\n",lines);

@@ -333,10 +333,25 @@ namespace RestaurantCity {
                 // station lookup by InstanceId works no matter which collider the interaction ray hit.
                 foreach (var child in obj.GetComponentsInChildren<RestaurantTarget>()) child.InstanceId = p.InstanceId;
                 Furnishings[p.InstanceId] = obj;
+                // A standing number card on every table, matching the ticket and the guest's bubble.
+                if (item.Seats > 0) TableCard(obj, Data.TableNumber(p.InstanceId));
             }
             RestaurantArt.UpdateFinishes(Room, Data.WallId, Data.FloorId, Data.Layout.Any(p => p.CatalogId == "awning_coral"), Data.Layout.Any(p => p.CatalogId == "sign_neon"));
             RestaurantArt.RenderSurfaceFinishes(Room, Data);
             Game.State.Kitchen.EnsureStations(Data);
+        }
+        void TableCard(GameObject table, int number) {
+            if (number <= 0) return;
+            var card = new GameObject("Table number " + number).transform; card.SetParent(table.transform, false);
+            float top = .78f; foreach (var r in table.GetComponentsInChildren<Renderer>()) if (r.bounds.size.y < 1.4f) top = Mathf.Max(top, r.bounds.max.y - table.transform.position.y);
+            card.localPosition = new Vector3(0, Mathf.Min(top, 1.1f) + .01f, 0);
+            var tent = GameObject.CreatePrimitive(PrimitiveType.Cube); Destroy(tent.GetComponent<Collider>()); tent.name = "Card"; tent.transform.SetParent(card, false);
+            tent.transform.localPosition = new Vector3(0, .09f, 0); tent.transform.localScale = new Vector3(.2f, .18f, .03f);
+            var m = new Material(Shader.Find("Universal Render Pipeline/Lit")); m.color = new Color(.98f, .95f, .86f); tent.GetComponent<Renderer>().sharedMaterial = m;
+            foreach (float side in new[] { 1f, -1f }) {
+                var t = WorldCaption(card, number.ToString(), new Vector3(0, .09f, side * .017f), .03f);
+                t.color = new Color(.16f, .12f, .1f); t.transform.localRotation = Quaternion.Euler(0, side > 0 ? 180 : 0, 0);   // TextMesh reads from its -Z side
+            }
         }
         // Level 2/3 photos let the shop tease what an upgrade looks like.
         public Texture GetCatalogIcon(string id, int level = 1) {

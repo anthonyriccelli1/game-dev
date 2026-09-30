@@ -66,6 +66,7 @@ namespace RestaurantCity {
             ("87_pawn_panel", new Vector3(33f, 0, -25f), 270, 4, 60),
             ("88_fists_view", new Vector3(-6, 0, 3), 90, 0, 60),
             ("89_bat_view", new Vector3(-6, 0, 3), 90, 0, 60),
+            ("91_service_tables", new Vector3(-10f, 0, -10.3f), 180, 18, 70),
             ("81_raid_planner", new Vector3(17.5f, 0, -40), 0, 4, 190),
             ("82_raid_fight", new Vector3(17.5f, 0, -45.5f), 0, 6, 190),
             ("83_raid_ko", new Vector3(17.5f, 0, -45.5f), 0, 8, 190),
@@ -333,6 +334,19 @@ namespace RestaurantCity {
                 }
                 if (rc && shot.name.Contains("pawn_panel")) { Game.State.Cash = 120; rc.PawnBuyer = 0; rc.ShowPanel("Pawn"); }
                 if (shot.name.Contains("bat_view")) { var inv = Hotbar.For(Game.State, 0); if (!inv.Has("bat")) Hotbar.Give(Game.State, 0, "bat", out _); Hotbar.Give(Game.State, 0, "knuckles", out _); Hotbar.Select(Game.State, 0, inv.Slots.FindIndex(x => x.Item == "bat"), out _); }
+                if (rc && shot.name.Contains("service_tables")) {
+                    // Three numbered tables with seated guests: the number cards, bubbles and ticket rail should agree.
+                    var gs = Game.State; var d = gs.Restaurant; gs.Cash = 5000; d.Owned = true; d.Layout.Clear(); d.Orders.Clear(); d.Open = false;
+                    foreach (var (id, gx, gz) in new[] { ("pantry", 0, 0), ("grill", 3, 0), ("prep_bench", 6, 0), ("plate_rack", 9, 0) }) d.Place(gs, id, gx, gz, 0, out _);
+                    foreach (var (tx, tz) in new[] { (1, 7), (5, 7), (9, 7) }) d.Place(gs, "cafe_table", tx, tz, 0, out _);
+                    d.ActiveMenu = new System.Collections.Generic.List<string> { "burger", "salad" };
+                    rc.RebuildLayout(); d.Open = true; int k = 0;
+                    foreach (var t in d.Layout.Where(pl => pl.CatalogId == "cafe_table")) d.AddCustomer(gs, (k++ * 3) % RestaurantCatalog.Customers.Length, t.InstanceId, out _, ResidentCast.OldMarket[k * 2].Id);
+                    for (int i = 0; i < 260; i++) { p.transform.position = shot.pos; rc.Advance(.12f); yield return null; }
+                    Debug.LogWarning("SERVICE_SHOT orders " + d.Orders.Count);
+                    if (d.Orders.Count > 0) d.Orders[0].Wait = d.PatienceOf(d.Orders[0]) * .8f;
+                    for (int i = 0; i < 10; i++) { p.transform.position = shot.pos; rc.Advance(.02f); yield return null; }
+                }
                 if (rc && shot.name.Contains("milo_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); }
                 if (rc && shot.name.Contains("stand_tables")) {
                     // Two seated stand guests (one served and eating) and a dirty plate: walk them in, then shoot.

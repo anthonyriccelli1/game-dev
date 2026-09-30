@@ -88,7 +88,7 @@ namespace RestaurantCity {
         public int Id; public string Name,FavoriteDish,Description;
         public float Patience,AmbienceWeight,CleanlinessWeight;
         public CustomerDefinition(int id,string name,string favorite,float patience,float ambience,float clean,string description) {
-            Id=id;Name=name;FavoriteDish=favorite;Patience=patience*.65f;   // base seconds before they give up; scaled down by ShiftDifficulty as shifts get harderAmbienceWeight=ambience;CleanlinessWeight=clean;Description=description;
+            Id=id;Name=name;FavoriteDish=favorite;Patience=patience*.85f;   // base seconds before they give up; scaled down by ShiftDifficulty as shifts get harderAmbienceWeight=ambience;CleanlinessWeight=clean;Description=description;
         }
     }
     public class StaffDefinition {
@@ -213,7 +213,9 @@ namespace RestaurantCity {
         public int ShopStars => Math.Max(1,Rank);
         public bool CanCustomize => Owned && !Open && Orders.Count==0;
         public int Seats => Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.Seats??0);
-        public int ShiftsRun; public int ShiftLevel=>ShiftDifficulty.Level(this);
+        public int ShiftsRun, Heat=-1; public int ShiftLevel=>ShiftDifficulty.Level(this);   // Heat: adaptive crowd size (ShiftDifficulty)
+        // Tables are numbered 1, 2, 3... in the order they were placed; each carries a number card.
+        public int TableNumber(int instanceId){int n=0;foreach(var p in Layout.OrderBy(x=>x.InstanceId)){if((RestaurantCatalog.Find(p.CatalogId)?.Seats??0)<=0)continue;n++;if(p.InstanceId==instanceId)return n;}return 0;}
         public float PatienceOf(RestaurantOrder o)=>o.Patience>0?o.Patience:RestaurantCatalog.Customers[o.CustomerType].Patience;
         [NonSerialized]public int PlayerRank;public string SiteId="oddtable";
         public int Ambience => Math.Min(40,FinishAmbience+Layout.Where(p=>StationUpgrades.CanUpgrade(p.CatalogId)).Sum(p=>StationUpgrades.AmbienceBonus(p.Level))+Layout.Sum(p=>RestaurantCatalog.Find(p.CatalogId)?.IsFinish==true?0:RestaurantCatalog.Find(p.CatalogId)?.Ambience??0));

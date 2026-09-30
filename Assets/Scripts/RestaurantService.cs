@@ -123,9 +123,13 @@ namespace RestaurantCity {
                     SetBubble(view.Bubble, (score >= 85 ? "<3  Delicious!" : score >= 65 ? "That hit the spot." : "Could be better...") + "\n" + Mathf.RoundToInt(score) + "%  /  " + (score >= 85 ? "+$3 tip" : "Thanks for dinner"));
 
                 } else {
+                    // Always show the table, the guest and the dish, plus a patience bar that goes yellow then red.
                     float patience = Mathf.Clamp01(1 - order.Wait / Data.PatienceOf(order)); view.Motion.SetMood(patience);
-                    string status = order.Stage == RestaurantOrderStage.Ready ? "Dish ready!" : patience < .35f ? "I'm getting hungry..." : order.Stage == RestaurantOrderStage.Cooking ? "Smells good!" : "I'd like " + dish;
-                    SetBubble(view.Bubble, guestName + (who != null && !Game.State.HasMet(who.Id) ? "  <color=#E8C34A>NEW!</color>" : "") + "\n" + status);
+                    int table = Data.TableNumber(order.SeatInstanceId); int bars = Mathf.CeilToInt(patience * 8);
+                    string col = patience > .55f ? "#4FCB7A" : patience > .3f ? "#E8C34A" : "#E1543B";
+                    string mood = patience < .3f ? "  <color=#E1543B>HUNGRY!</color>" : order.Stage == RestaurantOrderStage.Cooking ? "  Smells good!" : "";
+                    SetBubble(view.Bubble, "<color=#F2C27A>TABLE " + (table > 0 ? table.ToString() : "?") + "</color>  " + guestName + (who != null && !Game.State.HasMet(who.Id) ? "  <color=#E8C34A>NEW!</color>" : "") +
+                        "\n" + dish + mood + "\n<color=" + col + ">" + new string('|', Mathf.Max(1, bars)) + "</color>" + new string('.', 8 - Mathf.Max(1, bars)));
                 }
             }
             UpdatePhysicalEmployees(seconds);
@@ -158,7 +162,7 @@ namespace RestaurantCity {
         void SetBubble(TextMesh text, string value) {
             text.text = value;
             text.transform.rotation = Quaternion.LookRotation(text.transform.position - Game.Player.View.transform.position);
-            text.gameObject.SetActive(Vector3.Distance(text.transform.position, Game.Player.View.transform.position) < 13);
+            text.gameObject.SetActive(Vector3.Distance(text.transform.position, Game.Player.View.transform.position) < 20);
         }
         void UpdateEmployees(float dt) {
             foreach (var worker in Data.Workers) {

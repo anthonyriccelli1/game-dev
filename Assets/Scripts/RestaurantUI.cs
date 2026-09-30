@@ -548,14 +548,21 @@ namespace RestaurantCity {
             var crewStats = Owner.RaidCrew.Select(id => StaffStats.For(id)).ToList();
             // The matchups: who each of your crew will face, and how that duel looks on paper.
             bool rally = crewStats.Any(c => c.Perk == Perk.Rally);
-            if (Owner.RaidCrew.Count == 0) Label(sheet, "Just you and " + rival.Boss + ". His crew stays in the truck.", 35, 500, 900, 24, 16, ink, true);
-            for (int i = 0; i < Owner.RaidCrew.Count; i++) {
-                var foe = rival.Roster[i % rival.Roster.Length]; float edge = RaidRules.Duel(crewStats[i], foe.Stats, rally); string verdict = RaidRules.DuelWord(edge);
-                Label(sheet, (RestaurantCatalog.Worker(Owner.RaidCrew[i])?.Name ?? Owner.RaidCrew[i]) + "  vs  " + foe.Name + "  (Brawn " + foe.Stats.Brawn + ", Speed " + foe.Stats.Speed + ", Stamina " + foe.Stats.Stamina + ")    " + verdict,
-                    35, 500 + i * 24, 1000, 24, 15, verdict == "FAVOURED" ? teal : verdict == "EVEN FIGHT" ? gold : coral, true);
+            // His whole crew, always visible. The first N come out against your N picks (lit, with the matchup);
+            // the rest stay in the truck.
+            Label(sheet, rival.Boss.ToUpper() + "'S CREW  (he sends out one per crew member you bring)", 35, 500, 900, 22, 14, muted, true);
+            for (int i = 0; i < rival.Roster.Length; i++) {
+                var foe = rival.Roster[i]; bool fighting = i < Owner.RaidCrew.Count;
+                var card = Block(sheet, "Rival " + foe.Name, 35 + i * 250, 524, 238, 112, fighting ? new Color(1f, .93f, .86f) : pale);
+                Label(card, foe.Name, 12, 6, 220, 24, 17, fighting ? ink : muted, true);
+                StatPips(card, foe.Stats, 12, 34, 54);
+                string line = "Stays in the truck"; Color lc = muted;
+                if (fighting) { float edge = RaidRules.Duel(crewStats[i], foe.Stats, rally); string verdict = RaidRules.DuelWord(edge);
+                    line = "vs " + (RestaurantCatalog.Worker(Owner.RaidCrew[i])?.Name ?? Owner.RaidCrew[i]) + ":  " + verdict; lc = verdict == "FAVOURED" ? teal : verdict == "EVEN FIGHT" ? gold : coral; }
+                Label(card, line, 12, 76, 220, 26, 14, lc, true);
             }
-            if (!ok) Label(sheet, why, 35, 580, 900, 26, 16, coral, true);
-            Button(sheet, ok ? "Start the raid" : "Can't raid right now", 35, 612, 360, 50, () => Owner.StartRaid(out _), ok ? coral : pale, ok ? white : ink, ok);
+            if (!ok) Label(sheet, why, 800, 560, 390, 60, 15, coral, true);
+            Button(sheet, ok ? "Start the raid" : "Can't raid right now", 800, 640, 390, 48, () => Owner.StartRaid(out _), ok ? coral : pale, ok ? white : ink, ok);
         }
 
         // Four stats as labelled pips (1-5): COOK, SPEED, STAMINA, BRAWN.
