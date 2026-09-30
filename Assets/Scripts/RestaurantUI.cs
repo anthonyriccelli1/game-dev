@@ -448,7 +448,7 @@ namespace RestaurantCity {
             var cast = ResidentCast.OldMarket; var book = new List<ResidentDef>();
             if (people) foreach (var r in cast) if (!Owner.Data.Workers.Exists(x => x.Id == r.Id)) book.Add(r);
             int met = 0; foreach (var r in cast) if (gs.HasMet(r.Id)) met++;
-            float crewH = Mathf.CeilToInt(crew.Count / 2f) * 320, bookTop = crewH + 10, bookH = people ? 60 + Mathf.CeilToInt(book.Count / 4f) * 300 : 0, rivalTop = bookTop + bookH;
+            float crewH = Mathf.CeilToInt(crew.Count / 2f) * 320, bookTop = crewH + 10, bookH = people ? 60 + Mathf.CeilToInt(book.Count / 4f) * 335 : 0, rivalTop = bookTop + bookH;
             var content = Scroller(sheet, 30, 189, 1160, 462, rivalTop + 60 + Mathf.CeilToInt(rivals.Length / 2f) * 320 + 20);
             int index = 0;
             foreach (var worker in crew) {
@@ -457,7 +457,10 @@ namespace RestaurantCity {
                 var def = ResidentCast.Get(entry.Id); float textX = 25;
                 if (def != null && people) { var pic = Box(card, "Portrait", 20, 20, 130, 130).gameObject.AddComponent<RawImage>(); pic.texture = ResidentIcons.Get(def, false); pic.raycastTarget = false; textX = 165; }
                 Label(card, entry.Name, textX, 24, 520 - textX, 45, 26, ink, true);
-                Label(card, entry.Description, textX, 78, 532 - textX, 90, 17, muted);
+                Label(card, entry.Description, textX, 70, 532 - textX, 46, 16, muted);
+                var stats = StaffStats.For(entry.Id);
+                StatPips(card, stats, textX, 118, 92);
+                if (stats.Perk != Perk.None) Label(card, "Perk  " + StaffStats.PerkName(stats.Perk) + ":  " + StaffStats.PerkText(stats.Perk), textX, 150, 532 - textX, 20, 13, gold, true);
                 string price = def != null ? def.Rarity + " resident" : entry.Special ? "Recruit for " + entry.FluxCost + " Flux" : "Hire for $" + entry.Cost;
                 Label(card, "Specialty: " + entry.Role + "    /    " + price, 25, 172, 520, 28, 16, ink, true);
                 BuildWorkerActions(card, entry);
@@ -466,13 +469,16 @@ namespace RestaurantCity {
                 Label(content, "PEOPLE BOOK  /  Old Market  /  " + met + " of " + cast.Length + " met", 22, bookTop + 8, 1110, 40, 24, ink, true);
                 for (int i = 0; i < book.Count; i++) {
                     var r = book[i]; bool known = gs.HasMet(r.Id);
-                    var card = Block(content, r.Name, (i % 4) * 285, bookTop + 60 + (i / 4) * 300, 270, 285, known ? new Color(1f, .96f, .86f) : pale);
+                    var card = Block(content, r.Name, (i % 4) * 285, bookTop + 60 + (i / 4) * 335, 270, 320, known ? new Color(1f, .96f, .86f) : pale);
                     var pic = Box(card, "Portrait", 65, 12, 140, 140).gameObject.AddComponent<RawImage>(); pic.texture = ResidentIcons.Get(r, !known); pic.raycastTarget = false;
                     Label(card, r.Name, 10, 158, 250, 30, 21, known ? ink : muted, true, TextAnchor.MiddleCenter);
                     Label(card, known ? r.Rarity + "  /  " + r.Job : r.Rarity + (r.NightOnly ? "  /  night only" : "") + (r.MinAmbience > 0 ? "  /  needs ambience " + r.MinAmbience : ""), 5, 188, 260, 24, 13, muted, false, TextAnchor.MiddleCenter);
                     string id = r.Id;
-                    if (known) Button(card, "Recruit  /  " + r.FluxCost + " Flux", 15, 222, 240, 46, () => Owner.Hire(id), teal, white, gs.Flux >= r.FluxCost);
-                    else Label(card, "Serve them a meal to meet them", 10, 225, 250, 40, 14, muted, false, TextAnchor.MiddleCenter);
+                    if (known) {
+                        var stats = StaffStats.For(r.Id); StatPips(card, stats, 12, 210, 62);
+                        Label(card, StaffStats.PerkName(stats.Perk) + ": " + StaffStats.PerkText(stats.Perk), 6, 238, 258, 18, 11, gold, true, TextAnchor.MiddleCenter);
+                        Button(card, "Recruit  /  " + r.FluxCost + " Flux", 15, 262, 240, 46, () => Owner.Hire(id), teal, white, gs.Flux >= r.FluxCost);
+                    } else Label(card, "Serve them a meal to meet them.\nStats unknown.", 10, 225, 250, 60, 14, muted, false, TextAnchor.MiddleCenter);
                 }
             }
             // The Gilded Orbit's elite crew: visible, desirable, and not available yet.
@@ -484,6 +490,17 @@ namespace RestaurantCity {
                 Label(card, parts[1], 25, 78, 507, 70, 17, paper);
                 Label(card, "25 Flux    /    Rival exclusive", 25, 172, 520, 28, 16, paper, true);
                 Button(card, "Locked: they only work for a three-star restaurant", 25, 233, 508, 43, () => { }, pale, ink, false);
+            }
+        }
+
+        // Four stats as labelled pips (1-5): COOK, SPEED, STAMINA, BRAWN.
+        void StatPips(RectTransform card, ResidentStats stats, float x, float y, float colW) {
+            string[] names = { "COOK", "SPEED", "STAMINA", "BRAWN" }; int[] values = { stats.Cooking, stats.Speed, stats.Stamina, stats.Brawn };
+            float pip = Mathf.Min(10, (colW - 12) / 5f - 2);
+            for (int i = 0; i < 4; i++) {
+                float cx = x + i * colW;
+                Label(card, names[i], cx, y, colW, 14, 10, muted, true);
+                for (int p = 0; p < 5; p++) Block(card, "Pip", cx + p * (pip + 2), y + 15, pip, pip, p < values[i] ? (i == 3 ? coral : teal) : new Color(.8f, .79f, .72f));
             }
         }
 

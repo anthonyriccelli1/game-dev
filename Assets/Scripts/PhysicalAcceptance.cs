@@ -41,6 +41,16 @@ namespace RestaurantCity {
      var metId=st.MetResidents[0];var metDef=ResidentCast.Get(metId);Check(st.Restaurant.Hire(st,metId,out var hm),"recruit a met resident: "+hm);
      Check(st.Flux==flux0+10-metDef.FluxCost,"recruiting costs the resident's Flux price");
      st.Restaurant.Workers.RemoveAll(w=>w.Id==metId);st.Flux=flux0;}
+    // Resident stats: every recruitable resident has four 1-5 stats and a perk, totals by rarity, and the stats change real work.
+    {bool statsOk=true;foreach(var r in ResidentCast.OldMarket){var rs=StaffStats.For(r.Id);int want=r.Tier==0?10:r.Tier==1?12:14;
+      if(!StaffStats.Has(r.Id)||rs.Perk==Perk.None||rs.Total!=want||rs.Cooking<1||rs.Cooking>5||rs.Speed<1||rs.Speed>5||rs.Stamina<1||rs.Stamina>5||rs.Brawn<1||rs.Brawn>5){statsOk=false;Debug.LogWarning("STATS_BAD "+r.Id+" total "+rs.Total);}}
+     Check(statsOk,"every Old Market resident has 1-5 stats, a perk, and the rarity's point total");
+     var lydia=new WorkerState{Id="054_Lydia",Energy=100};var jimmy=new WorkerState{Id="003_Jimmy",Energy=100};
+     Check(RestaurantController.WorkerSpeed(lydia,"grill")>RestaurantController.WorkerSpeed(jimmy,"grill")*1.5f,"a Cooking-5 chef works the grill much faster than a Cooking-1 server");
+     Check(StaffStats.WalkMultiplier(StaffStats.For("003_Jimmy"),false)>StaffStats.WalkMultiplier(StaffStats.For("033_Franky"),false),"Speed and Sprinter make Jimmy walk faster than Franky");
+     Check(StaffStats.DrainMultiplier(StaffStats.For("033_Franky"))<.5f*StaffStats.DrainMultiplier(StaffStats.For("008_Hugo")),"Tireless Franky drains energy far slower than Hugo");
+     var tired=new WorkerState{Id="070_Robert",Energy=10};var tired2=new WorkerState{Id="008_Hugo",Energy=10};
+     Check(RestaurantController.WorkerSpeed(tired,"grill")>.9f&&RestaurantController.WorkerSpeed(tired2,"grill")<.5f,"Steady Robert keeps his speed when tired; Hugo slows down");}
     // One restaurant per district: Old Market is the dressed 160 m block only (no greybox, no second site).
     Check(RestaurantSites.All.Length==1&&GameObject.Find("Saffron Bay (greybox districts)")==null&&GameObject.Find("Property for lease / The Bayside")==null,"Old Market has one restaurant and no greybox around it");
     Check(CityDistricts.At(0,0)?.Id=="market"&&CityDistricts.At(-190,-15)==null&&System.Array.TrueForAll(NightStashes.Spots,sp=>System.Math.Abs(sp.X)<78&&System.Math.Abs(sp.Z)<78),"every stash spot and place is inside the block");
