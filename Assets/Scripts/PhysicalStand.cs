@@ -275,6 +275,7 @@ namespace RestaurantCity {
         bool InspectStreet(FirstPersonPlayer p, Interactable city, bool pressed) {
             if (InspectNightStash(p, city, pressed)) return true;
             if (InspectRaid(p, city, pressed)) return true;
+            if (InspectPawn(p, city, pressed)) return true;
             var k = Game.State.Kitchen; string actor = p.ActorId;
             if (city.Kind == InteractionKind.Supplier && city.name == "Milo shopkeeper") {
                 var held = k.Hold(actor);

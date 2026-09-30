@@ -29,6 +29,7 @@ public static class CityMap {
         Rect.MinMaxRect(-25, -40, -20, -25),      // The Flats: graffiti alley off South Avenue
         Rect.MinMaxRect(10, -40, 25, -25),        // The Flats: vacant lot where Greasy Gus parks his truck
         Rect.MinMaxRect(-25, 35, -15, 40),        // Market Row: The Tin Diner (a one-storey chrome diner)
+        Rect.MinMaxRect(25, -30, 30, -20),        // The Flats: the pawn shop on East Street
     };
     static Transform root; static int seed;
 
@@ -385,16 +386,79 @@ public static class CityMap {
         var p = new GameObject("Vacant lot").transform; p.SetParent(root, false);
         for (float x = 10; x < 24.99f; x += 5) Put("Environments/SM_Env_Fence_01", new Vector3(x, 0, -25.4f), 0, p);
         for (float z = -35; z < -25.01f; z += 5) { Put("Environments/SM_Env_Fence_01", new Vector3(10.4f, 0, z + 5), 90, p); Put("Environments/SM_Env_Fence_01", new Vector3(24.6f, 0, z + 5), 90, p); }
-        var truck = new GameObject("Greasy Gus's truck").transform; truck.SetParent(p, false);
-        Put("Vehicles/SM_Veh_Car_Van_01", new Vector3(17.5f, WalkY, -31.5f), 180, truck);
-        Put("Props/SM_Prop_LargeSign_Burger_01", new Vector3(17.5f, 2.35f, -31.2f), 180, truck);
-        foreach (int side in new[] { -1, 1 }) SignText("GREASY GUS", new Vector3(17.5f + side * 1.08f, 1.45f, -31.5f), side > 0 ? 1 : 3, .16f, new Color(1, .86f, .3f), truck);
+        FoodTruck(new Vector3(17.5f, 0, -31.5f), p);
         Put("Props/SM_Prop_PicnicTable_01", new Vector3(13.5f, WalkY, -35.5f), 0, p);
         Put("Props/SM_Prop_Trashbin_02", new Vector3(21.8f, WalkY, -36.5f), 0, p);
         Put("Props/SM_Prop_Skip_02", new Vector3(21.5f, 0, -27.3f), 0, p);
         foreach (var (x, z) in new[] { (12.2f, -27.2f), (13.1f, -28.1f) }) FitPack("PolygonGeneric", "Props/SM_Gen_Prop_Crate_02", new Vector3(x, WalkY, z), x * 30, .8f, p);
         Put("Props/SM_Prop_LightPole_Base_02", new Vector3(10.8f, 0, -38.8f), 90, p);
     }
+    // Greasy Gus's food truck: a mustard step-van with a red stripe, a lit serving hatch on the lot side (-X) under a
+    // prop-up awning, a menu board, bulb lights along the roof, a smoking vent and a giant burger on top.
+    static void FoodTruck(Vector3 c, Transform parent) {
+        var t = new GameObject("Greasy Gus's truck").transform; t.SetParent(parent, false);
+        var body = InteriorMat("TruckMustard", "E8B23A"); var red = InteriorMat("TruckRed", "C8402F"); var chrome = InteriorMat("TruckChrome", "C9CED3");
+        var glass = InteriorMat("TruckGlass", "1F2A33"); var tyre = InteriorMat("TruckTyre", "1B1C1F"); var inside = GlowMat("TRUCKHATCH", "F4D08A", .55f);
+        var board = InteriorMat("TruckBoard", "22262B"); var bulb = GlowMat("TRUCKBULB", "FFE3A0", 1.4f);
+        float x0 = c.x - 1.25f, x1 = c.x + 1.25f, zb = c.z + 3, zf = c.z - 3;   // back (north) and front (south)
+        // Box body, cab, bumpers.
+        Slab("Body", new Vector3(c.x, 1.85f, c.z + .55f), new Vector3(2.5f, 2.6f, 4.9f), body, t, true);
+        Slab("Roof lip", new Vector3(c.x, 3.2f, c.z + .55f), new Vector3(2.62f, .12f, 5.02f), chrome, t, false);
+        Slab("Cab", new Vector3(c.x, 1.5f, zf + .55f), new Vector3(2.4f, 1.9f, 1.1f), body, t, true);
+        Slab("Cab roof", new Vector3(c.x, 2.48f, zf + .6f), new Vector3(2.44f, .1f, 1.2f), chrome, t, false);
+        Slab("Windshield", new Vector3(c.x, 1.95f, zf - .01f), new Vector3(2.1f, .8f, .04f), glass, t, false);
+        foreach (float sx in new[] { -1f, 1f }) Slab("Side window", new Vector3(c.x + sx * 1.21f, 1.95f, zf + .6f), new Vector3(.04f, .7f, .8f), glass, t, false);
+        Slab("Stripe", new Vector3(c.x, 1.05f, c.z + .1f), new Vector3(2.52f, .28f, 5.8f), red, t, false);
+        Slab("Front bumper", new Vector3(c.x, .62f, zf - .05f), new Vector3(2.5f, .22f, .16f), chrome, t, false);
+        Slab("Rear bumper", new Vector3(c.x, .62f, zb + .05f), new Vector3(2.5f, .22f, .16f), chrome, t, false);
+        Slab("Grille", new Vector3(c.x, 1.05f, zf - .02f), new Vector3(1.4f, .5f, .05f), chrome, t, false);
+        foreach (float sx in new[] { -.85f, .85f }) Slab("Headlight", new Vector3(c.x + sx, 1.15f, zf - .04f), new Vector3(.32f, .22f, .04f), bulb, t, false);
+        Slab("Chassis", new Vector3(c.x, .62f, c.z), new Vector3(2.3f, .3f, 5.8f), tyre, t, false);
+        foreach (float sx in new[] { -1f, 1f }) foreach (float z in new[] { zf + 1.1f, zb - 1f }) {
+            var w = GameObject.CreatePrimitive(PrimitiveType.Cylinder); w.name = "Wheel"; Object.DestroyImmediate(w.GetComponent<Collider>()); w.transform.SetParent(t, false);
+            w.transform.position = new Vector3(c.x + sx * 1.1f, .44f, z); w.transform.rotation = Quaternion.Euler(0, 0, 90); w.transform.localScale = new Vector3(.88f, .16f, .88f); w.GetComponent<Renderer>().sharedMaterial = tyre;
+            var hub = GameObject.CreatePrimitive(PrimitiveType.Cylinder); hub.name = "Hub"; Object.DestroyImmediate(hub.GetComponent<Collider>()); hub.transform.SetParent(w.transform, false);
+            hub.transform.localPosition = new Vector3(0, sx * 1.05f, 0); hub.transform.localScale = new Vector3(.5f, .1f, .5f); hub.GetComponent<Renderer>().sharedMaterial = chrome;
+        }
+        // Serving hatch on the lot side: a lit opening, a steel ledge, a propped-up awning and struts.
+        float hx = x0 - .02f, hz = c.z + .8f;
+        Slab("Hatch opening", new Vector3(hx, 2.05f, hz), new Vector3(.05f, 1.05f, 2.6f), inside, t, false);
+        Slab("Hatch frame top", new Vector3(hx - .02f, 2.6f, hz), new Vector3(.06f, .08f, 2.75f), chrome, t, false);
+        Slab("Hatch frame bottom", new Vector3(hx - .02f, 1.5f, hz), new Vector3(.06f, .08f, 2.75f), chrome, t, false);
+        Slab("Ledge", new Vector3(hx - .2f, 1.47f, hz), new Vector3(.42f, .06f, 2.7f), chrome, t, true);
+        var flap = Slab("Awning flap", new Vector3(hx - .55f, 2.8f, hz), new Vector3(1.1f, .06f, 2.8f), red, t, false); flap.transform.rotation = Quaternion.Euler(0, 0, -18);
+        foreach (float dz in new[] { -1.3f, 1.3f }) { var strut = Slab("Strut", new Vector3(hx - .5f, 2.7f, hz + dz), new Vector3(.03f, .6f, .03f), chrome, t, false); strut.transform.rotation = Quaternion.Euler(0, 0, 55); }
+        // Menu board and name.
+        Slab("Menu board", new Vector3(hx - .01f, 2.05f, c.z - 1.35f), new Vector3(.05f, 1f, 1.2f), board, t, false);
+        SignText("MENU\nGREASE BURGER  6\nCHILI DOG  5\nFRIES  3", new Vector3(hx - .05f, 2.3f, c.z - 1.35f), 3, .045f, new Color(1f, .95f, .8f), t);
+        SignText("GREASY GUS", new Vector3(hx - .03f, 3.0f, c.z + .55f), 3, .15f, new Color(.78f, .16f, .12f), t);
+        SignText("GREASY GUS", new Vector3(x1 + .03f, 2.4f, c.z + .55f), 1, .17f, new Color(.78f, .16f, .12f), t);
+        SignText("GREASY GUS'S", new Vector3(c.x, 2.9f, zb + .03f), 0, .1f, new Color(.78f, .16f, .12f), t);
+        // Bulbs along the roof edge on the hatch side, a smoking vent, and the burger on top.
+        for (int i = 0; i < 9; i++) { var b = GameObject.CreatePrimitive(PrimitiveType.Sphere); b.name = "Bulb"; Object.DestroyImmediate(b.GetComponent<Collider>()); b.transform.SetParent(t, false); b.transform.position = new Vector3(x0 - .06f, 3.08f, zf + 1.3f + i * .55f); b.transform.localScale = Vector3.one * .1f; b.GetComponent<Renderer>().sharedMaterial = bulb; }
+        Slab("Vent", new Vector3(c.x + .6f, 3.45f, zb - .8f), new Vector3(.4f, .5f, .4f), chrome, t, false);
+        Put("Props/SM_Prop_LargeSign_Burger_01", new Vector3(c.x, 3.26f, c.z + .3f), 90, t);
+        var glow = new GameObject("Hatch light").AddComponent<Light>(); glow.transform.SetParent(t, false); glow.transform.position = new Vector3(hx - .9f, 2.4f, hz);
+        glow.type = LightType.Point; glow.color = new Color(1f, .82f, .55f); glow.intensity = 1.8f; glow.range = 6;
+        // Service stool and a menu A-frame on the lot side.
+        FitPack("PolygonShops", "Props/SM_Prop_Cafe_Sign_Outdoor_01", new Vector3(hx - 2.2f, WalkY, c.z - 2.3f), 90, .8f, t);
+    }
+
+    // The Flats: a pawn shop on East Street. Its counter sells weapons (the pawnbroker is spawned at runtime).
+    static void PawnShop() {
+        Tower(25, -30, 1, 1, true, "Buildings/SM_Bld_Shop_03", 5);
+        Tower(25, -25, 1, 1, true, "Buildings/SM_Bld_Shop_04", 5);
+        var p = new GameObject("Pawn shop").transform; p.SetParent(root, false);
+        Put("Buildings/SM_Bld_Shop_Cover_03", OnFace(25, -30, 1, -2.5f, 2.2f, 2.55f), 90, p);
+        PoleSign("PAWN", new Vector3(33.6f, 0, -21.5f), "3D7F4E");
+        var counter = FitPack("PolygonShops", "Props/SM_Prop_Market_Checkout_Large_01", new Vector3(31.4f, WalkY, -25), 90, 2.2f, p);
+        if (!counter) counter = Slab("Pawn counter", new Vector3(31.4f, .5f, -25), new Vector3(.9f, 1f, 2.2f), InteriorMat("PawnCounter", "5C4633"), p, true);
+        counter.name = "Pawn counter";
+        FitPack("PolygonShops", "Props/SM_Prop_Kitchen_Pan_01", new Vector3(31.3f, 1.02f, -25.6f), 30, .45f, p);
+        FitPack("PolygonShops", "Props/SM_Prop_Police_Baton_01", new Vector3(31.4f, 1.02f, -24.5f), 70, .6f, p);
+        SignText("WEAPONS  /  CASH ONLY", new Vector3(31.9f, 1.55f, -25), 1, .07f, new Color(1f, .9f, .6f), p);
+    }
+
     // Barricades where streets leave the block, and the gate to The Docks at the bottom of West Street.
     static void StreetEnds() {
         var p = new GameObject("Street ends").transform; p.SetParent(root, false);
@@ -551,7 +615,7 @@ public static class CityMap {
         Put("Buildings/SM_Bld_Station_01", new Vector3(0, 0, -30), 0);
         Put("Environments/Custom/SM_Env_Skyline_01", Vector3.zero, 0);
         // Old Market's own places (Market Row, The Flats) and the street ends.
-        MarketStalls(); TinDiner(); GraffitiAlley(); VacantLot(); StreetEnds();
+        MarketStalls(); TinDiner(); GraffitiAlley(); VacantLot(); PawnShop(); StreetEnds();
         // Street life: parked cars, trees, benches, hydrants, a hotdog cart, bus stop, rooftop signs.
         string[] cars = { "SM_Veh_Car_Sedan_01", "SM_Veh_Car_Taxi_01", "SM_Veh_Car_Van_01", "SM_Veh_Car_Small_01", "SM_Veh_Car_Medium_01", "SM_Veh_Car_Muscle_01" };
         int c = 0;

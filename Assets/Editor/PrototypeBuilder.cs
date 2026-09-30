@@ -64,6 +64,10 @@ public static class PrototypeBuilder {
                 var box = spot.AddComponent<BoxCollider>(); box.center = new Vector3(rival.X, 1.2f, rival.Z) - spot.transform.position; box.size = new Vector3(2.6f, 2.4f, 5.4f);
                 var it = spot.AddComponent<Interactable>(); it.Kind = InteractionKind.Raid; it.Site = rival.Id;
             }
+            // The pawn shop counter on East Street sells weapons (RaidFight.cs / RestaurantUI.BuildPawn).
+            var pawn = GameObject.Find("Pawn counter");
+            if (pawn) { var pb = pawn.AddComponent<BoxCollider>(); pb.center = new Vector3(0, .6f, 0); pb.size = new Vector3(1.4f, 1.3f, 2.6f); pb.center = pawn.transform.InverseTransformPoint(new Vector3(31.4f, .6f, -25)); pb.size = new Vector3(1.4f, 1.3f, 2.6f) / Mathf.Max(.01f, pawn.transform.lossyScale.x); pawn.AddComponent<Interactable>().Kind = InteractionKind.Pawn; }
+            else { var stub = new GameObject("Pawn counter"); stub.transform.SetParent(world, false); stub.transform.position = new Vector3(31.4f, 0, -25); var sb = stub.AddComponent<BoxCollider>(); sb.center = Vector3.up * .6f; sb.size = new Vector3(1.4f, 1.3f, 2.6f); stub.AddComponent<Interactable>().Kind = InteractionKind.Pawn; }
         }
         else {
             Cube("North district boundary", new Vector3(0, 2, 32), new Vector3(58, 4, 1), dark, world);

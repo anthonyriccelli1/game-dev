@@ -120,7 +120,7 @@ namespace RestaurantCity {
   public bool CollectStash(GameState game,string actor,out string message){
    if(!game.StashActive)return Fail("Nothing here. The stash is gone.",out message);
    var hand=Hold(actor);if(hand!=null&&hand.Kind!=KitchenItemKind.GroceryBag)return Fail("Free your hands to grab the stash.",out message);
-   int bottles=game.DropBottles;var bag=hand??Create(KitchenItemKind.GroceryBag,actor);for(int i=0;i<bottles;i++)bag.Components.Add("midnight_sauce");
+   int bottles=game.DropBottles;var bag=hand??Hotbar.CarriedBag(game,actor)??Create(KitchenItemKind.GroceryBag,actor);bag.Holder=actor;for(int i=0;i<bottles;i++)bag.Components.Add("midnight_sauce");
    game.DropBottles=0;game.DropPlaced=false;game.StashSpot=-1;
    message="Found Zeeb's drop: "+bottles+" bottles of Midnight sauce. Get them home to your pantry"+(game.ZeebDebt>0?", and don't forget you owe him $"+game.ZeebDebt+".":".");return true;
   }
@@ -133,7 +133,7 @@ namespace RestaurantCity {
    int total=0;
    foreach(var line in cart){if(line.Count<=0)continue;var d=Ingredients.Get(line.Id);if(d==null)return Fail("Unknown item.",out message);string why=r.IngredientLock(game,d);if(why!=null)return Fail(d.Name+": "+why+".",out message);total+=d.PackPrice*line.Count;}
    if(game.Cash<total)return Fail("That's $"+total+". You have $"+game.Cash+".",out message);
-   game.Cash-=total;var bag=hand??Create(KitchenItemKind.GroceryBag,actor);int units=0;
+   game.Cash-=total;var bag=hand??Hotbar.CarriedBag(game,actor)??Create(KitchenItemKind.GroceryBag,actor);bag.Holder=actor;int units=0;
    foreach(var line in cart){var d=Ingredients.Get(line.Id);for(int i=0;i<line.Count*d.PackSize;i++){bag.Components.Add(d.Id);units++;}}
    message="Paid $"+total+". "+units+" items in your grocery bag: unpack them at your pantry.";return true;
   }

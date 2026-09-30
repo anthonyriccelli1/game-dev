@@ -60,6 +60,12 @@ namespace RestaurantCity {
             ("77_graffiti_alley_day", new Vector3(-22.5f, 0, -43), 0, 2, 60),
             ("78_vacant_lot_day", new Vector3(17.5f, 0, -44), 0, 4, 60),
             ("79_street_end_day", new Vector3(58, 0, 0), 90, 2, 60),
+            ("84_food_truck_day", new Vector3(10.5f, 0, -37.5f), 40, 2, 60),
+            ("85_food_truck_night", new Vector3(10.5f, 0, -37.5f), 40, 2, 190),
+            ("86_pawn_shop", new Vector3(38.5f, 0, -27f), 290, 4, 60),
+            ("87_pawn_panel", new Vector3(33f, 0, -25f), 270, 4, 60),
+            ("88_fists_view", new Vector3(-6, 0, 3), 90, 0, 60),
+            ("89_bat_view", new Vector3(-6, 0, 3), 90, 0, 60),
             ("81_raid_planner", new Vector3(17.5f, 0, -40), 0, 4, 190),
             ("82_raid_fight", new Vector3(17.5f, 0, -45.5f), 0, 6, 190),
             ("83_raid_ko", new Vector3(17.5f, 0, -45.5f), 0, 8, 190),
@@ -324,6 +330,8 @@ namespace RestaurantCity {
                         }
                     }
                 }
+                if (rc && shot.name.Contains("pawn_panel")) { Game.State.Cash = 120; rc.PawnBuyer = 0; rc.ShowPanel("Pawn"); }
+                if (shot.name.Contains("bat_view")) { var inv = Hotbar.For(Game.State, 0); if (!inv.Has("bat")) Hotbar.Give(Game.State, 0, "bat", out _); Hotbar.Give(Game.State, 0, "knuckles", out _); Hotbar.Select(Game.State, 0, inv.Slots.FindIndex(x => x.Item == "bat"), out _); }
                 if (rc && shot.name.Contains("milo_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); }
                 if (rc && shot.name.Contains("stand_tables")) {
                     // Two seated stand guests (one served and eating) and a dirty plate: walk them in, then shoot.

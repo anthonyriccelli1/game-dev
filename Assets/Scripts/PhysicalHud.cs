@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace RestaurantCity {
  public class PhysicalHud:MonoBehaviour {
   public CityGame Game;
-  sealed class View {public Canvas Canvas;public Text Top,Tickets,Prompt,Notice;}
+  sealed class View {public Canvas Canvas;public Text Top,Tickets,Prompt,Notice,HealthText,WeaponText;public Image[] Slots;public Text[] SlotText;public RectTransform HealthFill,ChargeFill;public Image Hurt;}
   readonly List<View> views=new List<View>();
   static readonly Color Ink=new Color(.035f,.095f,.12f,.62f), Cream=new Color(1,.95f,.82f);
   // Compact HUD: small status chip top-left, ticket column top-right (hidden when empty),
@@ -29,12 +29,51 @@ namespace RestaurantCity {
      Top=Card(go.transform,"Status",new Vector2(0,.9f),new Vector2(.3f,1),15,true,TextAnchor.MiddleLeft),
      Tickets=Card(go.transform,"Tickets",new Vector2(.7f,.5f),new Vector2(1,1),14,true,TextAnchor.UpperLeft),
      Prompt=Card(go.transform,"Prompt",new Vector2(.25f,.3f),new Vector2(.75f,.46f),19,false,TextAnchor.UpperCenter),
-     Notice=Card(go.transform,"Notice",new Vector2(.2f,.02f),new Vector2(.8f,.1f),15,false,TextAnchor.LowerCenter)};
+     Notice=Card(go.transform,"Notice",new Vector2(.2f,.15f),new Vector2(.8f,.23f),15,false,TextAnchor.LowerCenter)};
+    BuildHotbar(go.transform,v);
     views.Add(v);
     var dot=new GameObject("Aim",typeof(RectTransform),typeof(Text),typeof(Outline));dot.transform.SetParent(go.transform,false);var dr=(RectTransform)dot.transform;dr.anchorMin=dr.anchorMax=new Vector2(.5f,.5f);dr.sizeDelta=new Vector2(48,48);dr.anchoredPosition=Vector2.zero;
     var dt=dot.GetComponent<Text>();dt.font=Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");dt.fontSize=24;dt.text="+";dt.alignment=TextAnchor.MiddleCenter;dt.color=Cream;dt.raycastTarget=false;dot.GetComponent<Outline>().effectColor=new Color(.03f,.1f,.13f,.9f);
     foreach(var t in go.GetComponentsInChildren<Transform>())t.gameObject.layer=25+p.PlayerId;
    }
+  }
+  // Schedule I-style hotbar along the bottom: numbered slots, the selected one lit, health above it,
+  // a charge meter for heavy hits and a red edge when you get hit.
+  static RectTransform Rect(Transform parent,string name,Vector2 anchor,Vector2 pos,Vector2 size,Color color){
+   var go=new GameObject(name,typeof(RectTransform),typeof(Image));go.transform.SetParent(parent,false);var rt=(RectTransform)go.transform;rt.anchorMin=rt.anchorMax=anchor;rt.pivot=new Vector2(.5f,0);rt.anchoredPosition=pos;rt.sizeDelta=size;
+   var img=go.GetComponent<Image>();img.color=color;img.raycastTarget=false;return rt;
+  }
+  static Text Label(Transform parent,string name,int size,TextAnchor align){
+   var go=new GameObject(name,typeof(RectTransform),typeof(Text),typeof(Outline));go.transform.SetParent(parent,false);var rt=(RectTransform)go.transform;rt.anchorMin=Vector2.zero;rt.anchorMax=Vector2.one;rt.offsetMin=new Vector2(3,2);rt.offsetMax=new Vector2(-3,-2);
+   var t=go.GetComponent<Text>();t.font=Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");t.fontSize=size;t.color=Cream;t.alignment=align;t.raycastTarget=false;t.supportRichText=true;go.GetComponent<Outline>().effectColor=new Color(0,0,0,.8f);return t;
+  }
+  void BuildHotbar(Transform canvas,View v){
+   int n=PlayerInventory.Size;float w=62,gap=6,total=n*w+(n-1)*gap;
+   v.Slots=new Image[n];v.SlotText=new Text[n];
+   for(int i=0;i<n;i++){
+    var slot=Rect(canvas,"Slot "+(i+1),new Vector2(.5f,0),new Vector2(-total/2+w/2+i*(w+gap),14),new Vector2(w,w),Ink);
+    v.Slots[i]=slot.GetComponent<Image>();
+    var num=Label(slot,"Number",11,TextAnchor.UpperLeft);num.text=(i+1).ToString();num.color=new Color(1,1,1,.55f);
+    v.SlotText[i]=Label(slot,"Item",12,TextAnchor.MiddleCenter);
+   }
+   var back=Rect(canvas,"Health back",new Vector2(.5f,0),new Vector2(-total/2+130,88),new Vector2(260,12),new Color(0,0,0,.55f));
+   v.HealthFill=Rect(back,"Health fill",new Vector2(0,0),Vector2.zero,new Vector2(260,12),new Color(.86f,.24f,.22f));v.HealthFill.pivot=new Vector2(0,0);v.HealthFill.anchoredPosition=Vector2.zero;
+   var ht=Rect(canvas,"Health label",new Vector2(.5f,0),new Vector2(-total/2+130,100),new Vector2(260,20),new Color(0,0,0,0));v.HealthText=Label(ht,"Text",13,TextAnchor.LowerLeft);
+   var wt=Rect(canvas,"Weapon label",new Vector2(.5f,0),new Vector2(total/2-130,88),new Vector2(260,30),new Color(0,0,0,0));v.WeaponText=Label(wt,"Text",14,TextAnchor.LowerRight);
+   var charge=Rect(canvas,"Charge",new Vector2(.5f,.5f),new Vector2(0,-34),new Vector2(0,5),new Color(1f,.7f,.25f,.9f));v.ChargeFill=charge;
+   var hurt=new GameObject("Hurt",typeof(RectTransform),typeof(Image));hurt.transform.SetParent(canvas,false);var hr=(RectTransform)hurt.transform;hr.anchorMin=Vector2.zero;hr.anchorMax=Vector2.one;hr.offsetMin=hr.offsetMax=Vector2.zero;
+   v.Hurt=hurt.GetComponent<Image>();v.Hurt.color=new Color(.8f,.05f,.05f,0);v.Hurt.raycastTarget=false;hurt.transform.SetAsFirstSibling();
+  }
+  void UpdateHotbar(View v,FirstPersonPlayer p){
+   if(v.Slots==null)return;var inv=Hotbar.For(Game.State,p.PlayerId);var combat=p.GetComponent<PlayerCombat>();
+   for(int i=0;i<v.Slots.Length;i++){bool sel=i==inv.Selected;var s=inv.Slots[i];
+    v.Slots[i].color=sel?new Color(.95f,.72f,.3f,.9f):Ink;v.Slots[i].rectTransform.sizeDelta=sel?new Vector2(68,68):new Vector2(62,62);
+    string label=Hotbar.SlotLabel(Game.State,s);v.SlotText[i].text=label==""&&sel?"<color=#FFFFFF88>FISTS</color>":label;v.SlotText[i].color=sel?new Color(.1f,.08f,.06f):Cream;}
+   float hp=Mathf.Clamp(p.Health,0,100);v.HealthFill.sizeDelta=new Vector2(260*hp/100f,12);v.HealthText.text="HEALTH  "+Mathf.CeilToInt(hp);
+   var weapon=inv.Weapon;var food=Hotbar.HandFood(Game.State,p.PlayerId);
+   v.WeaponText.text=food!=null?"Hands full":combat&&combat.Blocking?"<color=#9FD8C8>BLOCKING</color>":weapon.Name+"  <size=11>click jab / hold heavy / right-click block</size>";
+   float c=combat?combat.Charge01:0;v.ChargeFill.sizeDelta=new Vector2(c*120,5);v.ChargeFill.GetComponent<Image>().color=c>=1?new Color(1f,.35f,.2f,.95f):new Color(1f,.75f,.3f,.85f);
+   v.Hurt.color=new Color(.8f,.05f,.05f,combat?combat.HurtFlash*.35f:0);
   }
   void LateUpdate(){
    if(!Game||!Game.CoOp)return;
@@ -52,6 +91,7 @@ namespace RestaurantCity {
     string holding=held==null?"":"<size=14><color=#9FD8C8>Holding: "+k.Label(held)+(checklist==""?"":"  |  "+checklist)+"</color></size>\n";
     v.Prompt.text=holding+prompt;
     v.Notice.text=Game.Notice;
+    UpdateHotbar(v,p);
    }
   }
   static string StandTicket(GameState s){

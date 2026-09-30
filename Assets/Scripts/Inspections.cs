@@ -8,8 +8,9 @@ namespace RestaurantCity {
         public const string Contraband = "midnight_sauce";
         public const int StopFine = 15, PerBottle = 4, RunFine = 40;
         public static int Carried(GameState g, string actor) {
-            var h = g.Kitchen?.Hold(actor);
-            return h != null && h.Kind == KitchenItemKind.GroceryBag ? h.Components.FindAll(c => c == Contraband).Count : 0;
+            // Anything on you counts: the bag in your hand or stowed in your hotbar.
+            var h = Hotbar.CarriedBag(g, actor);
+            return h != null ? h.Components.FindAll(c => c == Contraband).Count : 0;
         }
         // Returns the fine actually taken (never more than the cash you have).
         public static int Search(GameState g, string actor, bool caughtRunning, out string message) {

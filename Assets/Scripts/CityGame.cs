@@ -97,13 +97,21 @@ namespace RestaurantCity {
         public void Hurt(int amount) {
             HurtPlayer(Player, amount);
         }
-        public void HurtPlayer(FirstPersonPlayer player, int amount) {
-            player.Health = Mathf.Max(0, (player.PlayerId == 0 ? State.Health : player.Health) - amount);
-            if (player.PlayerId == 0) State.Health = Mathf.RoundToInt(player.Health);
-            if (player.Health > 0) { Notify("Player " + (player.PlayerId + 1) + " hit! Back out of the alley to escape."); return; }
+        public void HurtPlayer(FirstPersonPlayer player, int amount) => HurtPlayer(player, amount, null);
+        // Returns true when the player parried the blow (the attacker should stagger).
+        public bool HurtPlayer(FirstPersonPlayer player, float amount, Vector3? from) {
+            float taken = PlayerCombat.Of(player).Incoming(amount, from, out bool parried);
+            if (taken <= 0) return parried;
+            player.Health = Mathf.Max(0, (player.PlayerId == 0 ? Mathf.Min(State.Health, player.Health) : player.Health) - taken);
+            if (player.PlayerId == 0) State.Health = Mathf.CeilToInt(player.Health);
+            // Knocked out in a raid: the raid is lost right away (RaidBattle handles the wake-up and the losses).
+            if (player.Health <= 0 && Restaurant && Restaurant.ActiveRaid && !Restaurant.ActiveRaid.Over) { Restaurant.ActiveRaid.PlayerDowned(player); return false; }
+            if (player.Health > 0 && Restaurant && Restaurant.ActiveRaid && !Restaurant.ActiveRaid.Over) return false;
+            if (player.Health > 0) { Notify("Player " + (player.PlayerId + 1) + " hit! Back out of the alley to escape."); return false; }
             if (player.PlayerId == 0) State.Respawn(); else State.Cash = Mathf.Max(0, State.Cash - 10);
             player.Health = 100; player.Teleport(SpawnPoint + Vector3.right * player.PlayerId * 1.5f); Guard.ResetGuard(); Save();
             Notify("Back at your stand. Lost up to $10; your stand and recipes are safe.", 7);
+            return false;
         }
         public void SyncWorld() {
             Stand.SetActive(State.StandBuilt); SetupMarker.SetActive(!State.StandBuilt);

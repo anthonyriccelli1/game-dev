@@ -6,7 +6,7 @@ namespace RestaurantCity {
     // (guaranteed by the Pity-th win). You can raid rivals up to one star above your restaurant, once a day each.
     public class RivalDef {
         public string Id, Name, Place, Boss, BossModel, RecipeId, Pitch;
-        public int Stars, BossHits, BossDamage, CashMin, CashMax, Flux, Pity;
+        public int Stars, BossHealth, BossDamage, CashMin, CashMax, Flux, Pity;
         public float X, Z, DropChance; public bool NightOnly;
         public string[] GoonModels; public ResidentStats GoonStats;
     }
@@ -16,10 +16,10 @@ namespace RestaurantCity {
     public static class Rivals {
         public static readonly RivalDef GreasyGus = new RivalDef {
             Id = "gus", Name = "Greasy Gus's truck", Place = "the vacant lot off South Avenue", Boss = "Greasy Gus", BossModel = "087_HotDog",
-            Stars = 1, X = 17.5f, Z = -31.5f, NightOnly = true, BossHits = 5, BossDamage = 18,
-            GoonModels = new[] { "007_Observer", "057_Rose" }, GoonStats = new ResidentStats(1, 2, 2, 2, Perk.None),
+            Stars = 1, X = 17.5f, Z = -31.5f, NightOnly = true, BossHealth = 130, BossDamage = 16,
+            GoonModels = new[] { "002_CoolAlien", "057_Rose", "007_Observer" }, GoonStats = new ResidentStats(1, 2, 2, 2, Perk.None),
             CashMin = 45, CashMax = 70, Flux = 2, RecipeId = "cyclops", DropChance = .4f, Pity = 3,
-            Pitch = "A one-star food truck that parks in the vacant lot after dark. Gus fights with a greasy spatula; his two fry cooks fight dirty.",
+            Pitch = "A one-star food truck that parks in the vacant lot after dark. Gus fights dirty and headbutts hard. He brings one fry cook for every crew member you bring.",
         };
         public static readonly RivalDef[] All = { GreasyGus };
         public static RivalDef Get(string id) => Array.Find(All, r => r.Id == id);
@@ -55,6 +55,14 @@ namespace RestaurantCity {
             loot.Message = "RAID WON!  +$" + loot.Cash + "  +" + loot.Flux + " Flux" + (dish != null ? "  +RECIPE: " + dish.ToUpper() + " (check the Cookbook and Menu)" :
                 g.Knows(rival.RecipeId) ? "" : "  No recipe this time (" + Math.Max(0, rival.Pity - r.Wins) + " more win" + (rival.Pity - r.Wins == 1 ? "" : "s") + " guarantees it).");
             return loot;
+        }
+        // Knocked out in a raid: you drop 20% of your cash (up to $100) and every crew member who came is spent.
+        public const int LossCap = 100;
+        public static int CashLoss(int cash) => Math.Min(LossCap, (Math.Max(0, cash) * 20 + 99) / 100);   // 20%, rounded up, in whole dollars
+        public static int Lose(GameState g, IEnumerable<WorkerState> crew) {
+            int loss = CashLoss(g.Cash); g.Cash -= loss;
+            foreach (var w in crew) if (w != null) w.Energy = 0;
+            return loss;
         }
         // After the brawl: everyone who fought is tired; anyone knocked out is spent and needs rest.
         public static void CrewAfter(WorkerState w, float healthLeft01, bool knockedOut) {

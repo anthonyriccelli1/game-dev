@@ -16,6 +16,8 @@ namespace RestaurantCity {
             if (loop) { int fade = Rate / 50; for (int i = 0; i < fade; i++) { float k = i / (float)fade; data[i] *= k; data[n - 1 - i] *= k; } }
             c = AudioClip.Create("Fx " + name, n, 1, Rate, false); c.SetData(data, 0); cache[name] = c; return c;
         }
+        // Named clip built once from a wave function (used by combat sounds).
+        public static AudioClip Get(string name, float seconds, Func<float, float> wave) => Make(name, seconds, wave);
         static float Sine(float f, float t) => Mathf.Sin(2 * Mathf.PI * f * t);
         static float last;
         static float Crackle(float amount) { float x = Noise(); float hp = x - last * .6f; last = x; return hp * amount; }

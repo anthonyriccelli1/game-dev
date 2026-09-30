@@ -44,6 +44,7 @@ namespace RestaurantCity {
         void Update() {
             if (!Game || !View) return;
             InitializeCamera();
+            PlayerCombat.Of(this);   // fists, weapons and the hotbar exist from the start (not only after the first input)
             var keys = PlayerId == 0 ? Keyboard.current : null;
             var mouse = PlayerId == 0 ? Mouse.current : null;
             var pad = AssignedGamepad != null && AssignedGamepad.added ? AssignedGamepad : null;
@@ -68,8 +69,9 @@ namespace RestaurantCity {
             ApplyMovement(move, Time.deltaTime, keys != null && keys.leftShiftKey.isPressed || pad != null && pad.leftStickButton.isPressed,
                 keys != null && keys.spaceKey.wasPressedThisFrame || pad != null && pad.rightStickButton.wasPressedThisFrame);
             ResolveAndInteract(interact, InteractHeld);
-            if (mouse != null && mouse.leftButton.wasPressedThisFrame || pad != null && pad.rightShoulder.wasPressedThisFrame) Swing();
-            if (Spatula) Spatula.localRotation = toolRotation * Quaternion.Euler(Mathf.Sin(swingTimer / .55f * Mathf.PI) * -65, 0, 0);
+            // Fists/weapons, block and the hotbar (PlayerCombat); left click still flips patties at a grill.
+            PlayerCombat.Of(this).Tick(keys, mouse, pad);
+            if (Spatula && Spatula.gameObject.activeSelf) Spatula.gameObject.SetActive(false);
             if (transform.position.y < -5) Teleport(Game.SpawnPoint + Vector3.right * PlayerId);
         }
         static Component TargetKey(RaycastHit hit) {
@@ -140,6 +142,7 @@ namespace RestaurantCity {
             gravity = controller.isGrounded ? -2 : gravity - 22 * seconds;
             if (jump && controller.isGrounded) { gravity = JumpSpeed; LastJumpTime = Time.time; }
             Sprinting = sprint && move.sqrMagnitude > .01f; Airborne = !controller.isGrounded;
+            var combat = GetComponent<PlayerCombat>(); if (combat && combat.Blocking) { move *= .5f; sprint = false; }
             controller.Move((move * (sprint ? 6.5f : 4) + Vector3.up * gravity) * seconds);
         }
         void LateUpdate() {
@@ -157,21 +160,14 @@ namespace RestaurantCity {
                 View.transform.localPosition = eyePosition;
                 View.transform.localRotation = Quaternion.Euler(pitch, 0, 0);
             }
-            if (Spatula) Spatula.gameObject.SetActive(!Elevated);
+            if (Spatula) Spatula.gameObject.SetActive(false);   // replaced by PlayerCombat's fists and weapons
             View.cullingMask = (Elevated ? ~(1 << 27) : ~OwnBodyMask) & ~(1 << (PlayerId == 0 ? 26 : 25));
         }
         public bool Swing() {
             if (swingTimer > 0) return false;
             swingTimer = .55f;
             if (Game && Game.Restaurant && Game.Restaurant.TryFlipStation(this)) return true;
-            Ray ray = InteractionRay;
-            if (Physics.SphereCast(ray.origin, .25f, ray.direction, out var strike, 3, ~OwnBodyMask, QueryTriggerInteraction.Ignore)) {
-                var guard = strike.collider.GetComponentInParent<StreetGuard>();
-                if (guard) { guard.Hit(); return true; }
-                var fighter = strike.collider.GetComponentInParent<RaidFighter>();
-                if (fighter) { fighter.PlayerHit(this); return true; }
-            }
-            return false;
+            return PlayerCombat.Of(this).LightAttack();
         }
         public void Teleport(Vector3 position) {
             if (!controller) controller = GetComponent<CharacterController>();

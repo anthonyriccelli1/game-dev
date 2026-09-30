@@ -33,7 +33,7 @@ namespace RestaurantCity {
                     Vector3 rayEnd = target.transform.position + Vector3.up;
                     bool clear = Physics.Linecast(rayStart, rayEnd, out var obstruction, ~0, QueryTriggerInteraction.Ignore)
                         && obstruction.collider.GetComponent<FirstPersonPlayer>() == target;
-                    if (inAlley && distance < 2.5f && clear) Game.HurtPlayer(target,25);
+                    if (inAlley && distance < 2.5f && clear && Game.HurtPlayer(target, 25, transform.position)) { stagger = 1.2f; Game.Notify("PARRY! The rival is off balance.", 1.2f); }
                     cooldown = 1.3f;
                 }
             } else if (stagger <= 0) {
