@@ -21,15 +21,17 @@ namespace RestaurantCity {
             yield return new WaitForSecondsRealtime(.5f);
             try {
                 Game.SetPaused(false);
-                Use(InteractionKind.Stand, new Vector3(0, .15f, 5), new Vector3(0, .65f, 8));
+                // The stand frame is parked inside the food truck in the city: work it from the cook lane (z 9.6), facing the hatch.
+                var o = Game.Stand ? Game.Stand.transform.position : Vector3.zero; bool truck = o.sqrMagnitude > 1; float cz = truck ? 9.6f : 5;
+                Use(InteractionKind.Stand, o + new Vector3(0, .15f, cz), o + new Vector3(0, .65f, 8));
                 Use(InteractionKind.Supplier, new Vector3(-12, .15f, 6), new Vector3(-12, .8f, 9));
-                Use(InteractionKind.Prep, new Vector3(-2.2f, .15f, 5), new Vector3(-2.2f, 1, 8));
-                Use(InteractionKind.Grill, new Vector3(0, .15f, 5), new Vector3(0, 1, 8));
+                Use(InteractionKind.Prep, o + new Vector3(-2.2f, .15f, cz), o + new Vector3(-2.2f, 1, 8));
+                Use(InteractionKind.Grill, o + new Vector3(0, .15f, cz), o + new Vector3(0, 1, 8));
                 Game.State.Tick(5);
-                Use(InteractionKind.Grill, new Vector3(0, .15f, 5), new Vector3(0, 1, 8));
-                Use(InteractionKind.Serve, new Vector3(2.2f, .15f, 5), new Vector3(2.2f, 1, 8));
+                Use(InteractionKind.Grill, o + new Vector3(0, .15f, cz), o + new Vector3(0, 1, 8));
+                Use(InteractionKind.Serve, o + new Vector3(2.2f, .15f, cz), o + new Vector3(2.2f, 1, 8));
                 Check(Game.State.Cash == 26 && Game.State.Served == 1, "first service pays $12");
-                Game.Player.Teleport(new Vector3(-4, .15f, 1)); Game.Player.LookAt(new Vector3(-.5f, 1.8f, 8));
+                Game.Player.Teleport(o + new Vector3(-4, .15f, 1)); Game.Player.LookAt(o + new Vector3(-.5f, 1.8f, 8));
                 Game.State.Tick(7); Game.SyncWorld();
                 Check(Game.State.HasOrder, "second customer arrives");
             } catch (Exception e) { Fail(e); }

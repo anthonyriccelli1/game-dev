@@ -80,7 +80,7 @@ namespace RestaurantCity {
    if(views.Count!=Game.CoOp.PlayerCount)Build();
    var r=Game.State.Restaurant;var k=Game.State.Kitchen;
    for(int i=0;i<views.Count;i++){var v=views[i];var p=Game.CoOp.Players[i];v.Canvas.enabled=Game.Started&&!Game.Paused&&!Game.Restaurant.PanelOpen&&!Game.Restaurant.PlacementActive;if(!v.Canvas.enabled)continue;
-    string phase=!r.Owned?(Game.State.StandOpen?(Game.State.StandRush?"<color=#E1543B>RUSH!</color>":"<color=#4FCB7A>STAND OPEN</color>"):"STAND CLOSED"):r.Open?(Game.Restaurant&&Game.Restaurant.Rush?"<color=#E1543B>RUSH!</color>":"<color=#4FCB7A>OPEN</color>"):r.Orders.Count>0?"<color=#E8C34A>LAST GUESTS</color>":"CLOSED";
+    string phase=!r.Owned?(Game.State.StandOpen?(Game.State.StandRush?"<color=#E1543B>RUSH!</color>":"<color=#4FCB7A>TRUCK OPEN</color>"):"TRUCK CLOSED"):r.Open?(Game.Restaurant&&Game.Restaurant.Rush?"<color=#E1543B>RUSH!</color>":"<color=#4FCB7A>OPEN</color>"):r.Orders.Count>0?"<color=#E8C34A>LAST GUESTS</color>":"CLOSED";
     int xp=Game.State.Xp,rk=Game.State.RankEarned;v.Top.text="$"+Game.State.Cash+"   <color=#F2C27A>"+StarText.Of(r.Stars)+"</color>   "+phase+"   <color=#F2C27A>"+Reputation.Titles[rk]+(Reputation.IsMax(rk)?"":"  "+xp+"/"+Reputation.Thresholds[rk+1]+" rep")+"</color>\n<size=12>Plates "+k.CleanPlates+"/"+KitchenState.PlateCapacity(r)+(k.SinkPile>0?" ("+k.SinkPile+" dirty)":"")+"  |  Patties "+r.Stock("patty")+"  |  Buns "+r.Stock("bun")+"  |  Greens "+r.Stock("greens")+(r.Stock("midnight_sauce")>0||Game.State.Knows("midnight")?"  |  Sauce "+r.Stock("midnight_sauce"):"")+(Game.State.FluxIntroduced?"  |  Flux "+Game.State.Flux:"")+(Game.State.StandBuilt?"  |  P phone  M map":"")+"</size>";
     string tickets=!r.Owned?StandTicket(Game.State):TicketRail(r)+(Game.State.StandWorker!=null?(TicketRail(r)==""?"":"\n")+"<size=12><color=#9FD8C8>Stand: "+Game.State.StandWorkerStatus+" (+$"+Game.State.StandWorkerEarned+")</color></size>":"");
     v.Tickets.transform.parent.gameObject.SetActive(tickets!="");v.Tickets.text=tickets;
@@ -95,9 +95,9 @@ namespace RestaurantCity {
    }
   }
   static string StandTicket(GameState s){
-   if(!s.StandBuilt)return "Set up your food stand ($10)\nthen buy patties & buns at Milo's.";
-   string goal="<size=12>Goal: save $150 for the restaurant across the street</size>";
-   if(!s.HasOrder)return (s.StandOpen?"Stand OPEN: a customer is on the way...":"Stand CLOSED: press E on the stand sign to open")+"\n"+goal;
+   if(!s.StandBuilt)return "Fire up Little Flame in Truck Park ($10)\nthen buy patties & buns at Milo's.";
+   string goal="<size=12>Goal: save $150 for The Odd Table on Main Street</size>";
+   if(!s.HasOrder)return (s.StandOpen?"Truck OPEN: a customer is on the way...":"Truck CLOSED: press E on the menu board to open")+"\n"+goal;
    var lines=new List<string>();
    foreach(var o in s.StandQueue){
     if(o.Stage==2){lines.Add("<color=#9FD8C8>Seat "+(o.Table+1)+": eating</color>");continue;}

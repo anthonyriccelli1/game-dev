@@ -13,7 +13,11 @@ namespace RestaurantCity {
     if(!workerPlans.TryGetValue(worker.Id,out var plan)){plan=new Queue<KitchenTask>();workerPlans[worker.Id]=plan;}
     if(view.Job!=worker.Job){
      // Moving a worker off the stand: they visibly walk from the stand, across the street and in through the door.
-     if(view.Job==StaffJob.Stand&&worker.Job!=StaffJob.Stand){view.Root.transform.position=new Vector3(-1,.055f,9.35f);view.Commute.Clear();foreach(var p in new[]{new Vector3(-4.3f,0,9.35f),new Vector3(-4.3f,0,2),W(-10,0,-6.5f),W(-10,0,-10)})view.Commute.Enqueue(p);Feedback((RestaurantCatalog.Worker(worker.Id)?.Name??worker.Id)+" is walking over from the stand.");}
+     if(view.Job==StaffJob.Stand&&worker.Job!=StaffJob.Stand){view.Root.transform.position=StandOrigin+(InTruck?new Vector3(-1.95f,.055f,9.45f):new Vector3(-1,.055f,9.35f));view.Commute.Clear();
+      // From the truck: out of the side door, over South Avenue at the crosswalk, up East Street and along Main to the door.
+      var route=InTruck?new[]{StandOrigin+new Vector3(1.42f,0,9.45f),StandOrigin+new Vector3(1.42f,0,7.85f),new Vector3(StandOrigin.x+1.42f,0,StandOrigin.z+5.8f),new Vector3(StandOrigin.x+5.2f,0,StandOrigin.z+5.8f),new Vector3(5.2f,0,-57.8f),new Vector3(19,0,-57.8f),new Vector3(19,0,-42.5f),new Vector3(32.5f,0,-42.5f),new Vector3(32.5f,0,-7.5f),W(-10,0,-7.5f),W(-10,0,-10)}
+       :new[]{new Vector3(-4.3f,0,9.35f),new Vector3(-4.3f,0,2),W(-10,0,-6.5f),W(-10,0,-10)};
+      foreach(var p in route)view.Commute.Enqueue(p);Feedback((RestaurantCatalog.Worker(worker.Id)?.Name??worker.Id)+(InTruck?" is walking over from the truck.":" is walking over from the stand."));}
      view.Job=worker.Job;plan.Clear();view.Path.Clear();k.ReleaseWork(actor);}
     view.Motion.Working=false;view.Motion.Walking=false;
     // Stand workers are drawn at the street stand (PhysicalStand), not in the restaurant.

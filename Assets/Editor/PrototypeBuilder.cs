@@ -87,10 +87,12 @@ public static class PrototypeBuilder {
             for (int j = 0; j < 3; j++) Sphere("Produce", new Vector3(-13.23f + i + j * .22f, 1.65f, 8.8f), Vector3.one * .22f, i == 1 ? leaf : coral, world);
         }
 
-        game.SetupMarker = Cube("Your first stand / interact to set up", new Vector3(0, .45f, 8), new Vector3(5.7f, .9f, 1.4f), coral, world);
+        // In the city the marker is a crate on the truck's counter, clear of the door (the stand frame is moved below).
+        float mx = city ? -1.9f : 0;
+        game.SetupMarker = Cube("Your first stand / interact to set up", new Vector3(mx, .45f, 8.3f), city ? new Vector3(3.2f, .9f, .9f) : new Vector3(5.7f, .9f, 1.4f), coral, world);
         game.SetupMarker.AddComponent<Interactable>().Kind = InteractionKind.Stand;
-        Label("YOUR FIRST STAND", new Vector3(0, 1.6f, 7.3f), .24f, dark.color, game.SetupMarker.transform);
-        Label("SET UP  /  $10", new Vector3(0, .55f, 7.28f), .16f, cream.color, game.SetupMarker.transform);
+        Label(city ? "LITTLE FLAME" : "YOUR FIRST STAND", new Vector3(mx, city ? 1.85f : 1.6f, 7.3f), .24f, dark.color, game.SetupMarker.transform);
+        Label(city ? "FIRE IT UP  /  $10" : "SET UP  /  $10", new Vector3(mx, city ? 1.45f : .55f, 7.28f), .16f, city ? dark.color : cream.color, game.SetupMarker.transform);
         game.Stand = new GameObject("Your food stand"); game.Stand.transform.parent = world;
         var stand = game.Stand.transform;
         var counter = Cube("Service counter", new Vector3(2.2f, .7f, 8), new Vector3(1.9f, 1.4f, 1.6f), coral, stand);
@@ -111,11 +113,18 @@ public static class PrototypeBuilder {
         for (int i = -1; i <= 1; i += 2) Cube("Canopy post", new Vector3(i * 4.3f, 1.65f, 8.6f), new Vector3(.12f, 3.3f, .12f), wood, stand);
         var bin = Cube("Discard bin", new Vector3(4.1f, .55f, 8), new Vector3(.8f, 1.1f, .8f), dark, world);
         bin.AddComponent<Interactable>().Kind = InteractionKind.Bin;
-        Label("BIN", new Vector3(4.1f, .9f, 7.59f), .12f, cream.color, world);
+        var binLabel = Label("BIN", new Vector3(4.1f, .9f, 7.59f), .12f, cream.color, world);
         game.GrillFood = Burger(new Vector3(0, 1.6f, 8), stand);
         game.Customer = Person("Waiting customer", new Vector3(2.2f, 0, 5.9f), Mat("Customer jacket", "DCB955"), world);
         game.Customer.AddComponent<Interactable>().Kind = InteractionKind.Serve;
         Label("ONE BURGER, PLEASE", new Vector3(2.2f, 2.35f, 5.9f), .10f, dark.color, game.Customer.transform);
+        if (city) {
+            // The stand becomes Little Flame: the same stations and frame, parked inside the truck in Truck Park
+            // (CityMap.LittleFlame). The truck body replaces the awning, posts and signboard.
+            foreach (var moved in new[] { game.Stand.transform, game.SetupMarker.transform, bin.transform, binLabel.transform, game.Customer.transform }) moved.position += CityMap.StandOffset;
+            foreach (Transform child in stand) if (child.name == "Striped awning" || child.name == "Canopy post" || child.name.StartsWith("LITTLE FLAME")) child.gameObject.SetActive(false);
+            game.SpawnPoint = new Vector3(6, .15f, -57.5f);   // South Avenue sidewalk, beside the truck
+        }
 
         var future = Cube("Future restaurant sign", new Vector3(-6.2f, 1.25f, -8.7f), new Vector3(2.9f, 2.2f, .15f), dark, world);
         future.AddComponent<Interactable>().Kind = InteractionKind.FutureRestaurant;

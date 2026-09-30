@@ -475,6 +475,61 @@ public static class CityMap {
     // Truck Park: the plaza between South Avenue and Harbor Road, laid out around your food truck. The truck parks
     // along the north edge (z -62.5) with its hatch facing south; the four picnic tables sit south of it, then a lawn.
     public static readonly Vector3 TruckSpot = new Vector3(0, 0, -62.5f);
+    // The stand's own frame (stations along z 8.3, cook side z 9.35) is parked inside Little Flame by this offset;
+    // y lifts it onto the truck's raised floor.
+    public static readonly Vector3 StandOffset = new Vector3(0, TruckFloor, -71.75f);
+    public const float TruckFloor = .816f;
+    const string TruckModel = "Assets/Art/LittleFlame/LittleFlame.obj";
+    // Little Flame: your walk-in food truck (Tripo AI model, reduced and painted in teal/cream/coral; see
+    // docs/ASSET_SOURCES.md). Serving window and door face the plaza (south), cab at the east end. The mesh is
+    // visual only: the walls, raised floor and the ramp up to the door are simple colliders so walking is smooth.
+    // Inside, PhysicalStand puts the board, grill, serving counter and plate rack along the window and the pantry,
+    // sink and bin on the back wall, with the cook lane between.
+    static void LittleFlame() {
+        var t = new GameObject("Little Flame (your food truck)").transform; t.SetParent(root, false); t.position = TruckSpot;
+        var model = AssetDatabase.LoadAssetAtPath<GameObject>(TruckModel);
+        if (model) {
+            var m = (GameObject)Object.Instantiate(model, t); m.name = "Little Flame model"; m.transform.localPosition = Vector3.zero; m.transform.localRotation = Quaternion.identity;
+            StripColliders(m.transform);
+            var palette = new[] { ("Teal", "2E8C8A"), ("Cream", "F1E6CF"), ("Coral", "E0603C"), ("Chrome", "C9CED3"), ("Tyre", "1B1C1F"), ("Floor", "6B5646"), ("InnerLow", "2E8C8A"), ("Inner", "EFE4CC") };
+            foreach (var r in m.GetComponentsInChildren<Renderer>()) {
+                var mats = r.sharedMaterials;
+                for (int k = 0; k < mats.Length; k++) foreach (var (name, hex) in palette) if (mats[k] && mats[k].name.Contains("LF_" + name)) { mats[k] = InteriorMat("Flame" + name, hex); break; }
+                r.sharedMaterials = mats;
+            }
+        } else Debug.LogWarning("Little Flame model missing at " + TruckModel + "; the truck has colliders but no body.");
+        var inv = InteriorMat("TruckCollider", "808080");
+        void Box(string n, float x0, float x1, float y0, float y1, float z0, float z1) {
+            var b = Slab(n, new Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2) + TruckSpot, new Vector3(x1 - x0, y1 - y0, z1 - z0), inv, t, true);
+            b.GetComponent<Renderer>().enabled = false;
+        }
+        float f = TruckFloor, top = 3.4f, zs0 = -1.53f, zs1 = -1.42f, zn = 1.83f;   // window wall (outer/inner) and back wall, truck-local z
+        Box("Chassis and floor", -4.05f, 4.05f, 0, f, zs0, zn + .1f);
+        Box("Wall under window", -3.9f, .94f, f, 1.74f, zs0, zs1);
+        Box("Wall west of window", -3.9f, -2.72f, f, top, zs0, zs1);
+        Box("Wall above window", -2.72f, 0, 3.15f, top, zs0, zs1);
+        Box("Wall window-to-door", 0, .94f, f, top, zs0, zs1);
+        Box("Cab wall", 1.91f, 3.9f, f, top, zs0, zs1);
+        Box("Back wall", -3.9f, 3.9f, f, top, zn, zn + .12f);
+        Box("West end", -3.95f, -3.83f, f, top, zs0, zn);
+        Box("Cab front", 3.5f, 3.62f, f, top, zs0, zn);
+        // Ramp from the plaza up to the door (1.93 m run for the .82 m rise, about 23 degrees).
+        var ramp = Slab("Door ramp", Vector3.zero, new Vector3(.97f, .1f, 2.1f), inv, t, true); ramp.GetComponent<Renderer>().enabled = false;
+        float run = 1.93f; ramp.transform.position = TruckSpot + new Vector3(1.42f, f / 2 - .05f, zs0 - run / 2);
+        ramp.transform.rotation = Quaternion.Euler(-Mathf.Atan2(f, run) * Mathf.Rad2Deg, 0, 0);
+        // Warm light inside, bulbs along the awning, and the name board on the roof facing the plaza.
+        var inside = new GameObject("Truck light").AddComponent<Light>(); inside.transform.SetParent(t, false); inside.transform.localPosition = new Vector3(-1.5f, 3.0f, .2f);
+        inside.type = LightType.Point; inside.color = new Color(1f, .86f, .62f); inside.intensity = 1.6f; inside.range = 7.5f;
+        var bulb = GlowMat("FLAMEBULB", "FFE3A0", 1.5f);
+        for (int i = 0; i < 7; i++) { var b = GameObject.CreatePrimitive(PrimitiveType.Sphere); b.name = "Bulb"; Object.DestroyImmediate(b.GetComponent<Collider>()); b.transform.SetParent(t, false); b.transform.localPosition = new Vector3(-2.65f + i * .43f, 2.85f, -2.35f); b.transform.localScale = Vector3.one * .09f; b.GetComponent<Renderer>().sharedMaterial = bulb; }
+        var cream = InteriorMat("FlameCream", "F1E6CF"); var coral = InteriorMat("FlameCoral", "E0603C");
+        Slab("Roof sign", TruckSpot + new Vector3(-1f, 4.15f, -.9f), new Vector3(4.4f, .72f, .08f), cream, t, false);
+        Slab("Roof sign edge", TruckSpot + new Vector3(-1f, 4.15f, -.86f), new Vector3(4.6f, .86f, .04f), coral, t, false);
+        foreach (float x in new[] { -2.6f, .6f }) Slab("Roof sign post", TruckSpot + new Vector3(x, 3.75f, -.84f), new Vector3(.06f, .5f, .06f), coral, t, false);
+        SignText("LITTLE FLAME", TruckSpot + new Vector3(-1f, 4.17f, -.95f), 2, .27f, new Color(.72f, .2f, .1f), t);
+        SignText("LITTLE FLAME", TruckSpot + new Vector3(-.5f, 2.55f, zn + .2f), 0, .2f, new Color(.85f, .3f, .18f), t);
+        SignText("BURGERS  /  SALAD", TruckSpot + new Vector3(-.5f, 2.05f, zn + .2f), 0, .09f, new Color(.16f, .45f, .44f), t);
+    }
     static void TruckPark() {
         var p = new GameObject("Truck Park").transform; p.SetParent(root, false);
         for (float x = -20; x < 20; x += 5) for (float z = -90; z < -75; z += 5)
@@ -720,7 +775,7 @@ public static class CityMap {
         Put("Buildings/SM_Bld_Station_01", new Vector3(0, 0, -30), 0);
         Put("Environments/Custom/SM_Env_Skyline_01", Vector3.zero, 0);
         // Old Market's own places (Market Row, The Flats) and the street ends.
-        MarketStalls(); TinDiner(); GraffitiAlley(); VacantLot(); PawnShop(); TruckPark(); CornerCourts(); Harbour(); Crosswalks(); StreetEnds();
+        MarketStalls(); TinDiner(); GraffitiAlley(); VacantLot(); PawnShop(); TruckPark(); LittleFlame(); CornerCourts(); Harbour(); Crosswalks(); StreetEnds();
         // Street life: parked cars, trees, benches, hydrants, a hotdog cart, bus stop, rooftop signs.
         string[] cars = { "SM_Veh_Car_Sedan_01", "SM_Veh_Car_Taxi_01", "SM_Veh_Car_Van_01", "SM_Veh_Car_Small_01", "SM_Veh_Car_Medium_01", "SM_Veh_Car_Muscle_01" };
         int c = 0;

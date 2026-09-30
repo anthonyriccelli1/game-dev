@@ -21,7 +21,7 @@ namespace RestaurantCity {
                 Check(GameObject.Find("Future restaurant sign") == null, "owned restaurant removes the lease board interaction");
                 Check(GameObject.Find("Pole sign / THE ODD TABLE") == null, "duplicate oversized street sign is retired");
                 System.IO.Directory.CreateDirectory("InteractionEvidence");
-                P.Teleport(new Vector3(0, .15f, 3.5f)); P.LookAt(new Vector3(0, 1.9f, 8));
+                var so = R.StandOrigin; P.Teleport(so + new Vector3(0, .15f, 3.5f)); P.LookAt(so + new Vector3(0, 1.9f, 8));
                 CapturePlacement("street-stand.png");
                 P.Teleport(new Vector3(-10, .15f, 2.5f)); P.LookAt(new Vector3(-10, 2, -9));
                 CapturePlacement("architecture-front.png");

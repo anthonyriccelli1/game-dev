@@ -19,7 +19,7 @@ namespace RestaurantCity {
         // name, position, yaw, pitch, clock (0-240; >150 is night)
         public static (string name, Vector3 pos, float yaw, float pitch, float clock)[] Shots = {
             ("01_street_day", new Vector3(-2, 0, -3), 20, 0, 60),
-            ("02_stand_day", new Vector3(0, 0, 3.5f), 0, 8, 60),
+            ("02_stand_day", new Vector3(3, 0, -.5f), -20, 8, 60),
             ("03_milo_day", new Vector3(-12, 0, 3.5f), 0, 5, 60),
             ("04_rival_day", new Vector3(16, 0, 8), 35, -8, 60),
             ("05_overview_day", new Vector3(0, 46, -24), 0, 36, 60),
@@ -45,9 +45,9 @@ namespace RestaurantCity {
             ("29_milo_front_day", new Vector3(-15.5f, 0, 8), 0, -4, 60),
             ("30_milo_inside_day", new Vector3(-15.5f, 0, 14.2f), 0, 6, 60),
             ("31_tin_diner_day", new Vector3(-20, 0, 49), 180, -8, 60),
-            ("32_stand_tables", new Vector3(-6.7f, 0, 7.4f), 0, 18, 60),
+            ("32_stand_tables", new Vector3(-1.2f, 0, 5.3f), 180, 22, 60),
             ("33_milo_shop", new Vector3(-15.5f, 0, 14.2f), 0, 6, 60),
-            ("34_stand_pantry", new Vector3(-2.4f, 0, 10.4f), 180, 14, 60),
+            ("34_stand_pantry", new Vector3(-2.9f, 0, 9.3f), 0, 22, 60),
             ("35_stand_front", new Vector3(0, 0, 3.4f), 0, 4, 60),
             ("36_pantry_from_street", new Vector3(-2.2f, 0, 6.0f), 0, 16, 60),
             ("37_menu_tab", new Vector3(-10, 0, -11), 180, 0, 60),
@@ -73,6 +73,9 @@ namespace RestaurantCity {
             ("97_courts_day", new Vector3(48, 0, -64), 125, 8, 60),
             ("98_harbor_road_west", new Vector3(-40, 0, -98), 270, 2, 60),
             ("99_sidewalk_main", new Vector3(-22, 0, -8), 90, 4, 60),
+            ("100_truck_plaza", new Vector3(9, 0, -72), -50, 4, 60),
+            ("101_truck_inside", new Vector3(1.2f, .82f, -62.3f), 270, 12, 60),
+            ("102_truck_night", new Vector3(9, 0, -72), -50, 4, 190),
             ("81_raid_planner", new Vector3(17.5f, 0, -40), 0, 4, 190),
             ("82_raid_fight", new Vector3(17.5f, 0, -45.5f), 0, 6, 190),
             ("83_raid_ko", new Vector3(17.5f, 0, -45.5f), 0, 8, 190),
@@ -129,9 +132,11 @@ namespace RestaurantCity {
             foreach (var shot in Shots) {
                 Game.State.Clock = shot.clock; Game.SyncWorld();
                 RenderSettings.fog = !(shot.name.Contains("map") || shot.name.Contains("aerial"));
-                var p = Game.Player; p.Teleport(shot.pos + Vector3.up * .1f);
+                // Stand shots are written in the stand's own frame, which sits inside Little Flame in the city.
+                var pos = shot.pos; if (Game.Stand && (shot.name.Contains("stand") || shot.name.Contains("pantry_from_street"))) { var so = Game.Stand.transform.position; pos += new Vector3(so.x, shot.pos.z > 8.5f ? so.y : 0, so.z); }
+                var p = Game.Player; p.Teleport(pos + Vector3.up * .1f);
                 var cc = p.GetComponent<CharacterController>(); if (cc) cc.enabled = false;
-                p.transform.position = shot.pos; p.transform.rotation = Quaternion.Euler(0, shot.yaw, 0);
+                p.transform.position = pos; p.transform.rotation = Quaternion.Euler(0, shot.yaw, 0);
                 p.View.transform.localRotation = Quaternion.Euler(shot.pitch, 0, 0);
                 var rc = FindFirstObjectByType<RestaurantController>();
                 if (rc && shot.name.Contains("phone_map")) rc.ShowPanel("Map");
@@ -362,7 +367,7 @@ namespace RestaurantCity {
                     st.StandQueue.Add(new StandOrder { Id = 902, Type = 6, Stage = 2, Table = 3, Dish = "salad", Patience = 999, MaxPatience = 999, EatLeft = 999 });
                     st.StandQueue.Add(new StandOrder { Id = 904, Type = 2, Stage = 0, Dish = "burger", Patience = 999, MaxPatience = 999 });
                     st.StandQueue.Add(new StandOrder { Id = 905, Type = 4, Stage = 0, Dish = "salad", Patience = 999, MaxPatience = 999 });
-                    for (int i = 0; i < 70; i++) { rc.Advance(.15f); p.transform.position = shot.pos; yield return null; }
+                    for (int i = 0; i < 70; i++) { rc.Advance(.15f); p.transform.position = pos; yield return null; }
                 }
                 for (int i = 0; i < 20; i++) yield return null;
                 ScreenCapture.CaptureScreenshot(Path.Combine(dir, shot.name + ".png"));

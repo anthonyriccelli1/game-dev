@@ -49,7 +49,7 @@ namespace RestaurantCity {
         // Streets as x0, z0, x1, z1 (matches CityMap.Roads).
         public static readonly (float x0, float z0, float x1, float z1)[] Roads = { (-80, -5, 80, 5), (-80, 45, 80, 55), (-80, -55, 80, -45), (-80, -110, 80, -100), (-45, -110, -35, 80), (35, -110, 45, 80) };
         public static readonly CityPlace[] Places = {
-            new CityPlace("Your stand", "you", 0, 8), new CityPlace("Milo's", "supply", -12, 10), new CityPlace("The Odd Table", "restaurant", -10, -15),
+            new CityPlace("Little Flame", "you", 0, -62.5f), new CityPlace("Milo's", "supply", -12, 10), new CityPlace("The Odd Table", "restaurant", -10, -15),
             new CityPlace("Gilded Orbit", "rival", 19, 22), new CityPlace("Rival Alley", "recipe", 11.6f, 24),
             new CityPlace("The Tin Diner", "rival", -22, 38), new CityPlace("Market stalls", "supply", 0, 64),
             new CityPlace("Greasy Gus's truck", "rival", 17, -31), new CityPlace("Graffiti alley", "recipe", -22.5f, -33),

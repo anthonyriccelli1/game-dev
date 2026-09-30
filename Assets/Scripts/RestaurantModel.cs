@@ -351,7 +351,7 @@ namespace RestaurantCity {
         // Anti-softlock: broke and can't cook? Once a day Milo fronts you three of each basic, enough to earn your way back.
         public static bool NeedsMiloHelp(GameState wallet,RestaurantState r)=>wallet.Cash<14&&(r.Stock("patty")<1||r.Stock("bun")<1)&&r.Stock("greens")<1;
         public bool RequestSupplyHelp(GameState wallet,out string message) {
-            if(!Owned&&!wallet.StandBuilt)return Fail("Set up your food stand first ($10).",out message);
+            if(!Owned&&!wallet.StandBuilt)return Fail("Fire up your food truck first ($10).",out message);
             if(!NeedsMiloHelp(wallet,this))return Fail("You can still cook or afford a pack. Sell what you have first.",out message);
             if(wallet.LastMiloHelpDay==wallet.Day)return Fail("\"I already helped you today, friend. Sell something and come back.\"",out message);
             foreach(var id in new[]{"patty","bun","greens"})AddStock(id,3-Math.Min(3,Stock(id)));wallet.LastMiloHelpDay=wallet.Day;
@@ -413,7 +413,7 @@ namespace RestaurantCity {
         void UpdateRank(){while(Rank+1<StarGoals.Length){var g=StarGoals[Rank+1];if(Served<g.served||Satisfaction<g.satisfaction||Ambience<g.ambience)break;Rank++;Rep("New stars",Reputation.NewStar);}}
         public bool Clean(out string message) {if(!Owned)return Fail("Buy the restaurant first.",out message);if(Cleanliness>=100)return Fail("The restaurant is already spotless.",out message);Cleanliness=Math.Min(100,Cleanliness+25);message=$"Tables wiped. Cleanliness {Cleanliness:0}%.";return true;}
         public bool Hire(GameState wallet,string id,out string message) {
-            var d=RestaurantCatalog.Worker(id);if((!Owned&&!wallet.StandBuilt)||d==null)return Fail("Set up your food stand first.",out message);
+            var d=RestaurantCatalog.Worker(id);if((!Owned&&!wallet.StandBuilt)||d==null)return Fail("Fire up your food truck first.",out message);
             if(Workers.Exists(w=>w.Id==id))return Fail("This worker already works here.",out message);
             if(d.Special){
                 var resident=ResidentCast.Get(id);
@@ -429,7 +429,7 @@ namespace RestaurantCity {
             if(!Enum.IsDefined(typeof(StaffJob),job)||job==StaffJob.Any)return Fail("Choose one job: cook, serve, wash or run the stand.",out message);
             // Only one worker can run the street stand at a time.
             if(job==StaffJob.Stand)foreach(var other in Workers)if(other!=w&&other.Job==StaffJob.Stand)other.Job=StaffJob.Off;
-            w.Job=job;message=job==StaffJob.Stand?$"{RestaurantCatalog.Worker(id).Name} is running your food stand. They use your pantry and keep the money coming.":$"{RestaurantCatalog.Worker(id).Name}: {job}.";return true;
+            w.Job=job;message=job==StaffJob.Stand?$"{RestaurantCatalog.Worker(id).Name} is running Little Flame. They use your pantry and keep the money coming.":$"{RestaurantCatalog.Worker(id).Name}: {job}.";return true;
         }
         public float WorkerActionSeconds(StaffJob job) {
             var assigned=Workers.Where(w=>w.Job==job).ToList();if(assigned.Count==0)return 8;

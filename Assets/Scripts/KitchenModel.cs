@@ -128,7 +128,7 @@ namespace RestaurantCity {
   // Milo's shop: pay for the cart and carry it home in a grocery bag (merges with a bag you're already holding).
   public bool BuyGroceries(GameState game,string actor,List<StockLine> cart,out string message){
    var r=game.Restaurant;var hand=Hold(actor);
-   if(!r.Owned&&!game.StandBuilt)return Fail("Set up your food stand first ($10).",out message);
+   if(!r.Owned&&!game.StandBuilt)return Fail("Fire up your food truck first ($10).",out message);
    if(cart==null||cart.All(c=>c.Count<=0))return Fail("Your cart is empty.",out message);
    if(hand!=null&&hand.Kind!=KitchenItemKind.GroceryBag)return Fail("Your hands are full. Put down what you're carrying first.",out message);
    int total=0;

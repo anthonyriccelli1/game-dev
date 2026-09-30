@@ -7,6 +7,18 @@ namespace RestaurantCity {
         readonly Dictionary<int, GameObject> standObjects = new Dictionary<int, GameObject>();
         static readonly float[] StandX = { -2.45f, -.95f, .6f, 1.68f, 2.78f, 3.75f, -3.55f };   // pantry, grill, counter, plates, sink, trash, cutting board (left end): all under the awning
         const float StandZ = 8.3f;
+        // Everything above is written in the stand's own frame. In the city, the builder parks that frame inside
+        // Little Flame (the food truck in Truck Park), so the root's position is the offset for every stand spot.
+        public Vector3 StandOrigin => Game && Game.Stand ? Game.Stand.transform.position : Vector3.zero;
+        public bool InTruck => StandOrigin.sqrMagnitude > 1;
+        Vector3 SP(float x, float y, float z) => new Vector3(x, y, z) + StandOrigin;
+        // Outside the truck (the plaza) is at ground level, below the truck's raised floor.
+        Vector3 SG(float x, float z) { var o = StandOrigin; return new Vector3(x + o.x, 0, z + o.z); }
+        // Little Flame's kitchen, in the same order as StandKit (pantry, grill, counter, plates, sink, trash, board):
+        // board, grill, serving counter and plate rack along the serving window (z 8.3, facing the cook); pantry,
+        // sink and bin on the back wall (z 10.58, turned to face the window). The cook lane runs between (z 9.45).
+        static readonly Vector3[] TruckStations = { new Vector3(-3.3f, 0, 10.58f), new Vector3(-1.95f, 0, 8.3f), new Vector3(-.6f, 0, 8.3f), new Vector3(.3f, 0, 8.3f), new Vector3(-2.25f, 0, 10.58f), new Vector3(-1.25f, 0, 10.58f), new Vector3(-3.3f, 0, 8.3f) };
+        const float TruckLane = 9.45f;
 
         public GameObject StationObject(int id) {
             if (Furnishings.TryGetValue(id, out var obj) && obj) return obj;
@@ -31,9 +43,9 @@ namespace RestaurantCity {
                 // The rack's decorative plates are replaced by a live stack showing the real count.
                 if (kind == "stand_plates") foreach (Transform part in obj.GetComponentsInChildren<Transform>(true)) if (part.name == "Glazed cream plate") part.gameObject.SetActive(false);
                 obj.name = "Stand " + kind;
-                obj.transform.position = new Vector3(StandX[i], 0, StandZ);
+                obj.transform.position = InTruck ? StandOrigin + TruckStations[i] : SP(StandX[i], 0, StandZ);
                 // Stations face the cook, who works from the sidewalk side (z 9.35); customers stay on the street side.
-                obj.transform.rotation = Quaternion.identity;
+                obj.transform.rotation = Quaternion.Euler(0, InTruck && TruckStations[i].z > 9 ? 180 : 0, 0);
                 var target = obj.AddComponent<RestaurantTarget>(); target.InstanceId = id;
                 foreach (var child in obj.GetComponentsInChildren<RestaurantTarget>()) child.InstanceId = id;
                 if (obj.GetComponentsInChildren<Collider>().Length == 0) { var c = obj.AddComponent<BoxCollider>(); c.center = new Vector3(0, .65f, 0); c.size = new Vector3(kind == "grill" ? 1.8f : .9f, 1.3f, .9f); }
@@ -47,6 +59,7 @@ namespace RestaurantCity {
         // The stand art is a visual shell. The original scene objects keep their colliders and the
         // station objects below keep their exact positions, targets, work points and item points.
         void BuildStandShell() {
+            if (InTruck) return;   // the truck body is part of the city (CityMap.LittleFlame)
             if (Game.Stand.transform.Find("POLYGON Shops stand shell")) return;
             var shell = ArtOverrides.Find("Shell", "street_stand");
             if (!shell) return; // Projects without the Shops pack retain the original stand.
@@ -65,21 +78,24 @@ namespace RestaurantCity {
         // The stand's two sidewalk tables are the same cafe tables guests sit at in the restaurant (same chairs,
         // same seat point, same sitting pose), so the stand already looks and plays like a tiny restaurant.
         static readonly Vector3[] StandTablePositions = { new Vector3(-5.2f, 0, 10.6f), new Vector3(-8.2f, 0, 10.6f) };
+        // Little Flame's picnic tables stand in the plaza south of the hatch, turned so the near chair faces the truck.
+        static readonly Vector3[] TruckTablePositions = { new Vector3(-3.4f, 0, 2.0f), new Vector3(1.0f, 0, 2.0f) };
         readonly List<Transform> standSeats = new List<Transform>();          // four seats: seat / 2 = table, seat % 2 = near/far chair
         readonly List<Vector3> standTableSpots = new List<Vector3>();
         readonly List<Transform> standTables = new List<Transform>();
         readonly Dictionary<int, GameObject> tablePlates = new Dictionary<int, GameObject>();
         readonly Dictionary<int, string> tablePlateState = new Dictionary<int, string>();   // per seat: "", "dirty" or the dish being eaten
         readonly Dictionary<int, int> guestLeg = new Dictionary<int, int>();   // how far along the walk to their seat each guest is
-        static readonly Vector3 StandCorner = new Vector3(-4.9f, 0, 6.2f);  // guests walk round the stand's end, not through it
+        Vector3 StandCorner => SP(-4.9f, 0, 6.2f);  // guests walk round the stand's end, not through it
         void BuildStandTables(Transform world) {
             if (standTableSpots.Count > 0 || !world) return;
             for (int t = 0; t < GameState.StandTables; t++) {
                 var table = CreateFurnishing("patio_table", world); table.name = "Stand table " + t;
-                table.transform.SetPositionAndRotation(StandTablePositions[t], Quaternion.identity);
+                var spot = InTruck ? SG(TruckTablePositions[t].x, TruckTablePositions[t].z) : StandTablePositions[t] + StandOrigin;
+                table.transform.SetPositionAndRotation(spot, Quaternion.Euler(0, InTruck ? 180 : 0, 0));
                 if (table.GetComponentsInChildren<Collider>().Length == 0) { var box = table.AddComponent<BoxCollider>(); box.center = new Vector3(0, .45f, 0); box.size = new Vector3(1.2f, .9f, 1.9f); }
                 var it = table.AddComponent<Interactable>(); it.Kind = InteractionKind.StandTable; it.Index = t;
-                standTableSpots.Add(StandTablePositions[t]); standTables.Add(table.transform);
+                standTableSpots.Add(spot); standTables.Add(table.transform);
                 standSeats.Add(table.transform.Find("Seat_0")); standSeats.Add(table.transform.Find("Seat_1"));
             }
         }
@@ -87,9 +103,12 @@ namespace RestaurantCity {
         // The walk to a seat: round the stand's end, then (for the far chair) round the side of the table, then sit.
         Vector3[] SeatRoute(int seat) {
             var s = SeatOf(seat); var target = s ? s.position : StandFront;
-            if (seat % 2 == 0 || seat / 2 >= standTableSpots.Count) return new[] { StandCorner, target };
-            var table = standTableSpots[seat / 2];
-            return new[] { StandCorner, new Vector3(table.x - 1.25f, 0, table.z - 1.2f), new Vector3(table.x - 1.25f, 0, target.z), target };
+            // At the truck the tables are straight out in the plaza: no stand end to walk round.
+            var first = InTruck ? (s ? new Vector3(s.position.x, 0, StandFront.z - .8f) : target) : StandCorner;
+            if (seat % 2 == 0 || seat / 2 >= standTableSpots.Count) return new[] { first, target };
+            var table = standTableSpots[seat / 2]; var rot = seat / 2 < standTables.Count ? standTables[seat / 2].rotation : Quaternion.identity;
+            var side = table + rot * new Vector3(-1.25f, 0, -1.2f);
+            return new[] { first, side, new Vector3(side.x, 0, target.z), target };
         }
         void SyncTablePlate(int seat, string state) {
             tablePlateState.TryGetValue(seat, out var shown);
@@ -103,7 +122,7 @@ namespace RestaurantCity {
             // Plates rest on the real tabletop (the wooden patio table is lower than the old cafe table).
             var local = new Vector3(0, 0, seat % 2 == 0 ? -.2f : .2f); var t = seat / 2 < standTables.Count ? standTables[seat / 2] : null;
             float top = t ? SurfaceY(t, local, .84f) + .005f : .84f;
-            plate.transform.position = standTableSpots[seat / 2] + new Vector3(0, top, local.z); plate.transform.localScale = Vector3.one * .8f;
+            plate.transform.position = standTableSpots[seat / 2] + (t ? t.rotation : Quaternion.identity) * local + Vector3.up * top; plate.transform.localScale = Vector3.one * .8f;
             tablePlates[seat] = plate;
         }
 
@@ -113,7 +132,9 @@ namespace RestaurantCity {
         void BuildStandSign() {
             if (standSignText) return;
             var sign = new GameObject("Stand open sign"); sign.transform.SetParent(Game.Stand.transform, false);
-            sign.transform.position = new Vector3(4.95f, 0, 7.1f);   // outside the right post, beside the customer line; never in front of a station
+            // Beside the customer line, never in front of a station: at the stand, outside the right post; at the truck,
+            // out by the cab end of the hatch where the line doesn't reach.
+            sign.transform.position = InTruck ? SG(-5.0f, 6.9f) : SP(4.95f, 0, 7.1f);
             var menuArt = ArtOverrides.Find("Shell", "street_menu_board");
             var body = GameObject.CreatePrimitive(PrimitiveType.Cube); body.name = "Chalkboard"; body.transform.SetParent(sign.transform, false);
             body.transform.localPosition = new Vector3(0, .75f, 0); body.transform.localScale = new Vector3(.9f, 1.1f, .08f);
@@ -137,7 +158,9 @@ namespace RestaurantCity {
         readonly Dictionary<int, GameObject> standGuests = new Dictionary<int, GameObject>();
         readonly Dictionary<int, TextMesh> standBubbles = new Dictionary<int, TextMesh>();
         TextMesh standPlatesText, standSinkText;
-        static readonly Vector3 StandFront = new Vector3(2.2f, 0, 5.9f);
+        // At the truck the line forms under the serving window and grows west (the door is to the east).
+        Vector3 StandFront => InTruck ? SG(-.9f, 6.85f) : SP(2.2f, 0, 5.9f);
+        float LineStep => InTruck ? -1.3f : 1.4f;
         readonly List<GameObject> cleanStack = new List<GameObject>(), dirtyStack = new List<GameObject>();
         GameObject standWorkerView; string standWorkerViewId; TextMesh standWorkerBubble;
 
@@ -149,17 +172,20 @@ namespace RestaurantCity {
                 if (standWorkerView) Destroy(standWorkerView);
                 standWorkerView = People.Worker(w.Id, RestaurantCatalog.Worker(w.Id)?.ModelType ?? 8, Game.Stand.transform);
                 standWorkerView.name = "Stand worker"; standWorkerViewId = w.Id;
-                standWorkerView.transform.SetPositionAndRotation(new Vector3(-1.0f, 0, 9.35f), Quaternion.Euler(0, 180, 0));
+                standWorkerView.transform.SetPositionAndRotation(InTruck ? SP(-1.95f, 0, TruckLane) : SP(-1.0f, 0, 9.35f), Quaternion.Euler(0, 180, 0));
                 standWorkerBubble = WorldCaption(standWorkerView.transform, "", new Vector3(0, 2.4f, 0), .016f);
             }
             standWorkerView.SetActive(true);
             // Walk the stand like a player: pantry -> grill -> plate rack -> serving spot, or to the sink to wash.
             float p = s.StandWorkerProgress;
             float x = !s.StandWorkerActive ? -1.0f : s.StandWorkerWashing ? 2.6f : p < .15f ? -2.6f : p < .7f ? -1.0f : p < .85f ? 1.6f : 2.2f;
-            var target = new Vector3(x, 0, 9.35f); var before = standWorkerView.transform.position;
+            if (InTruck) x = !s.StandWorkerActive ? -1.95f : s.StandWorkerWashing ? -2.25f : p < .15f ? -3.3f : p < .7f ? -1.95f : p < .85f ? .3f : -.6f;
+            var target = InTruck ? SP(x, 0, TruckLane) : SP(x, 0, 9.35f); var before = standWorkerView.transform.position;
             standWorkerView.transform.position = Vector3.MoveTowards(before, target, Time.deltaTime * 3f);
             bool moving = (standWorkerView.transform.position - before).sqrMagnitude > .000001f;
-            standWorkerView.transform.rotation = Quaternion.Euler(0, moving ? (target.x > before.x ? 90 : 270) : 180, 0);
+            // In the truck they face the window row, or turn round to the back wall for the pantry and sink.
+            bool backWall = InTruck && (s.StandWorkerWashing || p < .15f) && s.StandWorkerActive;
+            standWorkerView.transform.rotation = Quaternion.Euler(0, moving ? (target.x > before.x ? 90 : 270) : backWall ? 0 : 180, 0);
             var motion = standWorkerView.GetComponent<CharacterMotion>();
             if (motion) { motion.Walking = moving; motion.Working = !moving && s.StandWorkerActive; motion.SetMood(w.Energy / 100f); }
             SetBubble(standWorkerBubble, s.StandWorkerStatus + "\n<size=48>Energy " + (int)w.Energy + "  |  Your cut so far $" + s.StandWorkerEarned + " (they keep 40%)</size>");
@@ -193,7 +219,7 @@ namespace RestaurantCity {
             if (standSignText) standSignText.text = s.StandOpen ? "<color=#4FCB7A>OPEN</color>\nBurgers\n& Salad" + (s.Knows("midnight") ? "\n+ Midnight" : "") : "<color=#E1543B>CLOSED</color>";
             if (!standPlatesText && standObjects.TryGetValue(KitchenState.StandBase + 4, out var rack) && rack) { standPlatesText = WorldCaption(rack.transform, "", new Vector3(0, 2.1f, 0), .014f); }
             if (!standSinkText && standObjects.TryGetValue(KitchenState.StandBase + 5, out var sink) && sink) { standSinkText = WorldCaption(sink.transform, "", new Vector3(0, 2.1f, 0), .014f); }
-            if (standPlatesText) { standPlatesText.text = "Clean plates: " + s.StandClean; standPlatesText.transform.rotation = Quaternion.identity; }
+            if (standPlatesText) { standPlatesText.text = "Clean plates: " + s.StandClean; standPlatesText.transform.rotation = Quaternion.Euler(0, InTruck ? 180 : 0, 0); /* readable from the cook lane */ }
             if (standSinkText) { standSinkText.text = s.StandDirty > 0 ? "<color=#E8C34A>Dirty pile: " + s.StandDirty + "</color>" : "Sink"; standSinkText.transform.rotation = Quaternion.identity; }
             if (Game.Customer && Game.Customer.activeSelf) Game.Customer.SetActive(false);
             TickStandWorkerView(s);
@@ -206,14 +232,14 @@ namespace RestaurantCity {
                 var order = s.StandQueue[i]; live.Add(order.Id);
                 if (!standGuests.TryGetValue(order.Id, out var guest) || !guest) {
                     guest = string.IsNullOrEmpty(order.ResidentId) ? People.Visitor(order.Id, order.Type, world, Game.State.IsNight) : People.Resident(order.ResidentId, order.Type, world); guest.name = "Stand guest " + order.Id;
-                    guest.transform.position = new Vector3(11, 0, 4.5f);
+                    guest.transform.position = InTruck ? SG(-13, 4.5f) : SP(11, 0, 4.5f);
                     var capsule = guest.AddComponent<CapsuleCollider>(); capsule.radius = .3f; capsule.height = 1.6f; capsule.center = Vector3.up * .83f;
                     guest.AddComponent<Interactable>().Kind = InteractionKind.Serve;
                     standGuests[order.Id] = guest; standBubbles[order.Id] = WorldCaption(guest.transform, "", new Vector3(0, 2.4f, 0), .02f);
                 }
                 // In line at the window until a table frees up; then round the end of the stand and onto a stool.
                 Vector3 spot;
-                if (order.Stage == 0) spot = StandFront + new Vector3(1.4f * lineSpot++, 0, 0);
+                if (order.Stage == 0) spot = StandFront + new Vector3(LineStep * lineSpot++, 0, 0);
                 else {
                     var route = SeatRoute(order.Table); guestLeg.TryGetValue(order.Id, out int leg); leg = Mathf.Min(leg, route.Length - 1);
                     spot = route[leg];
@@ -279,14 +305,14 @@ namespace RestaurantCity {
             var k = Game.State.Kitchen; string actor = p.ActorId;
             if (city.Kind == InteractionKind.Supplier && city.name == "Milo shopkeeper") {
                 var held = k.Hold(actor);
-                prompts[actor] = "Milo\n" + (!Game.State.StandBuilt && !Data.Owned ? "Set up your food stand first" : held != null && held.Kind != KitchenItemKind.GroceryBag ? "Free your hands to shop" : "E / A  Shop");
+                prompts[actor] = "Milo\n" + (!Game.State.StandBuilt && !Data.Owned ? "Fire up your food truck first" : held != null && held.Kind != KitchenItemKind.GroceryBag ? "Free your hands to shop" : "E / A  Shop");
                 if (pressed && (Game.State.StandBuilt || Data.Owned)) ShowPanel("Supplies");
                 return true;
             }
             if (city.Kind == InteractionKind.StandSign) {
                 var st = Game.State;
-                prompts[actor] = "Stand sign\nE / A  " + (st.StandOpen ? "Close the stand (no new customers)" : "Open the stand for customers");
-                if (pressed) { st.StandOpen = !st.StandOpen; if (st.StandOpen && !st.HasOrder) st.NextCustomer = Mathf.Min(st.NextCustomer, 3); Feedback(st.StandOpen ? "Stand open! Customers will start walking up." : "Stand closed. Finish the current customer."); Game.Save(); }
+                prompts[actor] = (InTruck ? "Menu board" : "Stand sign") + "\nE / A  " + (st.StandOpen ? "Close up (no new customers)" : "Open for customers");
+                if (pressed) { st.StandOpen = !st.StandOpen; if (st.StandOpen && !st.HasOrder) st.NextCustomer = Mathf.Min(st.NextCustomer, 3); Feedback(st.StandOpen ? "Open! Customers will start walking up." : "Closed. Finish the customers already here."); Game.Save(); }
                 return true;
             }
             if (city.Kind == InteractionKind.Serve && city.name.StartsWith("Stand guest") && int.TryParse(city.name.Substring(12), out int guestId)) {
@@ -298,7 +324,7 @@ namespace RestaurantCity {
             }
             if (city.Kind == InteractionKind.StandTable) {
                 int t = city.Index; var st = Game.State;
-                prompts[actor] = "Sidewalk table " + (t + 1) + "\n" + k.StandTablePreview(st, actor, t);
+                prompts[actor] = (InTruck ? "Picnic table " : "Sidewalk table ") + (t + 1) + "\n" + k.StandTablePreview(st, actor, t);
                 if (pressed) {
                     string m = null; bool ok = false; int dirty = k.DirtySeatAt(st, t); var waiting = k.WaitingAtTable(st, actor, t);
                     if (dirty >= 0 && k.Hold(actor) == null) ok = k.ClearStandTable(st, actor, dirty, out m);
