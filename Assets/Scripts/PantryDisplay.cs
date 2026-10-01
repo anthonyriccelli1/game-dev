@@ -4,7 +4,7 @@ namespace RestaurantCity {
     // Every pantry shows what it really holds: one shelf spot per ingredient, food that thins out as you
     // cook, and a count label that turns red at zero. You can read your stock at a glance, no prompt needed.
     public partial class RestaurantController {
-        sealed class ShelfView { public int Shown = -1, Count = -1; public readonly List<GameObject> Items = new List<GameObject>(); public TextMesh Label; }
+        sealed class ShelfView { public bool Focused; public int Shown = -1, Count = -1; public readonly List<GameObject> Items = new List<GameObject>(); public TextMesh Label; }
         // Each spot: shelf, ingredient, item art, x/y on the unit, the width it may use, and its tag text.
         static readonly (string shelf, string ingredient, string kind, float x, float y, float w, string title)[] PantrySpots = {
             ("protein", "patty", "RawProtein", -.48f, .265f, .85f, "Patties"), ("greens", "greens", "RawGreens", .48f, .265f, .85f, "Greens"),
@@ -16,6 +16,29 @@ namespace RestaurantCity {
             ("protein", "patty", "RawProtein", 0f, .565f, .76f, "Patties"), ("greens", "greens", "RawGreens", 0f, .905f, .76f, "Greens"),
             ("soup", "soup_veg", "SoupVeg", 0f, 1.245f, .76f, "Soup veg"), ("sausage", "sausage", "RawSausage", -.2f, 1.605f, .36f, "Sausages"), ("egg", "egg", "EggWhole", .2f, 1.605f, .36f, "Eggs"),
         };
+        // Aim picks the ingredient on display nearest the crosshair (by angle), not whichever shelf hitbox the ray
+        // happens to enter first: looking down at the patties used to clip the bun shelf's box in front of them.
+        // The current pick wins ties (a little stickiness), and its shelf tag lights up so you know what E will grab.
+        readonly Dictionary<string, string> pantryAim = new Dictionary<string, string>();
+        readonly Dictionary<GameObject, (string shelf, int frame)> pantryFocus = new Dictionary<GameObject, (string, int)>();
+        public string PantryAim(int stationId, string catalogId, Ray ray, string fallback, string actor) {
+            var obj = StationObject(stationId); if (!obj) return fallback;
+            var holds = KitchenState.ShelvesOf(Data, stationId, catalogId);
+            pantryAim.TryGetValue(actor, out var last);
+            string best = fallback; float bestScore = float.MaxValue;
+            foreach (var spot in catalogId == "fridge" ? FridgeSpots : PantrySpots) {
+                if (System.Array.IndexOf(holds, spot.shelf) < 0) continue;
+                var ingDef = Ingredients.Get(spot.ingredient);
+                if (ingDef != null && !string.IsNullOrEmpty(ingDef.Recipe) && !Game.State.Knows(ingDef.Recipe) && Data.Stock(spot.ingredient) == 0) continue;
+                var centre = obj.transform.TransformPoint(new Vector3(spot.x, spot.y + .06f, 0));
+                var v = centre - ray.origin; float along = Vector3.Dot(v, ray.direction); if (along < .05f) continue;
+                float score = Vector3.Cross(ray.direction, v).magnitude / along;   // angle off the crosshair
+                if (spot.shelf == last) score *= .8f;
+                if (score < bestScore) { bestScore = score; best = spot.shelf; }
+            }
+            pantryAim[actor] = best; pantryFocus[obj] = (best, Time.frameCount);
+            return best;
+        }
         readonly Dictionary<GameObject, Dictionary<string, ShelfView>> pantryViews = new Dictionary<GameObject, Dictionary<string, ShelfView>>();
         IEnumerable<(GameObject obj, int id, string catalogId)> PantryObjects() {
             foreach (var p in Data.Layout) if ((p.CatalogId == "pantry" || p.CatalogId == "fridge") && Furnishings.TryGetValue(p.InstanceId, out var o) && o) yield return (o, p.InstanceId, p.CatalogId);
@@ -81,13 +104,20 @@ namespace RestaurantCity {
                     // sit on the shelf edge nearest you, face you, and only show within a few metres.
                     // A small shelf-edge tag per ingredient (name and count), like a price tag, so a full fridge still reads.
                     if (!v.Label) v.Label = WorldCaption(transform, "", Vector3.zero, .0068f);
-                    if (count != v.Count) { v.Count = count; v.Label.text = count == 0 ? "<color=#E1543B>" + spot.title.ToUpper() + "  OUT</color>" : spot.title.ToUpper() + "  <b>" + count + "</b>"; }
+                    bool focused = pantryFocus.TryGetValue(pantry, out var f) && f.shelf == spot.shelf && Time.frameCount - f.frame <= 2;
+                    if (count != v.Count || focused != v.Focused) {
+                        v.Count = count; v.Focused = focused;
+                        string tag = count == 0 ? "<color=#E1543B>" + spot.title.ToUpper() + "  OUT</color>" : spot.title.ToUpper() + "  <b>" + count + "</b>";
+                        v.Label.text = focused ? "<color=#F2C94C>> " + tag + " <</color>" : tag;
+                        // The aimed-at items lift a touch off the shelf.
+                        foreach (var o in v.Items) if (o) { var lp = o.transform.localPosition; lp.y = spot.y + (o.transform.localPosition.y - spot.y > .03f ? .05f : 0) + (focused ? .025f : 0); o.transform.localPosition = lp; }
+                    }
                     if (Game.Player && Game.Player.View) {
                         var eye = Game.Player.View.transform.position; var toEye = pantry.transform.InverseTransformPoint(eye);
                         float front = catalogId == "fridge" ? .45f : .5f;
                         var at = pantry.transform.TransformPoint(new Vector3(spot.x, spot.y - .04f, toEye.z >= 0 ? front : -front));
                         v.Label.transform.position = at; v.Label.transform.rotation = Quaternion.LookRotation(at - eye);
-                        float width = pantry.transform.lossyScale.x; v.Label.transform.localScale = Vector3.one * Mathf.Clamp(width, .45f, 1f);
+                        float width = pantry.transform.lossyScale.x; v.Label.transform.localScale = Vector3.one * Mathf.Clamp(width, .45f, 1f) * (v.Focused ? 1.25f : 1);
                         v.Label.gameObject.SetActive((at - eye).sqrMagnitude < 5.5f * 5.5f);
                     }
                 }

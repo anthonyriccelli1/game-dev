@@ -56,6 +56,7 @@ namespace RestaurantCity {
                 RunChoppingChecks(prep);
                 RunScrubChecks(Station("sink"));
                 RunPattyChecks(grill);
+                RunPantryAimChecks(pantry);
                 yield return null; // Rebuild cleanup is deferred until the end of the frame.
                 Physics.SyncTransforms();
                 var table = R.Data.Layout.First(x => RestaurantCatalog.Find(x.CatalogId).Seats > 0).InstanceId;
@@ -378,6 +379,17 @@ namespace RestaurantCity {
             Fresh(); K.Tick(Game.State, g * .3f);
             Check(K.FlipPatty(Game.State, grill, out grade) && grade == "early", "flipping a raw underside is graded early");
             foreach (var it in K.Items.Where(i => i.Holder == "station:" + grill).ToList()) K.Items.Remove(it); st.Progress = 0;
+        }
+        // Standing close and looking DOWN at the lower shelf must pick what you look at, not the shelf box in front of it.
+        void RunPantryAimChecks(int pantry) {
+            var obj = R.StationObject(pantry); if (!obj) { Check(false, "pantry object exists"); return; }
+            foreach (var (shelf, x, y) in new[] { ("protein", -.48f, .265f), ("greens", .48f, .265f), ("bun", -.48f, .805f) }) {
+                var target = obj.transform.TransformPoint(new Vector3(x, y + .06f, 0));
+                var flat = obj.transform.forward; flat.y = 0; flat.Normalize();
+                P.Teleport(new Vector3(target.x, .15f, target.z) + flat * 1.05f); P.LookAt(target); Physics.SyncTransforms();
+                string got = R.PantryAim(pantry, "pantry", P.InteractionRay, "", P.ActorId);
+                Check(got == shelf, "looking down at the " + shelf + " picks " + shelf + " (got " + got + ")");
+            }
         }
         int Station(string id) => R.Data.Layout.First(x => x.CatalogId == id).InstanceId;
         static int TargetId(RaycastHit hit) { var t = hit.collider ? hit.collider.GetComponentInParent<RestaurantTarget>() : null; return t ? t.InstanceId : -1; }

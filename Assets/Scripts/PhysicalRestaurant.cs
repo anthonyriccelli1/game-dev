@@ -68,7 +68,8 @@ namespace RestaurantCity {
    if(station!=null){
     // A1: the prompt comes only from Preview, and Act is implemented as "call Preview, then run what it
     // returned" — so what is shown here is always exactly what a press of E will do.
-    var preview=k.Preview(Game.State,actor,station.InstanceId,target.SubId);
+    string sub=station.CatalogId=="pantry"||station.CatalogId=="fridge"?PantryAim(station.InstanceId,station.CatalogId,p.InteractionRay,target.SubId,actor):target.SubId;
+    var preview=k.Preview(Game.State,actor,station.InstanceId,sub);
     string glyph=preview.Kind==KitchenActionKind.Hold?"Hold E / A  ":"E / A  ";
     string line=preview.Kind==KitchenActionKind.None?preview.FailReason:glyph+(preview.Allowed?preview.Label:preview.FailReason);
     prompts[actor]=station.CatalogId.Replace('_',' ')+(string.IsNullOrEmpty(line)?"":"\n"+line);
@@ -81,7 +82,7 @@ namespace RestaurantCity {
      if(pressed||held){if(!PlateScrub.Of(p).Begin(station.InstanceId,out message)&&message!="")Feedback(message);}
      return true;
     }
-    if(pressed&&preview.Kind==KitchenActionKind.Tap){k.Act(Game.State,actor,station.InstanceId,target.SubId,out message);Feedback(message);}
+    if(pressed&&preview.Kind==KitchenActionKind.Tap){k.Act(Game.State,actor,station.InstanceId,sub,out message);Feedback(message);}
     if(held&&k.Hold(actor)==null)k.Work(Game.State,actor,station.InstanceId,Time.deltaTime,out _);
    }else{
     int seat=TableSeatAt(target.InstanceId,hit.point);

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 namespace RestaurantCity {
-    // Equipment levels you can see. Level 1 is the Flats: grimy, dented, greasy. Level 2 is clean chrome (the pack as-is).
+    // Equipment levels you can see. Level 1 is the Flats: dull, warm, worn-looking materials. Level 2 is clean chrome (the pack as-is).
     // Level 3 is premium: a brand stripe, neon underglow and live flames. Applied on top of any station model.
     public static class StationLooks {
         public const string LevelTag = "Station level ";
@@ -26,20 +26,8 @@ namespace RestaurantCity {
             }
             var b = Bounds(station, dress); var lb = new Bounds(station.transform.InverseTransformPoint(b.center), Vector3.Scale(b.size, Inv(station.transform.lossyScale)));
             float top = lb.max.y, front = lb.max.z;
-            // A glass-front fridge keeps its grime on the kick plate so you can still see the stock.
-            bool glassFront = station.name.Contains("fridge");
-            if (level <= 1 && glassFront) {
-                var grime = FoodLooks.Mat(new Color(.26f, .19f, .12f));
-                for (int i = 0; i < 3; i++) Blob(dress, new Vector3(lb.min.x + lb.size.x * (.22f + i * .26f), lb.min.y + .1f + (i % 2) * .05f, front + .004f), new Vector3(.03f, .07f, .008f), grime, PrimitiveType.Capsule);
-            } else if (level <= 1) {
-                // Flats hand-me-down: grease drips running down the front and a scorched, stained patch.
-                var grease = FoodLooks.Mat(new Color(.26f, .19f, .12f)); var stain = FoodLooks.Mat(new Color(.42f, .33f, .22f));
-                for (int i = 0; i < 4; i++) {
-                    float x = lb.min.x + lb.size.x * (.18f + i * .21f), y = lb.min.y + lb.size.y * (.72f - (i % 2) * .08f);
-                    Blob(dress, new Vector3(x, y - .06f - (i % 3) * .03f, front + .004f), new Vector3(.022f, .09f + (i % 3) * .05f, .008f), grease, PrimitiveType.Capsule);
-                }
-                Blob(dress, new Vector3(lb.min.x + lb.size.x * .7f, lb.min.y + lb.size.y * .45f, front + .003f), new Vector3(lb.size.x * .22f, lb.size.y * .12f, .006f), stain, PrimitiveType.Sphere);
-            }
+            // Level 1 "Flats" equipment reads as worn through the warm, dulled material tint above. No painted-on grease
+            // blobs: primitive drips looked like stickers, not grime, and broke the art style.
             if (level >= 3) {
                 // Brand stripe, neon underglow and flames licking up off the cooking surface.
                 Blob(dress, new Vector3(lb.center.x, lb.min.y + lb.size.y * .62f, front + .006f), new Vector3(lb.size.x * .96f, .05f, .01f), FoodLooks.Mat(new Color(.95f, .18f, .24f), .9f));
