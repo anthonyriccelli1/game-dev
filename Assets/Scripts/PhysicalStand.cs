@@ -346,8 +346,12 @@ namespace RestaurantCity {
             }
             if (city.Kind == InteractionKind.StandSign) {
                 var st = Game.State;
-                prompts[actor] = (InTruck ? "Menu board" : "Stand sign") + "\nE / A  " + (st.StandOpen ? "Close up (no new customers)" : "Open for customers");
-                if (pressed) { st.StandOpen = !st.StandOpen; if (st.StandOpen && !st.HasOrder) st.NextCustomer = Mathf.Min(st.NextCustomer, 3); Feedback(st.StandOpen ? "Open! Customers will start walking up." : "Closed. Finish the customers already here."); Game.Save(); }
+                prompts[actor] = (InTruck ? "Menu board" : "Stand sign") + "\nE / A  " + (st.StandOpen ? "Last call (no new customers)" : st.IsNight ? "Open the night shift" : "Open for customers");
+                if (pressed) {
+                    if (st.StandOpen) { st.CloseStand(false); Feedback("Last call! No new customers. Finish the ones already here."); }
+                    else { st.OpenStand(); Feedback(st.IsNight ? "Night shift open! Busier, and every order pays 50% more. It ends at midnight." : "Open! Customers will start walking up. The day shift ends at dusk."); }
+                    Game.Save();
+                }
                 return true;
             }
             if (city.Kind == InteractionKind.Serve && city.name.StartsWith("Stand guest") && int.TryParse(city.name.Substring(12), out int guestId)) {

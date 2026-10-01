@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 namespace RestaurantCity {
     // Stand guests: Stage 0 = in line for a table, 1 = seated and waiting for food, 2 = eating. Patience only runs before they eat.
+    // What one truck shift did: shown on the ticket card after the last customer of the shift is served.
+    [Serializable] public class StandShiftReport { public string Name; public int Day, Served, Walked, Earned; public float Satisfaction; public bool Auto; }
     [Serializable] public class StandOrder { public int Id, Type, Stage, Table = -1; public string Dish = "burger", ResidentId = ""; public float Patience, MaxPatience, EatLeft; }
     public static class EncounterRules {
         // Keep pursuit inside the clear corridor, away from the warehouse and stash.
@@ -15,6 +17,25 @@ namespace RestaurantCity {
         public KitchenState Kitchen = new KitchenState();
         public RestaurantState Restaurant = new RestaurantState();
         public bool StandBuilt, RecipeUnlocked, HasOrder, StandOpen;
+        // Truck shifts: the day shift ends at dusk, a night shift at midnight. Closing (by hand or automatically) is
+        // "last call": no new customers, finish the ones here, then the shift report shows.
+        public bool StandLastCall, StandNightShift; public int ShiftServed0, ShiftMissed0, ShiftEarned, StandBurgers, StandSalads; public StandShiftReport LastStandShift;
+        // What the truck can't make right now: "buns", "patties and buns", "greens"... ("" when everything is stocked).
+        public string StandShortage() {
+            if (Restaurant == null) return "";
+            var missing = new List<string>();
+            if (Restaurant.Stock("patty") == 0) missing.Add("patties");
+            if (Restaurant.Stock("bun") == 0) missing.Add("buns");
+            if (Restaurant.Stock("greens") == 0) missing.Add("greens");
+            return missing.Count == 0 ? "" : missing.Count == 1 ? missing[0] : string.Join(", ", missing.GetRange(0, missing.Count - 1)) + " and " + missing[missing.Count - 1];
+        }
+        public void OpenStand() { StandOpen = true; StandLastCall = false; StandNightShift = IsNight; ShiftServed0 = Served; ShiftMissed0 = Missed; ShiftEarned = 0; LastStandShift = null; if (!HasOrder) NextCustomer = Math.Min(NextCustomer, 3); Emit("stand_open"); }
+        public void CloseStand(bool auto) { if (!StandOpen) return; StandOpen = false; StandLastCall = true; Emit(auto ? "stand_lastcall" : "stand_closing"); }
+        void FinishStandShift() {
+            StandLastCall = false;
+            LastStandShift = new StandShiftReport { Name = StandNightShift ? "Night shift" : "Day shift", Day = Day, Served = Served - ShiftServed0, Walked = Missed - ShiftMissed0, Earned = ShiftEarned, Satisfaction = Restaurant != null ? Restaurant.Satisfaction : 0 };
+            Emit("stand_report");
+        }
         public int StandCustomerType; public string StandDish = "burger";
         // Up to StandQueueMax customers line up at the stand. HasOrder/Patience/StandDish mirror the front of the line.
         public List<StandOrder> StandQueue = new List<StandOrder>(); public int NextStandOrder = 1, StandClean = StandPlates, StandDirty;
@@ -127,7 +148,7 @@ namespace RestaurantCity {
             if (washing) { if (dirtyTable >= 0) StandTableDirty[dirtyTable] = false; else StandDirty--; StandClean++; return; }
             Restaurant.UseFor(front.Dish);
             int earned = (int)Math.Round(KitchenState.StandPrice(this, front.Dish) * (1 - StandWorkerCut));
-            Cash += earned; StandWorkerEarned += earned; Served++; w.TasksCompleted++; Restaurant.RecordTruckGuest(front.ResidentId, front.Dish, front.Patience / Math.Max(1f, front.MaxPatience));
+            Cash += earned; StandWorkerEarned += earned; ShiftEarned += earned; Served++; w.TasksCompleted++; Restaurant.RecordTruckGuest(front.ResidentId, front.Dish, front.Patience / Math.Max(1f, front.MaxPatience));
             StandClean--; front.Stage = 2; front.EatLeft = StandEatSeconds; SyncStandFront();
         }
         // Two cafe tables x two chairs = four seats. StandTableDirty and StandOrder.Table are per SEAT (seat / 2 = table).
@@ -252,11 +273,14 @@ namespace RestaurantCity {
         }
         public void Tick(float seconds) {
             if (seconds <= 0 || float.IsNaN(seconds) || float.IsInfinity(seconds)) return;
+            float clock0 = Clock; int day0 = Day;
             Clock += seconds * ClockRate;
             if (Restaurant != null) Restaurant.PlayerRank = RankEarned;
             if (Restaurant != null && Restaurant.PendingRep != null && Restaurant.PendingRep.Count > 0) { foreach (var g in Restaurant.PendingRep) GainReputation(g.Amount, g.Source); Restaurant.PendingRep.Clear(); }
             else CheckRankUp();
             while (Clock >= 240) { Clock -= 240; Day++; }
+            if (StandOpen && !StandNightShift && clock0 < 150 && Clock >= 150) CloseStand(true);   // dusk ends the day shift
+            if (StandOpen && StandNightShift && Day != day0) CloseStand(true);                      // midnight ends the night shift
             if (Food == FoodStage.Cooking) CookSeconds += seconds;
             StandQueue = StandQueue ?? new List<StandOrder>();
             if (StandTableDirty == null || StandTableDirty.Count != StandSeats) StandTableDirty = new List<bool> { false, false, false, false };
@@ -267,12 +291,13 @@ namespace RestaurantCity {
             StandQueue.RemoveAll(o => o.Stage == 2 && o.EatLeft <= 0);   // finished: they leave the dirty plate on the table
             foreach (var o in StandQueue) if (o.Stage < 2 && o.Patience <= 0 && Restaurant != null) Restaurant.RecordTruckWalkout(o.ResidentId, o.Dish);
             int walked = StandQueue.RemoveAll(o => o.Stage < 2 && o.Patience <= 0); if (walked > 0) Emit("stand_walkout"); Missed += walked; if (walked > 0) GainReputation(walked * Reputation.LostCustomer, "Stand walk-outs");
+            if (StandLastCall && !StandQueue.Exists(o => o.Stage < 2)) FinishStandShift();
             if (StandBuilt && StandOpen && StandQueue.Count < StandQueueMax) {
                 NextCustomer -= seconds;
                 if (NextCustomer <= 0) {
                     int id = NextStandOrder++;
                     float patience = StandQueue.Count == 0 && Served == 0 ? StandFirstPatience : StandPatience;
-                    StandQueue.Add(new StandOrder { Id = id, Type = (id * 3) % 10, ResidentId = PickVisitor(id * 7 + Day * 131), Dish = Knows("midnight") && id % 4 == 0 ? "midnight" : id % 3 == 1 ? "salad" : "burger", Patience = patience, MaxPatience = patience });
+                    StandQueue.Add(new StandOrder { Id = id, Type = (id * 3) % 10, ResidentId = PickVisitor(id * 7 + Day * 131), Dish = Restaurant != null && Restaurant.Owned && Knows("midnight") && id % 4 == 0 ? "midnight" : id % 3 == 1 ? "salad" : "burger", Patience = patience, MaxPatience = patience });
                     NextCustomer = StandArrivalSeconds + (id % 3) * 1.5f;
                 }
             }

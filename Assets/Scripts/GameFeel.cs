@@ -4,7 +4,7 @@ namespace RestaurantCity {
     // Turns kitchen and service moments (GameState.Events) into sound, floating pop-ups and guest reactions,
     // runs the sizzle/bubble loops on cooking stations, and announces the rush.
     public partial class RestaurantController {
-        AudioSource fx; float clinkCooldown; string lastPhase = ""; bool lastStandRush, lastRushSoon;
+        AudioSource fx; float clinkCooldown; string lastPhase = "", lastShortage = ""; bool lastStandRush, lastRushSoon;
         readonly Dictionary<int, AudioSource> stationLoops = new Dictionary<int, AudioSource>();
         sealed class FloatText { public TextMesh Text; public float Age; public Vector3 Start; }
         readonly List<FloatText> floaters = new List<FloatText>();
@@ -40,6 +40,12 @@ namespace RestaurantCity {
                 else if (s.StandOpen) Game.Notify("The rush is over. Catch your breath: wash plates, clear tables, restock at Milo's cart.", 5);
                 lastStandRush = s.StandRush;
             }
+            // Running out mid-shift: say exactly what's gone and where to get it.
+            string shortage = s.StandOpen && !s.Restaurant.Owned ? s.StandShortage() : "";
+            if (shortage != lastShortage) {
+                if (shortage != "" && shortage.Length > lastShortage.Length) { Fx(SoundFx.Warning, .7f); Game.Notify("Out of " + shortage + "! Hurry to Rose at Milo's cart, then unpack at the truck shelf.", 6); }
+                lastShortage = shortage;
+            }
             if (s.StandRushSoon != lastRushSoon) {
                 if (s.StandRushSoon) { Fx(SoundFx.Doorbell, .6f); Game.Notify((s.IsNight ? "Night" : "Lunch") + " rush coming! Get plates clean and patties ready.", 4); }
                 lastRushSoon = s.StandRushSoon;
@@ -54,7 +60,7 @@ namespace RestaurantCity {
         }
 
         void Play(string e) {
-            var parts = e.Split(':'); string kind = parts[0];
+            var parts = e.Split(':'); string kind = parts[0]; var s = Game.State;
             int A(int i) => parts.Length > i && int.TryParse(parts[i], out var v) ? v : -1;
             switch (kind) {
                 case "served": {
@@ -88,6 +94,8 @@ namespace RestaurantCity {
                     break;
                 }
                 case "upgrade": Fx(SoundFx.Tip, 1f); Fx(SoundFx.Register, .6f); break;
+                case "stand_lastcall": Fx(SoundFx.Horn, .8f); Game.Notify((s.StandNightShift ? "Midnight! The night shift is over." : "Dusk! The day shift is over.") + " No new customers: finish the ones still here.", 6); break;
+                case "stand_report": { Fx(SoundFx.Register, .8f); Fx(SoundFx.Tip, .6f); var r = s.LastStandShift; if (r != null) Game.Notify(r.Name + " done: served " + r.Served + ", earned $" + r.Earned + (r.Walked > 0 ? ", " + r.Walked + " walked out" : "") + ". Report on your ticket card.", 7); break; }
                 case "queue_walkout": case "stand_walkout": Fx(SoundFx.Huff, .8f); break;
                 case "arrive": Fx(SoundFx.Doorbell, .45f); break;
                 case "chop": AcceptedChop(A(1)); break;

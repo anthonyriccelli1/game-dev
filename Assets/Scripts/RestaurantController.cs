@@ -427,7 +427,7 @@ namespace RestaurantCity {
         }
         public void Clean() { BeginCleaning(); }
         public void Hire(string id) { bool hired = Data.Hire(Game.State, id, out string message); Feedback(message); if (hired) PlayChime(true); Game.Save(); UI.Rebuild(); }
-        public void Assign(string id, StaffJob job) { bool ok = Data.Assign(id, job, out string message); if (ok && job == StaffJob.Stand) Game.State.StandOpen = true; Feedback(message); Game.Save(); UI.Rebuild(); }
+        public void Assign(string id, StaffJob job) { bool ok = Data.Assign(id, job, out string message); if (ok && job == StaffJob.Stand && !Game.State.StandOpen) Game.State.OpenStand(); Feedback(message); Game.Save(); UI.Rebuild(); }
         public void ToggleDish(string id) { Data.ToggleDish(Game.State, id, out string message); Feedback(message); RefreshMenuBoard(); Game.Save(); UI.Rebuild(); }
         public void ServeGuest(int id) {
             if (Game.State.Kitchen.Serve(Game.State, Game.Player.ActorId, id, out string message)) PlayChime(false);

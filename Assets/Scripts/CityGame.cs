@@ -159,9 +159,26 @@ namespace RestaurantCity {
                 var r = State.Restaurant; int price = RestaurantSites.StarterPrice;
                 if (!r.Owned) {
                     if (!State.StandBuilt) return "Fire up Little Flame\nYour food truck is parked in Truck Park. Press E on it ($10).";
-                    if (r.Stock("patty") == 0 || r.Stock("bun") == 0) return "Stock the truck\nBuy patties and buns from Rose at Milo's cart, right beside the truck.";
+                    if (State.Kitchen.Items.Exists(i => Hotbar.IsBag(i) && i.Holder != null && i.Holder.Contains("player"))) return "Unpack your groceries\nCarry the bag into the truck and press E on the shelf to stock it.";
+                    string shortage = State.StandShortage();
+                    if (State.StandOpen && shortage != "") return "Restock now!\nOut of " + shortage + ". Run to Rose at Milo's cart, then unpack at the truck shelf. Customers are waiting!";
+                    if (State.StandOpen || State.StandLastCall) {
+                        // Teach the dish that's actually ordered (salad or burger) until you've made each a couple of times.
+                        var front = State.StandQueue.Find(o => o.Stage == 1) ?? State.StandQueue.Find(o => o.Stage == 0);
+                        if (front != null && (front.Dish == "salad" ? State.StandSalads < 2 : State.StandBurgers < 2))
+                            return (State.Served == 0 ? "Serve your first customer" : front.Dish == "salad" ? "They want a salad" : "They want a burger") + "\n" + (front.Dish == "salad"
+                                ? "Greens on the cutting board and chop them > clean plate > chopped greens > hand it over."
+                                : "Patty on the grill, flip it when golden > clean plate > bun > patty > hand it over.");
+                    }
+                    if (State.StandLastCall) return "Last call\nNo new customers. Serve the ones still here, then your shift report.";
+                    if (!State.StandOpen && shortage != "") return "Stock the truck\nBuy " + shortage + " from Rose at Milo's cart, right beside the truck, then unpack them at the truck shelf.";
                     if (!State.StandOpen && State.Served == 0) return "Open for business\nPress E on the menu board by the window.";
-                    if (State.Served == 0) return "Serve your first customer\nGrill a patty > plate > bun > patty > hand it over.";
+                    string next = r.Stars < 1 ? "Earn your first star" : State.Cash < price ? "Save $" + price + " for The Odd Table" : "Buy The Odd Table";
+                    var rep = State.LastStandShift;
+                    if (rep != null && !State.StandOpen) return rep.Name + " done!\nServed " + rep.Served + ", earned $" + rep.Earned + (rep.Walked > 0 ? ", " + rep.Walked + " walked out" : "") + ". "
+                        + (rep.Name == "Day shift" && State.IsNight ? "Open the night shift at the menu board (busier, +50% pay) or close up and explore." : rep.Name == "Night shift" ? "Rest up; open again in the morning." : "Open the menu board again whenever you're ready.")
+                        + "\nNext goal: " + next;
+                    if (State.Served == 0) return "Serve your first customer\nThey'll walk up to the window soon.";
                     if (r.Stars < 1) { var g = RestaurantState.StarGoals[1]; return "Earn your first star\nServed " + Math.Min(r.Served, g.served) + "/" + g.served + "   Satisfaction " + r.Satisfaction.ToString("0") + "/" + g.satisfaction + "\nServe fast; walk-outs hurt. Tab: Stars."; }
                     if (State.Cash < price) return "Save $" + price + "\n$" + State.Cash + " / $" + price + " for The Odd Table on Main Street.";
                     return "Buy The Odd Table\nIt's on Main Street. Press E on its sign ($" + price + ").";

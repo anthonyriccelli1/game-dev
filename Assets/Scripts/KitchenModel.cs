@@ -295,7 +295,7 @@ namespace RestaurantCity {
    if(order.Stage==2)return Fail("They're already eating.",out message);
    if(dish!=order.Dish)return Fail(dish==""?"Make a "+DishName(order.Dish)+" first: "+HowTo(order.Dish)+".":"They ordered a "+DishName(order.Dish)+".",out message);
    int price=StandPrice(game,dish);bool fast=order.Patience>order.MaxPatience*.6f;if(fast)price+=2;bool perfect=PerfectDish(item);if(perfect)price+=2;
-   game.Cash+=price;if(fast)game.GainReputation(Reputation.StandFast,"Stand sales");game.Served++;game.Restaurant.RecordTruckGuest(order.ResidentId,dish,order.Patience/Math.Max(1f,order.MaxPatience),item.Quality,perfect);game.Emit("stand_served:"+order.Id+":"+(fast?2:0));bool met=game.MeetResident(order.ResidentId);
+   game.Cash+=price;game.ShiftEarned+=price;if(dish=="salad")game.StandSalads++;else game.StandBurgers++;if(fast)game.GainReputation(Reputation.StandFast,"Stand sales");game.Served++;game.Restaurant.RecordTruckGuest(order.ResidentId,dish,order.Patience/Math.Max(1f,order.MaxPatience),item.Quality,perfect);game.Emit("stand_served:"+order.Id+":"+(fast?2:0));bool met=game.MeetResident(order.ResidentId);
    order.Stage=2;order.EatLeft=GameState.StandEatSeconds;Items.Remove(item);   // the plate stays on their table until they finish
    message="+$"+price+(perfect?" (incl. $2 perfect-patty tip)":"")+(fast?" (incl. $2 speed tip)  +"+Reputation.StandFast+" rep":"")+(met?"  NEW: "+ResidentCast.Get(order.ResidentId).Name+" joined your People book!":"  Enjoy! Clear the plate when they're done.");return true;
   }

@@ -57,6 +57,7 @@ namespace RestaurantCity {
                 RunScrubChecks(Station("sink"));
                 RunPattyChecks(grill);
                 RunPantryAimChecks(pantry);
+                RunChopChecks(prep);
                 yield return null; // Rebuild cleanup is deferred until the end of the frame.
                 Physics.SyncTransforms();
                 var table = R.Data.Layout.First(x => RestaurantCatalog.Find(x.CatalogId).Seats > 0).InstanceId;
@@ -390,6 +391,26 @@ namespace RestaurantCity {
                 string got = R.PantryAim(pantry, "pantry", P.InteractionRay, "", P.ActorId);
                 Check(got == shelf, "looking down at the " + shelf + " picks " + shelf + " (got " + got + ")");
             }
+        }
+        // Hands-on chopping: each slice is cut once, putting it down keeps the cuts, six cuts make chopped greens.
+        void RunChopChecks(int prep) {
+            var st = K.Stations.First(s => s.InstanceId == prep);
+            foreach (var it in K.Items.Where(i => i.Holder == "station:" + prep).ToList()) K.Items.Remove(it);
+            K.ReleaseWork(P.ActorId); st.Progress = 0; st.WorkOwner = null;
+            K.Items.Add(new KitchenItem { Id = K.NextItemId++, Kind = KitchenItemKind.RawGreens, Holder = "station:" + prep });
+            var chop = PrepChop.Of(P);
+            Check(chop.Begin(prep, out var m) && chop.Active && PrepChop.HeldAt(prep), "E at the cutting board brings the lettuce up to chop " + m);
+            for (int i = 0; i < 10; i++) chop.Tick(null, null, null, .1f);
+            Check(st.Progress == 0, "holding the knife without chopping does nothing");
+            chop.ChopAt(-.1f, -.1f); chop.Tick(null, null, null, .02f);
+            Check(chop.Cuts == 1 && st.Progress > 0 && K.At(prep)?.Kind == KitchenItemKind.RawGreens, "chopping the same slice twice cuts it once (" + chop.Cuts + ")");
+            Check(!K.Work(Game.State, "staff:test", prep, 1, out _), "nobody else can chop the lettuce you're working on");
+            float part = st.Progress; chop.End();
+            Check(!chop.Active && Mathf.Approximately(st.Progress, part) && string.IsNullOrEmpty(st.WorkOwner), "putting it down keeps the cut slices");
+            Check(chop.Begin(prep, out _) && chop.Cuts == 1, "picking it back up resumes with one slice cut");
+            chop.ChopAt(-.1f, -.06f, -.02f, .02f, .06f, .1f); chop.Tick(null, null, null, .02f);
+            Check(!chop.Active && K.At(prep)?.Kind == KitchenItemKind.ChoppedGreens, "six cuts make chopped greens");
+            foreach (var it in K.Items.Where(i => i.Holder == "station:" + prep).ToList()) K.Items.Remove(it); st.Progress = 0;
         }
         int Station(string id) => R.Data.Layout.First(x => x.CatalogId == id).InstanceId;
         static int TargetId(RaycastHit hit) { var t = hit.collider ? hit.collider.GetComponentInParent<RestaurantTarget>() : null; return t ? t.InstanceId : -1; }

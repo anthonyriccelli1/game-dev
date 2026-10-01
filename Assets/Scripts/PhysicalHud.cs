@@ -81,7 +81,7 @@ namespace RestaurantCity {
    if(views.Count!=Game.CoOp.PlayerCount)Build();
    var r=Game.State.Restaurant;var k=Game.State.Kitchen;
    for(int i=0;i<views.Count;i++){var v=views[i];var p=Game.CoOp.Players[i];v.Canvas.enabled=Game.Started&&!Game.Paused&&!Game.Restaurant.PanelOpen&&!Game.Restaurant.PlacementActive;if(!v.Canvas.enabled)continue;
-    string phase=!r.Owned?(Game.State.StandOpen?(Game.State.StandRush?"<color=#E1543B>RUSH!</color>":"<color=#4FCB7A>TRUCK OPEN</color>"):"TRUCK CLOSED"):r.Open?(Game.Restaurant&&Game.Restaurant.Rush?"<color=#E1543B>RUSH!</color>":"<color=#4FCB7A>OPEN</color>"):r.Orders.Count>0?"<color=#E8C34A>LAST GUESTS</color>":"CLOSED";
+    string phase=!r.Owned?(Game.State.StandOpen?(Game.State.StandRush?"<color=#E1543B>RUSH!</color>":"<color=#4FCB7A>"+(Game.State.StandNightShift?"NIGHT SHIFT":"TRUCK OPEN")+"</color>"):Game.State.StandLastCall?"<color=#E8C34A>LAST CALL</color>":"TRUCK CLOSED"):r.Open?(Game.Restaurant&&Game.Restaurant.Rush?"<color=#E1543B>RUSH!</color>":"<color=#4FCB7A>OPEN</color>"):r.Orders.Count>0?"<color=#E8C34A>LAST GUESTS</color>":"CLOSED";
     int xp=Game.State.Xp,rk=Game.State.RankEarned;v.Top.text="$"+Game.State.Cash+"   <color=#F2C27A>"+StarText.Of(r.Stars)+"</color>   "+phase+"   <color=#F2C27A>"+Reputation.Titles[rk]+(Reputation.IsMax(rk)?"":"  "+xp+"/"+Reputation.Thresholds[rk+1]+" rep")+"</color>\n<size=12>Plates "+k.CleanPlates+"/"+KitchenState.PlateCapacity(r)+(k.SinkPile>0?" ("+k.SinkPile+" dirty)":"")+"  |  Patties "+r.Stock("patty")+"  |  Buns "+r.Stock("bun")+"  |  Greens "+r.Stock("greens")+(r.Stock("midnight_sauce")>0||Game.State.Knows("midnight")?"  |  Sauce "+r.Stock("midnight_sauce"):"")+(Game.State.FluxIntroduced?"  |  Flux "+Game.State.Flux:"")+(Game.State.StandBuilt?"  |  P phone  M map":"")+"</size>";
     // What to do next, always visible under the status chip (the truck-to-restaurant goal ladder).
     string obj=Game.Objective;int cut=obj.IndexOf('\n');v.Goal.text=obj==""?"":"<color=#F2C27A><b>GOAL: "+(cut<0?obj:obj.Substring(0,cut)).ToUpper()+"</b></color>"+(cut<0?"":"\n"+obj.Substring(cut+1));v.Goal.transform.parent.gameObject.SetActive(obj!="");
@@ -89,7 +89,7 @@ namespace RestaurantCity {
     v.Tickets.transform.parent.gameObject.SetActive(tickets!="");v.Tickets.text=tickets;
     // Size the ticket card to its text instead of a fixed half-screen box.
     int lineCount=tickets==""?0:tickets.Split('\n').Length;var card=(RectTransform)v.Tickets.transform.parent;card.anchorMin=new Vector2(.7f,Mathf.Max(.45f,1-(.035f*lineCount+.03f)));
-    var promptRect=(RectTransform)v.Prompt.transform.parent;var ps=p.GetComponent<PlateScrub>();bool scrubbing=ps&&ps.Active;promptRect.anchorMin=scrubbing?new Vector2(.3f,.82f):new Vector2(.25f,.3f);promptRect.anchorMax=scrubbing?new Vector2(.7f,.97f):new Vector2(.75f,.46f);var aim=v.Canvas.transform.Find("Aim");if(aim)aim.gameObject.SetActive(!scrubbing);
+    var promptRect=(RectTransform)v.Prompt.transform.parent;var ps=p.GetComponent<PlateScrub>();var pc=p.GetComponent<PrepChop>();bool scrubbing=ps&&ps.Active||pc&&pc.Active;promptRect.anchorMin=scrubbing?new Vector2(.3f,.82f):new Vector2(.25f,.3f);promptRect.anchorMax=scrubbing?new Vector2(.7f,.97f):new Vector2(.75f,.46f);var aim=v.Canvas.transform.Find("Aim");if(aim)aim.gameObject.SetActive(!scrubbing);
     string prompt=Game.Restaurant.PromptFor(p.ActorId);if(prompt==""&&p.Target)prompt="E / A  "+p.Target.Prompt(Game);
     var held=k.Hold(p.ActorId);string checklist=Game.Restaurant.HeldPlateChecklist(p.ActorId);
     string holding=held==null?"":"<size=14><color=#9FD8C8>Holding: "+k.Label(held)+(checklist==""?"":"  |  "+checklist)+"</color></size>\n";
@@ -102,6 +102,13 @@ namespace RestaurantCity {
    if(!s.StandBuilt)return "Fire up Little Flame in Truck Park ($10)\nthen buy patties & buns at Milo's cart beside it.";
    string pace=s.StandPace=="rush"?"<color=#E1543B>RUSH: customers every few seconds</color>":s.StandRushSoon?"<color=#E8C34A>Rush coming soon!</color>":s.StandPace=="calm"?"<color=#9FD8C8>Quiet spell: catch up on plates</color>":"";
    string goal=pace==""?"":"<size=12>"+pace+"</size>";
+   if(!s.HasOrder&&!s.StandOpen&&s.LastStandShift!=null){
+    // The shift report stays on the card until the truck opens again.
+    var r=s.LastStandShift;var g=RestaurantState.StarGoals[System.Math.Min(RestaurantState.StarGoals.Length-1,s.Restaurant.Rank+1)];
+    return "<color=#F2C27A><b>"+r.Name.ToUpper()+" REPORT</b></color>  <size=12>day "+r.Day+"</size>\nServed "+r.Served+(r.Walked>0?"   <color=#E1543B>Walked out "+r.Walked+"</color>":"   Nobody walked out")+"\nEarned <b>$"+r.Earned+"</b>   Satisfaction "+r.Satisfaction.ToString("0")+"%"
+     +(s.Restaurant.Rank+1<RestaurantState.StarGoals.Length?"\n<size=12>Next star: "+System.Math.Min(s.Restaurant.Served,g.served)+"/"+g.served+" served, "+s.Restaurant.Satisfaction.ToString("0")+"/"+g.satisfaction+" satisfaction</size>":"")
+     +"\n<size=12>"+(r.Name=="Day shift"&&s.IsNight?"E on the menu board: night shift (+50% pay)":"E on the menu board to open again")+"</size>";
+   }
    if(!s.HasOrder)return (s.StandOpen?"Truck OPEN: a customer is on the way...":"Truck CLOSED: press E on the menu board to open")+(goal==""?"":"\n"+goal);
    var lines=new List<string>();
    foreach(var o in s.StandQueue){

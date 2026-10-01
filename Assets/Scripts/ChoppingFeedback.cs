@@ -37,7 +37,9 @@ namespace RestaurantCity {
             Active=!paused&&raw&&accepted&&!string.IsNullOrEmpty(station.WorkOwner)&&(same?station.Progress>previousProgress:station.Progress>0);
             Ratio=greens?(item.Kind==KitchenItemKind.ChoppedGreens?1:Mathf.Clamp01(station.Progress/(3*(research?.65f:1)))):0;
             int pieces=Mathf.FloorToInt(Ratio*6);
-            for(int n=0;n<6;n++){whole[n].SetActive(greens&&n>=pieces);cut[n].SetActive(greens&&n<pieces);}
+            bool held=PrepChop.HeldAt(station.InstanceId);   // up close in the chopper's hands instead
+            for(int n=0;n<6;n++){whole[n].SetActive(greens&&!held&&n>=pieces);cut[n].SetActive(greens&&!held&&n<pieces);}
+            knife.gameObject.SetActive(!held);
             if(Active) {
                 float before=phase; phase+=Mathf.Max(0,dt)*3.5f;
                 float stroke=phase-Mathf.Floor(phase), lift=Mathf.Sin(stroke*Mathf.PI);

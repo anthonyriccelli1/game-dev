@@ -43,7 +43,7 @@ namespace RestaurantCity {
             return inv;
         }
         static string Actor(int playerId) => "player:" + playerId;
-        static bool IsBag(KitchenItem i) => i != null && i.Kind == KitchenItemKind.GroceryBag;
+        public static bool IsBag(KitchenItem i) => i != null && i.Kind == KitchenItemKind.GroceryBag;
         // The kitchen item in your hands that is NOT a hotbar item (food, a plate): it blocks switching.
         public static KitchenItem HandFood(GameState g, int playerId) { var h = g.Kitchen?.Hold(Actor(playerId)); return h != null && !IsBag(h) ? h : null; }
 

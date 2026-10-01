@@ -76,6 +76,12 @@ namespace RestaurantCity {
     prompts[actor]+=CookStatus(station,k.At(station.InstanceId));
     if(station.CatalogId=="grill"&&k.At(station.InstanceId) is KitchenItem onGrill&&!KitchenState.NoFlip(onGrill.Kind))prompts[actor]+="\nClick, flick the mouse up, or RB: flip";
     if(station.CatalogId=="trash")prompts[actor]+="\nContents "+station.WasteCount+" / 6";
+    // A head of lettuce on a cutting board: E brings the board up close to chop it by hand (sauce keeps hold-to-prep).
+    if(station.CatalogId=="prep_bench"&&!p.Elevated&&k.Hold(actor)==null&&k.At(station.InstanceId) is KitchenItem greens&&greens.Kind==KitchenItemKind.RawGreens){
+     prompts[actor]="cutting board\nE / A  Chop the lettuce"+(station.Progress>0?" ("+Mathf.RoundToInt(station.Progress/PrepChop.Duration(Game.State,station.InstanceId)*100)+"% done)":"");
+     if(pressed||held){if(!PrepChop.Of(p).Begin(station.InstanceId,out message)&&message!="")Feedback(message);}
+     return true;
+    }
     // A dirty plate in the sink: E lifts it up to scrub by hand (first person). Elevated view keeps hold-to-wash.
     if(station.CatalogId=="sink"&&!p.Elevated&&k.Hold(actor)==null&&k.At(station.InstanceId) is KitchenItem dirtyPlate&&dirtyPlate.Kind==KitchenItemKind.DirtyPlate){
      prompts[actor]="sink\nE / A  Pick up the plate and scrub it"+(station.Progress>0?" ("+Mathf.RoundToInt(station.Progress/KitchenState.WashDuration(Game.State,station.InstanceId)*100)+"% done)":"");
