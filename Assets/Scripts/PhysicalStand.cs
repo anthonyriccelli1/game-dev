@@ -53,6 +53,7 @@ namespace RestaurantCity {
                 standObjects[id] = obj;
             }
             BuildMilo(world);
+            BuildCartVendor(world);
             BuildStandSign();
             BuildStandTables(world);
         }
@@ -310,6 +311,19 @@ namespace RestaurantCity {
             MakeCrate(world, "produce", walkIn ? new Vector3(-13.85f, .06f, 15.4f) : new Vector3(-10.7f, 0, 7.6f), "PRODUCE");
         }
 
+        // Rose, Milo's niece, works his cart beside Little Flame: the truck's basics without the walk to Main Street.
+        void BuildCartVendor(Transform world) {
+            var cartObj = GameObject.Find("Milo's cart"); if (!cartObj || !world || world.Find("Cart vendor")) return;
+            var at = cartObj.transform.position; CartSpot = new Vector2(at.x, at.z);
+            var rose = People.Story(new ResidentDef("057_Rose", "Rose", 1.64f, 0, StaffJob.Any, "Milo's niece. Runs his cart in Truck Park.", Gait.Light), 2, world); rose.name = "Cart vendor";
+            rose.transform.SetPositionAndRotation(at + new Vector3(1.75f, .06f, .35f), Quaternion.Euler(0, 200, 0));   // beside the stand, where she's seen
+            var motion = rose.GetComponent<CharacterMotion>(); if (motion) motion.SetMood(.9f);
+            var talk = rose.AddComponent<CapsuleCollider>(); talk.radius = .45f; talk.height = 1.8f; talk.center = Vector3.up * .9f;
+            rose.AddComponent<Interactable>().Kind = InteractionKind.Supplier;
+            var caption = WorldCaption(rose.transform, "ROSE\nMilo's cart: the basics", new Vector3(0, 2.3f, 0), .02f);
+            caption.transform.rotation = Quaternion.identity;
+        }
+
         void MakeCrate(Transform world, string contents, Vector3 position, string label) {
             var crate = KitchenArt.SupplyCrate(world, contents);
             crate.transform.position = position;
@@ -324,9 +338,9 @@ namespace RestaurantCity {
             if (InspectRaid(p, city, pressed)) return true;
             if (InspectPawn(p, city, pressed)) return true;
             var k = Game.State.Kitchen; string actor = p.ActorId;
-            if (city.Kind == InteractionKind.Supplier && city.name == "Milo shopkeeper") {
+            if (city.Kind == InteractionKind.Supplier && (city.name == "Milo shopkeeper" || city.name == "Cart vendor")) {
                 var held = k.Hold(actor);
-                prompts[actor] = "Milo\n" + (!Game.State.StandBuilt && !Data.Owned ? "Fire up your food truck first" : held != null && held.Kind != KitchenItemKind.GroceryBag ? "Free your hands to shop" : "E / A  Shop");
+                prompts[actor] = (city.name == "Cart vendor" ? "Rose / Milo's cart\n" : "Milo\n") + (!Game.State.StandBuilt && !Data.Owned ? "Fire up your food truck first" : held != null && held.Kind != KitchenItemKind.GroceryBag ? "Free your hands to shop" : "E / A  Shop");
                 if (pressed && (Game.State.StandBuilt || Data.Owned)) ShowPanel("Supplies");
                 return true;
             }

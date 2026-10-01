@@ -16,7 +16,7 @@ namespace RestaurantCity {
         IEnumerator Start() {
             Application.logMessageReceived += OnLog;
             yield return null;
-                Game.State.Cash = 300;
+                Game.State.Cash = RestaurantSites.StarterPrice + 150;
                 Require(R.BuyRestaurant(P), "isolated restaurant acquired through the real lease interaction");
                 Check(GameObject.Find("Future restaurant sign") == null, "owned restaurant removes the lease board interaction");
                 Check(GameObject.Find("Pole sign / THE ODD TABLE") == null, "duplicate oversized street sign is retired");

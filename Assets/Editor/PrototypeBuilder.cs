@@ -128,7 +128,7 @@ public static class PrototypeBuilder {
 
         var future = Cube("Future restaurant sign", new Vector3(-6.2f, 1.25f, -8.7f), new Vector3(2.9f, 2.2f, .15f), dark, world);
         future.AddComponent<Interactable>().Kind = InteractionKind.FutureRestaurant;
-        var futureText = Label("THE ODD TABLE\n\nFOR LEASE  /  $150\nE: LEASE IT", new Vector3(-6.2f, 1.35f, -8.58f), .15f, cream.color, world);
+        var futureText = Label("THE ODD TABLE\n\nFOR LEASE  /  $" + RestaurantSites.StarterPrice + "\nE: LEASE IT", new Vector3(-6.2f, 1.35f, -8.58f), .15f, cream.color, world);
         futureText.transform.rotation = Quaternion.Euler(0, 180, 0);
         Sign("RIVAL ALLEY", new Vector3(11.6f, 3.8f, 14), 5, dark, world, .21f);
         Label("NIGHTS ONLY  /  ENTER AT YOUR OWN RISK", new Vector3(11.6f, 3.2f, 13.98f), .10f, coral.color, world);

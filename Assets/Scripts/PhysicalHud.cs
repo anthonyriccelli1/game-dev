@@ -95,8 +95,8 @@ namespace RestaurantCity {
    }
   }
   static string StandTicket(GameState s){
-   if(!s.StandBuilt)return "Fire up Little Flame in Truck Park ($10)\nthen buy patties & buns at Milo's.";
-   string goal="<size=12>Goal: save $150 for The Odd Table on Main Street</size>";
+   if(!s.StandBuilt)return "Fire up Little Flame in Truck Park ($10)\nthen buy patties & buns at Milo's cart beside it.";
+   string goal="<size=12>Goal: save $"+RestaurantSites.StarterPrice+" for The Odd Table on Main Street</size>";
    if(!s.HasOrder)return (s.StandOpen?"Truck OPEN: a customer is on the way...":"Truck CLOSED: press E on the menu board to open")+"\n"+goal;
    var lines=new List<string>();
    foreach(var o in s.StandQueue){

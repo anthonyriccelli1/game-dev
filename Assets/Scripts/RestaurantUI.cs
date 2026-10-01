@@ -130,7 +130,7 @@ namespace RestaurantCity {
             modal = Block(canvas.transform, "Restaurant management", 0, 105, 1440, 735, new Color(ink.r, ink.g, ink.b, .60f));
             var sheet = Block(modal, "Order pad", 110, 12, 1220, 710, paper);
             Block(sheet, "Top accent", 0, 0, 1220, 7, teal);
-            Label(sheet, Owner.Panel == "Pawn" ? "Hock-9's Pawn." : Owner.Panel == "Raid" ? "Plan a raid." : Owner.Panel == "Phone" ? "Your phone." : Owner.Panel == "Supplies" ? "Milo's Market." : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "Recipes." : Owner.Panel == "Staff" ? "Crew and People book." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
+            Label(sheet, Owner.Panel == "Pawn" ? "Hock-9's Pawn." : Owner.Panel == "Raid" ? "Plan a raid." : Owner.Panel == "Phone" ? "Your phone." : Owner.Panel == "Supplies" ? (Owner.AtCart ? "Milo's Cart." : "Milo's Market.") : Owner.Panel == "Catalog" ? "Make this place yours." : Owner.Panel == "Service" ? "On the pass." : Owner.Panel == "Menu" ? "What's cooking?" : Owner.Panel == "Cookbook" ? "Recipes." : Owner.Panel == "Staff" ? "Crew and People book." : Owner.Panel == "Map" ? "Saffron Bay." : Owner.Panel == "Furniture" ? "Give it a new home." : "Word on the street.", 30, 22, 785, 45, 31, ink, true);
             Button(sheet, "Close  x", 1060, 24, 130, 36, () => Owner.ClosePanel(), ink, paper);
             Label(sheet, "Time pauses while management is open.", 823, 62, 365, 19, 12, muted, false, TextAnchor.MiddleRight);
             string[] panels = { "Catalog", "Service", "Menu", "Cookbook", "Staff", "Map", "Reviews", "Furniture" };
@@ -340,10 +340,11 @@ namespace RestaurantCity {
         void AddToCart(string id, int delta) { var l = cart.Find(c => c.Id == id); if (l == null) cart.Add(l = new StockLine { Id = id }); l.Count = Mathf.Max(0, l.Count + delta); cart.RemoveAll(c => c.Count <= 0); signature = ""; }
         void BuildSupplies(RectTransform sheet) {
             var st = Owner.Game.State; var d = Owner.Data;
-            Label(sheet, "\"Fresh every morning. What'll it be?\"  - Milo", 35, 136, 780, 28, 17, muted);
+            bool atCart = Owner.AtCart;
+            Label(sheet, atCart ? "\"Just the basics out here. Uncle Milo's shop on Main Street has the rest.\"  - Rose" : "\"Fresh every morning. What'll it be?\"  - Milo", 35, 136, 780, 28, 17, muted);
             var cats = new List<string> { "All" }; cats.AddRange(Ingredients.Categories);
-            for (int i = 0; i < cats.Count; i++) { string c = cats[i]; bool on = shopCategory == c; Button(sheet, c, 35 + i * 128, 170, 120, 32, () => { shopCategory = c; signature = ""; }, on ? teal : pale, on ? white : ink); }
-            var items = Ingredients.All.Where(x => shopCategory == "All" || x.Category == shopCategory).ToList();
+            if (!atCart) for (int i = 0; i < cats.Count; i++) { string c = cats[i]; bool on = shopCategory == c; Button(sheet, c, 35 + i * 128, 170, 120, 32, () => { shopCategory = c; signature = ""; }, on ? teal : pale, on ? white : ink); }
+            var items = Ingredients.All.Where(x => atCart ? System.Array.IndexOf(RestaurantController.CartItems, x.Id) >= 0 : shopCategory == "All" || x.Category == shopCategory).ToList();
             var grid = Scroller(sheet, 35, 212, 790, 445, Mathf.CeilToInt(items.Count / 4f) * 234);
             for (int i = 0; i < items.Count; i++) {
                 var ing = items[i]; string id = ing.Id; string why = d.IngredientLock(st, ing);

@@ -37,7 +37,12 @@ namespace RestaurantCity {
             }
             anyoneInsideLastFrame = anyoneInside;
         }
-        public bool AtSupplier => Vector2.Distance(new Vector2(Game.Player.transform.position.x, Game.Player.transform.position.z), MiloSpot) < MiloRadius;
+        public bool AtSupplier => AtMilo || AtCart;
+        bool AtMilo => Vector2.Distance(new Vector2(Game.Player.transform.position.x, Game.Player.transform.position.z), MiloSpot) < MiloRadius;
+        // Milo's cart in Truck Park (CityMap.MarketCart) sells only the truck's basics.
+        public static Vector2 CartSpot = new Vector2(float.MaxValue, float.MaxValue); public const float CartRadius = 3.2f;
+        public static readonly string[] CartItems = { "patty", "bun", "greens" };
+        public bool AtCart => !AtMilo && Vector2.Distance(new Vector2(Game.Player.transform.position.x, Game.Player.transform.position.z), CartSpot) < CartRadius;
         public bool PanelOpen { get; private set; }
         public string Panel { get; private set; } = "Catalog";
         public int SelectedInstanceId { get; private set; } = -1;
@@ -142,7 +147,7 @@ namespace RestaurantCity {
         }
         public void ShowPanel(string panel) {
             bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map" || panel == "Supplies" && Game.State.StandBuilt || panel == "Phone" && Game.State.StandBuilt || panel == "Raid" && (Game.State.StandBuilt || Data.Owned) || panel == "Pawn";
-            if (!Data.Owned && !phone) { Feedback("Earn $150 and buy the restaurant at its front sign."); return; }
+            if (!Data.Owned && !phone) { Feedback("Earn $" + RestaurantSites.StarterPrice + " and buy the restaurant at its front sign."); return; }
             if (ServiceInProgress && panel != "Staff" && panel != "Service" && panel != "Map" && panel != "Supplies" && panel != "Phone" && panel != "Raid" && panel != "Pawn") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
             if (PlacementActive) CancelPlacement(false);
             Panel = panel; PanelOpen = true;
@@ -193,7 +198,7 @@ namespace RestaurantCity {
             FocusPrompt = "";
             var target = hit.collider.GetComponentInParent<RestaurantTarget>();
             if (!target) return false;
-            if (!Data.Owned) { FocusPrompt = "Buy this restaurant at the front sign  /  $150"; return true; }
+            if (!Data.Owned) { FocusPrompt = "Buy this restaurant at the front sign  /  $" + RestaurantSites.StarterPrice; return true; }
             if (target.Kind == "Customer") {
                 FocusPrompt = CarriedOrderId == target.OrderId ? "E  Serve this guest" : "E  View guest's order and preference";
                 if (activate) ServeGuest(target.OrderId);
@@ -415,6 +420,7 @@ namespace RestaurantCity {
         }
         public bool BuyGroceries(List<StockLine> cart) {
             if (!AtSupplier) { Feedback("Talk to Milo in his shop to buy."); return false; }
+            if (AtCart && cart.Exists(l => System.Array.IndexOf(CartItems, l.Id) < 0)) { Feedback("The cart only carries patties, buns and greens. Milo's shop on Main Street has the rest."); return false; }
             bool ok = Game.State.Kitchen.BuyGroceries(Game.State, Game.Player.ActorId, cart, out string message);
             Feedback(message); if (ok) { Game.Save(); ClosePanel(); } else UI.Rebuild();
             return ok;

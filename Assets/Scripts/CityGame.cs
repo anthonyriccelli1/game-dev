@@ -76,7 +76,7 @@ namespace RestaurantCity {
                 case InteractionKind.Stand:
                     success = State.SetUpStand(); Notify(success ? "Your first kitchen. Prep, grill, then serve." : "Stand setup costs $10."); break;
                 case InteractionKind.Prep:
-                    success = State.Prepare(); Notify(success ? "Burger prepared. Put it on the grill." : State.Stock == 0 ? "No ingredients. Buy patties and buns at Milo's on Main Street." : "Finish or discard your current dish first."); break;
+                    success = State.Prepare(); Notify(success ? "Burger prepared. Put it on the grill." : State.Stock == 0 ? "No ingredients. Buy patties and buns at Milo's cart beside your truck." : "Finish or discard your current dish first."); break;
                 case InteractionKind.Grill:
                     success = State.UseGrill();
                     Notify(success ? State.Food == FoodStage.Cooking ? "Grilling. Plate it between 4 and 10 seconds." : State.IsBurnt ? "Burned! Discard it at the bin." : "Ready to serve. Find your waiting customer." : "Prepare a burger first, or wait until it finishes cooking."); break;
@@ -135,12 +135,12 @@ namespace RestaurantCity {
                 if (State.Restaurant.Owned && State.Restaurant.Layout.Count < 5) return "Furnish your kitchen\nKeep the stand running. Inside, press B to buy a pantry, grill, plate rack, assembly station, sink and a table.";
                 if (State.Restaurant.Owned) return "Your restaurant, your rules\nB to decorate inside. Tab to manage service, menu and staff.";
                 if (!State.StandBuilt) return "Make it yours\nFire up Little Flame, your food truck in Truck Park, for $10.";
-                if (State.Restaurant.Stock("patty") == 0 || State.Restaurant.Stock("bun") == 0) return "Stock the kitchen\nWalk up to Milo's on Main Street and buy patties and buns.";
+                if (State.Restaurant.Stock("patty") == 0 || State.Restaurant.Stock("bun") == 0) return "Stock the kitchen\nBuy patties and buns from Rose at Milo's cart, right beside your truck.";
                 if (!State.StandOpen && State.Served == 0) return "Open for business\nPress E on the sign by your stand to start serving.";
                 if (State.Served == 0) return "Your first customer\nPatty on the grill > paper plate > bun > cooked patty > serve.";
                 if (!State.RecipeUnlocked) return State.IsNight ? "A recipe after dark\nExplore the marked rival alley. You can retreat." : "Build your reputation\nKeep serving. The alley stash opens at night.";
-                if (State.Cash < 150) return "A place of your own\nSell midnight burgers. Save $150 for your future restaurant.";
-                return "A place of your own\nBuy The Odd Table on Main Street ($150).";
+                if (State.Cash < RestaurantSites.StarterPrice) return "A place of your own\nKeep the truck busy. Save $" + RestaurantSites.StarterPrice + " for The Odd Table on Main Street.";
+                return "A place of your own\nBuy The Odd Table on Main Street ($" + RestaurantSites.StarterPrice + ").";
             }
         }
         public void NewGame() {

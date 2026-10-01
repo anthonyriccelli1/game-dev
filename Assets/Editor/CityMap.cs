@@ -554,6 +554,23 @@ public static class CityMap {
     static Bounds RendererBounds(GameObject g) {
         var rs = g.GetComponentsInChildren<Renderer>(); var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); return b;
     }
+    // Milo's cart: a produce stand beside Little Flame selling only the truck's basics (patties, buns, greens), so a new
+    // player can restock without crossing two blocks. Rose, Milo's niece, works it (spawned at runtime by PhysicalStand).
+    public static readonly Vector3 CartSpot = new Vector3(-10.5f, 0, -63.4f);
+    static void MarketCart() {
+        var p = new GameObject("Milo's cart").transform; p.SetParent(root, false); p.position = CartSpot;
+        var stand = FitPack("PolygonShops", "Props/SM_Prop_Market_Produce_Stand_01", CartSpot + new Vector3(0, WalkY, 0), 180, 2.4f, p);
+        if (stand) { var box = stand.AddComponent<BoxCollider>(); var b = RendererBounds(stand); box.center = stand.transform.InverseTransformPoint(b.center); box.size = new Vector3(b.size.x, b.size.y, b.size.z) / Mathf.Max(.01f, stand.transform.lossyScale.x); }
+        else Slab("Cart counter", CartSpot + new Vector3(0, .5f, 0), new Vector3(2.2f, 1f, .9f), InteriorMat("CartWood", "8A5A3C"), p, true);
+        // The pack's produce insert fills the stand's crates (same transform as the stand), under a cafe parasol.
+        if (stand) { var ins = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Synty/PolygonShops/Prefabs/Props/SM_Prop_Market_Produce_Stand_01_Insert_01.prefab");
+            if (ins) { var g = (GameObject)PrefabUtility.InstantiatePrefab(ins, p); g.transform.SetPositionAndRotation(stand.transform.position, stand.transform.rotation); g.transform.localScale = stand.transform.localScale; StripColliders(g.transform); } }
+        FitPack("PolygonShops", "Props/SM_Prop_Cafe_Parasol_01", CartSpot + new Vector3(.4f, WalkY, .9f), 0, 2.8f, p);
+        // Price board facing the plaza.
+        var board = Slab("Cart sign", CartSpot + new Vector3(-1.55f, 1.05f, -.2f), new Vector3(.08f, .9f, .9f), InteriorMat("CartBoard", "22262B"), p, false);
+        board.transform.rotation = Quaternion.Euler(0, 90, 0);
+        SignText("MILO'S CART\nPATTIES  BUNS\nGREENS", CartSpot + new Vector3(-1.55f, 1.1f, -.26f), 2, .055f, new Color(1f, .95f, .8f), p);
+    }
     static void TruckPark() {
         var p = new GameObject("Truck Park").transform; p.SetParent(root, false);
         for (float x = -20; x < 20; x += 5) for (float z = -90; z < -75; z += 5)
@@ -799,7 +816,7 @@ public static class CityMap {
         Put("Buildings/SM_Bld_Station_01", new Vector3(0, 0, -30), 0);
         Put("Environments/Custom/SM_Env_Skyline_01", Vector3.zero, 0);
         // Old Market's own places (Market Row, The Flats) and the street ends.
-        MarketStalls(); TinDiner(); GraffitiAlley(); VacantLot(); PawnShop(); TruckPark(); LittleFlame(); CornerCourts(); Harbour(); Crosswalks(); StreetEnds();
+        MarketStalls(); TinDiner(); GraffitiAlley(); VacantLot(); PawnShop(); TruckPark(); LittleFlame(); MarketCart(); CornerCourts(); Harbour(); Crosswalks(); StreetEnds();
         // Street life: parked cars, trees, benches, hydrants, a hotdog cart, bus stop, rooftop signs.
         string[] cars = { "SM_Veh_Car_Sedan_01", "SM_Veh_Car_Taxi_01", "SM_Veh_Car_Van_01", "SM_Veh_Car_Small_01", "SM_Veh_Car_Medium_01", "SM_Veh_Car_Muscle_01" };
         int c = 0;

@@ -237,10 +237,11 @@ namespace RestaurantCity {
         static bool Fail(string text,out string message) {message=text;return false;}
         public bool BuyRestaurant(GameState wallet,out string message) {
             if(Owned)return Fail("This restaurant already belongs to you.",out message);
-            if(wallet.Cash<150)return Fail("The lease costs $150. Keep earning at your stand.",out message);
+            int price=RestaurantSites.StarterPrice;
+            if(wallet.Cash<price)return Fail($"The lease costs ${price}. Keep earning with your food truck.",out message);
             // The lease is an empty, shabby room. Keep working the stand and buy the kitchen piece by piece.
-            wallet.Cash-=150;Owned=true;PhysicalKitInstalled=true;CounterInstalled=true;TrashInstalled=true;
-            message="It's yours: four walls and a lot of dust. Keep running your stand, then press B inside to buy a pantry, grill, plate rack, assembly station, sink and tables.";return true;
+            wallet.Cash-=price;Owned=true;PhysicalKitInstalled=true;CounterInstalled=true;TrashInstalled=true;
+            message="It's yours: four walls and a lot of dust. Keep running your truck, then press B inside to buy a pantry, grill, plate rack, assembly station, sink and tables.";return true;
         }
         void AddPlaced(string id,int x,int z,int rotation,int paid) {Layout.Add(new PlacedItem{InstanceId=NextInstanceId++,CatalogId=id,X=x,Z=z,Rotation=rotation%4,Paid=paid});}
         public void EnsurePhysicalKit() {

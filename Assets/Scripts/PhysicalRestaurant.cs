@@ -60,7 +60,7 @@ namespace RestaurantCity {
    if(city&&InspectStreet(p,city,pressed))return true;
    var target=hit.collider.GetComponentInParent<RestaurantTarget>();if(!target)return false;
    string actor=p.ActorId,message="";var k=Game.State.Kitchen;
-   if(!Data.Owned&&!KitchenState.IsStandStation(target.InstanceId)){prompts[actor]="Buy this restaurant at the front sign / $150";return true;}
+   if(!Data.Owned&&!KitchenState.IsStandStation(target.InstanceId)){prompts[actor]="Buy this restaurant at the front sign / $"+RestaurantSites.StarterPrice;return true;}
    if(target.Kind=="Management"){prompts[actor]=Data.Open?"E / A: stop new arrivals":k.Hold(actor)!=null?"Carrying "+k.Label(k.Hold(actor))+". Tab for management after placing it.":"E / A: manage restaurant";if(pressed){if(Data.Open)ToggleService();else if(k.Hold(actor)==null)ShowPanel("Service");}return true;}
    if(target.Kind=="Customer"){var o=Data.Orders.Find(x=>x.Id==target.OrderId);prompts[actor]=o==null?"Guest leaving":"E / A: serve #"+o.Id+" "+RestaurantCatalog.Dish(o.DishId).Name;if(pressed){k.Serve(Game.State,actor,target.OrderId,out message);Feedback(message);}return true;}
    var station=k.Stations.Find(s=>s.InstanceId==target.InstanceId);
