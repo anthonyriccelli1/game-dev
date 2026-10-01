@@ -22,7 +22,7 @@ namespace RestaurantCity {
         // Standard height for newly imported custom characters; the existing cast keeps its authored variety.
         public const float CustomResidentHeight = 2.0f;
         // Story characters: never recruitable, never in the visitor pool.
-        public static readonly ResidentDef Milo = new ResidentDef("004_OldMoustache", "Milo", 1.68f, 0, StaffJob.Any, "Runs the market.");
+        public static readonly ResidentDef Milo = new ResidentDef("004_OldMoustache", "Milo", 1.68f, 0, StaffJob.Any, "Runs the market.").Uses("213_TripoMilo", 1.68f);   // Tripo mushroom man; id kept for saves
 
         public static readonly ResidentDef[] OldMarket = {
             new ResidentDef("003_Jimmy", "Jimmy", 1.55f, 0, StaffJob.Serve, "Knows every shortcut on the block."),
