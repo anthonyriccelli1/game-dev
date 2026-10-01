@@ -162,7 +162,7 @@ namespace RestaurantCity {
         public bool StandLull => StandOpen && !StandRush && (Clock < 50 || Clock >= 110 && Clock < 150 || Clock >= 215);
         public bool StandRushSoon => StandOpen && (Clock >= 62 && Clock < 70 || Clock >= 172 && Clock < 180);
         public string StandPace => !StandOpen ? "closed" : StandRush ? "rush" : StandLull ? "calm" : "steady";
-        public float StandArrivalSeconds => (Players > 1 ? 14 : 22) * (StandRush ? .5f : StandLull ? 1.6f : 1);
+        public float StandArrivalSeconds => (Players > 1 ? 14 : 22) * (StandRush ? .5f : StandLull ? 1.25f : .9f);   // playtest: quiet stretches were too quiet
         public int FreeStandTable() {
             for (int t = 0; t < StandSeats; t++) {
                 if (StandTableDirty[t]) continue;

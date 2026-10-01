@@ -675,7 +675,7 @@ namespace RestaurantCity {
             Label(banner, StarText.Of(s.Stars) + "   " + (s.Stars + 1 < RestaurantState.StarGoals.Length ? "The road to " + StarText.Words(s.Stars + 1) : "Top of " + DistrictCookbook.District), 20, 15, 1096, 36, 27, gold, true);
             var goal = s.NextStarGoal;
             Label(banner, "Serve " + goal.served + " guests    " + Mathf.Min(s.Served, goal.served) + "/" + goal.served + "          Satisfaction    " + s.Satisfaction.ToString("0") + "/" + goal.satisfaction + (goal.ambience > 0 ? "          Ambience    " + s.Ambience + "/" + goal.ambience : ""), 20, 62, 1097, 28, 19, paper);
-            Label(banner, !s.Owned ? "Little Flame's customers count. Serve fast for happy reviews; customers who walk away hurt your satisfaction." : "Your next star unlocks premium furnishings and a new dish. Food, speed, cleanliness and atmosphere all matter.", 20, 99, 1117, 25, 14, paper);
+            Label(banner, !s.Owned && s.Stars >= 1 ? "That's all the truck can earn: the next star needs ambience. Buy The Odd Table and decorate it." : !s.Owned ? "Little Flame's customers count. Serve fast for happy reviews; customers who walk away hurt your satisfaction." : "Your next star unlocks premium furnishings and a new dish. Food, speed, cleanliness and atmosphere all matter.", 20, 99, 1117, 25, 14, paper);
             int guestStart = Mathf.Max(244, s.Reviews.Count * 105 + 16);
             var content = Scroller(sheet, 30, 292, 1160, 357, guestStart + 354);
             if (s.Reviews.Count == 0) {

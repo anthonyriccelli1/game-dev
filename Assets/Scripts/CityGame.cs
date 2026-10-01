@@ -151,7 +151,7 @@ namespace RestaurantCity {
             if (RenderSettings.skybox) { RenderSettings.skybox.SetFloat("_Exposure", Mathf.Lerp(1.1f, .05f, dusk)); RenderSettings.skybox.SetColor("_SkyTint", Color.Lerp(new Color(.52f, .56f, .6f), new Color(.2f, .25f, .5f), dusk)); }
             foreach (var lamp in Lamps) lamp.intensity = Mathf.Lerp(.2f, 4, dusk);
         }
-        // The goal ladder. Truck phase: fire up, stock, open, first customer, first star, save $500, buy The Odd Table.
+        // The goal ladder. Truck phase: fire up, stock, open, first customer, first star, save $350, buy The Odd Table.
         // Restaurant phase: furnish, hire, then the city opens up (midnight recipe stash > Zeeb's sauce > raid Gus).
         // Nothing about raids or map secrets shows until you own a restaurant.
         public string Objective {
@@ -180,8 +180,8 @@ namespace RestaurantCity {
                         + "\nNext goal: " + next;
                     if (State.Served == 0) return "Serve your first customer\nThey'll walk up to the window soon.";
                     if (r.Stars < 1) { var g = RestaurantState.StarGoals[1]; return "Earn your first star\nServed " + Math.Min(r.Served, g.served) + "/" + g.served + "   Satisfaction " + r.Satisfaction.ToString("0") + "/" + g.satisfaction + "\nServe fast; walk-outs hurt. Tab: Stars."; }
-                    if (State.Cash < price) return "Save $" + price + "\n$" + State.Cash + " / $" + price + " for The Odd Table on Main Street.";
-                    return "Buy The Odd Table\nIt's on Main Street. Press E on its sign ($" + price + ").";
+                    if (State.Cash < price) return "Save $" + price + "\n$" + State.Cash + " / $" + price + " for The Odd Table on Main Street.\nThe truck's star is earned: your next star needs your own restaurant.";
+                    return "Buy The Odd Table\nIt's on Main Street. Press E on its sign ($" + price + ").\nYour next star needs a restaurant you can decorate.";
                 }
                 if (r.Layout.Count < 5) return "Furnish your kitchen\nInside, press B: a pantry, grill, plate rack, assembly station, sink and a table.";
                 if (r.Workers.Count == 0) return "Hire your first worker\nPress P > Crew. Feed a resident once and they join your People book; recruit them to cook, serve or wash.";

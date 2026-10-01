@@ -85,6 +85,7 @@ namespace RestaurantCity {
             ("108_cart_shop", new Vector3(-10.5f, 0, -65.6f), 0, 6, 60),
             ("109_tripo_cast_back_a", new Vector3(-1.45f, 0, -71.4f), 180, 7, 60),
             ("109_tripo_cast_back_b", new Vector3(-1.45f, 0, -71.4f), 180, 7, 60),
+            ("116_chop_lettuce", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
             ("115_grill_flip", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
             ("114_scrub_plate", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
             ("110_truck_ui_hud", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
@@ -150,7 +151,7 @@ namespace RestaurantCity {
             string only = Array.Find(Environment.GetCommandLineArgs(), a => a.StartsWith("--snapshot-only="));
             if (only != null) only = only.Substring("--snapshot-only=".Length);
             foreach (var shot in Shots) {
-                if (only != null && !shot.name.Contains(only)) continue;
+                if (only != null && !Array.Exists(only.Split(','), o => shot.name.Contains(o))) continue;
                 Game.State.Clock = shot.clock; Game.SyncWorld();
                 RenderSettings.fog = !(shot.name.Contains("map") || shot.name.Contains("aerial"));
                 // Stand shots are written in the stand's own frame, which sits inside Little Flame in the city.
@@ -431,6 +432,20 @@ namespace RestaurantCity {
                         for (int i = 0; i < 25; i++) { p.transform.position = pos; yield return null; }
                     }
                 }
+                if (rc && shot.name.Contains("chop_lettuce")) {
+                    // Lettuce up close, two slices chopped, knife lined up over the next.
+                    var gs = Game.State; gs.StandBuilt = true; var k = gs.Kitchen;
+                    var board = k.Stations.Find(s => s.CatalogId == "prep_bench" && KitchenState.IsStandStation(s.InstanceId));
+                    if (board != null) {
+                        foreach (var it in k.Items.FindAll(i => i.Holder == "station:" + board.InstanceId)) k.Items.Remove(it);
+                        board.Progress = 0; board.WorkOwner = null;
+                        k.Items.Add(new KitchenItem { Id = k.NextItemId++, Kind = KitchenItemKind.RawGreens, Holder = "station:" + board.InstanceId });
+                        var chop = PrepChop.Of(p); chop.Begin(board.InstanceId, out _);
+                        for (int i = 0; i < 10; i++) { p.transform.position = pos; chop.Tick(null, null, null, .05f); yield return null; }
+                        chop.ChopAt(-.1f, -.06f); chop.ChopAt(-.025f); chop.Tick(null, null, null, .01f);
+                        for (int i = 0; i < 4; i++) { chop.Tick(null, null, null, .01f); yield return null; }
+                    }
+                }
                 if (rc && shot.name.Contains("scrub_plate")) {
                     // Lift a dirty plate out of the truck sink and scrub a few strokes: half grimy, half clean, suds on.
                     var gs = Game.State; gs.StandBuilt = true; var k = gs.Kitchen;
@@ -471,6 +486,7 @@ namespace RestaurantCity {
                 if (rc && rc.PanelOpen) rc.ClosePanel();
                 if (shot.name.Contains("truck_ui_phone")) Game.State.Restaurant.Owned = truckOwned0;
                 if (shot.name.Contains("scrub_plate")) PlateScrub.Of(p).End();
+                if (shot.name.Contains("chop_lettuce")) PrepChop.Of(p).End();
             }
             yield return new WaitForSeconds(1);
             Application.Quit();

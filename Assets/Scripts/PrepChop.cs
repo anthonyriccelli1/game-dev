@@ -160,10 +160,10 @@ namespace RestaurantCity {
             }
             // Knife: the kitchen knife turned so the blade crosses the lettuce, handle toward you, in your right hand.
             knife = new GameObject("Knife pivot").transform; knife.SetParent(board, false);
-            var k = KitchenArt.ChoppingKnife(knife).transform; k.localRotation = Quaternion.Euler(0, 90, 0); k.localPosition = Vector3.zero;
+            var k = KitchenArt.ChoppingKnife(knife).transform; k.localRotation = Quaternion.Euler(0, 90, 0); k.localPosition = Vector3.zero; k.localScale = Vector3.one * .72f;
             if (!skin) { skin = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(.85f, .64f, .5f) }; skin.SetFloat("_Smoothness", .25f); }
             var sleeve = KitchenArt.Material(Player.PlayerId == 0 ? "C74D38" : "3373C7"); var cuff = KitchenArt.Material("F2EBD9");
-            Hand(knife, new Vector3(0, .09f, -.2f), new Vector3(.35f, .45f, -.85f), sleeve, cuff);
+            Hand(knife, new Vector3(0, .066f, -.145f), new Vector3(.35f, .45f, -.85f), sleeve, cuff);
             // Left hand steadies the far-left end of the head.
             var grip = new GameObject("Left hand").transform; grip.SetParent(board, false); grip.localPosition = new Vector3(FirstSlice - .065f, .06f, 0);
             Hand(grip, Vector3.zero, new Vector3(-.5f, .45f, -.8f), sleeve, cuff);

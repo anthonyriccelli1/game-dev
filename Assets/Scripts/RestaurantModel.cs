@@ -424,7 +424,7 @@ namespace RestaurantCity {
         public void RecordQueueLoss(int customerType){Lost++;Rep("Guests who left",Reputation.LostCustomer);AddReview(new RestaurantOrder{CustomerType=customerType,DishId="burger"},20,"No clean table became available. Clear and wash dishes, or add seating.");}
         // Stars climb one at a time. The first comes quickly (a couple of good shifts); later ones need more guests,
         // happier guests and a nicer room. Served is lifetime, so a lost star is won back faster than it was first earned.
-        public static readonly (int served,float satisfaction,int ambience)[] StarGoals={(0,0,0),(8,60,0),(20,75,12),(60,82,22)};
+        public static readonly (int served,float satisfaction,int ambience)[] StarGoals={(0,0,0),(20,60,0),(40,75,12),(80,82,22)};
         public (int served,float satisfaction,int ambience) NextStarGoal=>StarGoals[Math.Min(StarGoals.Length-1,Rank+1)];
         void UpdateRank(){while(Rank+1<StarGoals.Length){var g=StarGoals[Rank+1];if(Served<g.served||Satisfaction<g.satisfaction||Ambience<g.ambience)break;Rank++;Rep("New stars",Reputation.NewStar);}}
         public bool Clean(out string message) {if(!Owned)return Fail("Buy the restaurant first.",out message);if(Cleanliness>=100)return Fail("The restaurant is already spotless.",out message);Cleanliness=Math.Min(100,Cleanliness+25);message=$"Tables wiped. Cleanliness {Cleanliness:0}%.";return true;}
