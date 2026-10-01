@@ -82,6 +82,7 @@ namespace RestaurantCity {
             ("106_milo_cart", new Vector3(-8.2f, 0, -69.2f), -20, 6, 60),
             ("107_tripo_cast", new Vector3(-2.2f, 0, -71.6f), 180, 4, 60),
             ("108_cart_shop", new Vector3(-10.5f, 0, -65.6f), 0, 6, 60),
+            ("109_tripo_cast_back", new Vector3(-2.2f, 0, -71.6f), 180, 4, 60),
             ("81_raid_planner", new Vector3(17.5f, 0, -40), 0, 4, 190),
             ("82_raid_fight", new Vector3(17.5f, 0, -45.5f), 0, 6, 190),
             ("83_raid_ko", new Vector3(17.5f, 0, -45.5f), 0, 8, 190),
@@ -183,8 +184,8 @@ namespace RestaurantCity {
                     // The custom (Tripo) cast side by side at their shared 2 m height.
                     var old = GameObject.Find("Tripo lineup"); if (old) Destroy(old);
                     var line = new GameObject("Tripo lineup").transform;
-                    string[] ids = { "206_TripoCheerleader", "207_TripoGothGirl", "208_TripoConstruction", "209_TripoFootball", "210_TripoClown", "201_TripoAlien", "205_TripoVampire", "204_TripoReaper" };
-                    for (int i = 0; i < ids.Length; i++) { var c = ResidentModels.Spawn(ids[i], line, ResidentCast.CustomResidentHeight); if (c) { c.transform.position = new Vector3(-7.8f + i * 1.6f, 0, -77.4f); c.transform.rotation = Quaternion.identity; } }
+                    string[] ids = { "206_TripoCheerleader", "207_TripoGothGirl", "208_TripoConstruction", "209_TripoFootball", "210_TripoClown", "201_TripoAlien", "205_TripoVampire", "204_TripoReaper", "211_TripoPumpkin" };
+                    for (int i = 0; i < ids.Length; i++) { var c = ResidentModels.Spawn(ids[i], line, ResidentCast.CustomResidentHeight); if (c) { c.transform.position = new Vector3(-7.8f + i * 1.6f, 0, -77.4f); c.transform.rotation = Quaternion.Euler(0, shot.name.Contains("back") ? 180 : 0, 0); } }
                 }
                 if (shot.name.Contains("style_residents")) {
                     var old = GameObject.Find("Style lineup"); if (old) Destroy(old);

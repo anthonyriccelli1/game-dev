@@ -53,3 +53,7 @@ From the user's Tripo exports in `ThirdParty-Downloads`: `207_TripoGothGirl` (go
 ## Jack (October 1, 2026)
 
 `211_TripoPumpkin` from the user's Tripo export `pumpkin+head+scarecrow+3d+model.zip`: Jack, a rare night cook, replacing Franky. FBX plus base-colour map.
+
+## Back-colour repair for Tripo textures (October 1, 2026)
+
+Tripo invents each character's back from a front concept, and it comes out darker and grey-blue. `Tools/fix_tripo_backs.py <fbx> <png> <out.png>` finds the texels painted on back-facing surfaces (bind pose) and shifts their brightness, colour cast and saturation toward the front's averages, keeping local detail. It also lifts the whole texture's saturation by 15%. All `2xx_Tripo*` / Gus base-colour PNGs in `Resources/Residents` have been processed; the untouched originals are in the source ZIPs and in Git history. Run it on each new character's base-colour map before importing.
