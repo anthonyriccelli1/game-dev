@@ -16,20 +16,20 @@ namespace RestaurantCity {
             // Old Market commons
             { "003_Jimmy", new ResidentStats(1, 4, 3, 2, Perk.Sprinter) },
             { "006_Cappy", new ResidentStats(2, 2, 4, 2, Perk.QuickHands) },
-            { "008_Hugo", new ResidentStats(3, 1, 2, 4, Perk.Brawler) },
-            { "069_Kyle", new ResidentStats(1, 4, 2, 3, Perk.Sprinter) },
+            { "208_TripoConstruction", new ResidentStats(3, 1, 2, 4, Perk.Brawler) },   // Buck
+            { "209_TripoFootball", new ResidentStats(1, 4, 2, 3, Perk.Sprinter) },     // Blitz
             { "070_Robert", new ResidentStats(4, 2, 2, 2, Perk.Steady) },
             { "012_Chill", new ResidentStats(2, 2, 4, 2, Perk.Steady) },
             { "128_RandomBoi", new ResidentStats(2, 3, 2, 3, Perk.NightOwl) },
             { "038_Kate", new ResidentStats(4, 2, 3, 1, Perk.QuickHands) },
             { "053_Erika", new ResidentStats(2, 4, 3, 1, Perk.Steady) },
-            { "056_Olivia", new ResidentStats(2, 3, 3, 2, Perk.QuickHands) },
+            { "207_TripoGothGirl", new ResidentStats(2, 3, 3, 2, Perk.NightOwl) },     // Raven
             { "206_TripoCheerleader", new ResidentStats(1, 4, 2, 3, Perk.Rally) },   // Pepper: fast on the floor, fires up a raid crew
             // uncommons
             { "071_LilBro", new ResidentStats(2, 4, 3, 3, Perk.Rally) },
             { "091_BigBro_a", new ResidentStats(3, 2, 3, 4, Perk.Brawler) },
             { "074_Baldman", new ResidentStats(2, 3, 3, 4, Perk.Tough) },
-            { "102_BizDude", new ResidentStats(3, 4, 3, 2, Perk.Rally) },
+            { "210_TripoClown", new ResidentStats(3, 4, 3, 2, Perk.Rally) },           // Bonkers
             { "054_Lydia", new ResidentStats(5, 2, 3, 2, Perk.QuickHands) },
             { "136_SlugPerson", new ResidentStats(3, 1, 5, 3, Perk.Tireless) },
             { "044_Zombie", new ResidentStats(3, 1, 5, 3, Perk.NightOwl) },
@@ -48,8 +48,8 @@ namespace RestaurantCity {
             { "bront", new ResidentStats(4, 2, 3, 5, Perk.Brawler) },
             { "ink", new ResidentStats(5, 2, 4, 3, Perk.QuickHands) },
         };
-        public static ResidentStats For(string id) => id != null && table.TryGetValue(id, out var s) ? s : Default;
-        public static bool Has(string id) => id != null && table.ContainsKey(id);
+        public static ResidentStats For(string id) { id = ResidentCast.Current(id); return id != null && table.TryGetValue(id, out var s) ? s : Default; }
+        public static bool Has(string id) { id = ResidentCast.Current(id); return id != null && table.ContainsKey(id); }
 
         public static string PerkName(Perk p) => p switch {
             Perk.Sprinter => "Sprinter", Perk.QuickHands => "Quick hands", Perk.Tireless => "Tireless", Perk.NightOwl => "Night owl",

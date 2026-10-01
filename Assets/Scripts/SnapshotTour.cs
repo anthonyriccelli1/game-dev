@@ -183,8 +183,8 @@ namespace RestaurantCity {
                     // The custom (Tripo) cast side by side at their shared 2 m height.
                     var old = GameObject.Find("Tripo lineup"); if (old) Destroy(old);
                     var line = new GameObject("Tripo lineup").transform;
-                    string[] ids = { "206_TripoCheerleader", "201_TripoAlien", "205_TripoVampire", "204_TripoReaper", "202_GreasyGus", "203_GusImp" };
-                    for (int i = 0; i < ids.Length; i++) { var c = ResidentModels.Spawn(ids[i], line, ResidentCast.CustomResidentHeight); if (c) { c.transform.position = new Vector3(-6.2f + i * 1.6f, 0, -76.2f); c.transform.rotation = Quaternion.identity; } }
+                    string[] ids = { "206_TripoCheerleader", "207_TripoGothGirl", "208_TripoConstruction", "209_TripoFootball", "210_TripoClown", "201_TripoAlien", "205_TripoVampire", "204_TripoReaper" };
+                    for (int i = 0; i < ids.Length; i++) { var c = ResidentModels.Spawn(ids[i], line, ResidentCast.CustomResidentHeight); if (c) { c.transform.position = new Vector3(-7.8f + i * 1.6f, 0, -77.4f); c.transform.rotation = Quaternion.identity; } }
                 }
                 if (shot.name.Contains("style_residents")) {
                     var old = GameObject.Find("Style lineup"); if (old) Destroy(old);
@@ -358,7 +358,7 @@ namespace RestaurantCity {
                 }
                 if (rc && shot.name.Contains("people_book")) {
                     var gs = Game.State; gs.StandBuilt = true; gs.Flux = 4; gs.MetResidents.Clear();
-                    foreach (var id in new[] { "003_Jimmy", "038_Kate", "008_Hugo", "091_BigBro_a", "012_Chill", "201_TripoAlien" }) gs.MetResidents.Add(id);
+                    foreach (var id in new[] { "003_Jimmy", "038_Kate", "208_TripoConstruction", "091_BigBro_a", "012_Chill", "201_TripoAlien" }) gs.MetResidents.Add(id);
                     if (!gs.Restaurant.Workers.Exists(w => w.Id == "038_Kate")) gs.Restaurant.Workers.Add(new WorkerState { Id = "038_Kate", Job = StaffJob.Cook });
                     rc.ShowPanel("Staff");
                     for (int i = 0; i < 3; i++) yield return null;

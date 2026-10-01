@@ -27,19 +27,19 @@ namespace RestaurantCity {
         public static readonly ResidentDef[] OldMarket = {
             new ResidentDef("003_Jimmy", "Jimmy", 1.55f, 0, StaffJob.Serve, "Knows every shortcut on the block."),
             new ResidentDef("006_Cappy", "Cappy", 1.7f, 0, StaffJob.Clean, "Never takes the cap off. Scrubs like he means it."),
-            new ResidentDef("008_Hugo", "Hugo", 1.78f, 0, StaffJob.Cook, "Big hands, big appetite, surprisingly gentle with a spatula."),
-            new ResidentDef("069_Kyle", "Kyle", 1.72f, 0, StaffJob.Serve, "Talks fast, walks faster."),
+            new ResidentDef("208_TripoConstruction", "Buck", CustomResidentHeight, 0, StaffJob.Cook, "Builds burgers like he builds walls: square, solid, and ready by noon."),
+            new ResidentDef("209_TripoFootball", "Blitz", CustomResidentHeight, 0, StaffJob.Serve, "Runs plates like he runs routes. Nothing gets dropped on his watch."),
             new ResidentDef("070_Robert", "Robert", 1.8f, 0, StaffJob.Cook, "Grill-side philosopher."),
             new ResidentDef("012_Chill", "Chill", 1.7f, 0, StaffJob.Clean, "Nothing rattles Chill. Not even a sink full of plates."),
             new ResidentDef("128_RandomBoi", "Random Boi", 1.62f, 0, StaffJob.Serve, "Rolls with whatever the night brings."),
             new ResidentDef("038_Kate", "Kate", 1.64f, 0, StaffJob.Cook, "Night-school chef. Plates like it's an exam.", Gait.Light),
             new ResidentDef("053_Erika", "Erika", 1.66f, 0, StaffJob.Serve, "Remembers every order without writing it down.", Gait.Light),
-            new ResidentDef("056_Olivia", "Olivia", 1.6f, 0, StaffJob.Clean, "Hood up, headphones in, dishes gone.", Gait.Light),
+            new ResidentDef("207_TripoGothGirl", "Raven", CustomResidentHeight, 0, StaffJob.Clean, "Black nails, black coffee, spotless dishes. Livens up after dark.", Gait.Light),
             new ResidentDef("206_TripoCheerleader", "Pepper", CustomResidentHeight, 0, StaffJob.Serve, "Captain of the Old Market squad. Cheers every plate out the door.", Gait.Light),
             new ResidentDef("071_LilBro", "Lil Bro", 1.38f, 1, StaffJob.Clean, "Small bottle, big attitude."),
             new ResidentDef("091_BigBro_a", "Big Bro", 2.05f, 1, StaffJob.Cook, "Lil Bro's big brother. Carries four plates at once."),
             new ResidentDef("074_Baldman", "Baldman", 1.82f, 1, StaffJob.Serve, "Caped, confident, and weirdly good at refills."),
-            new ResidentDef("102_BizDude", "Biz Dude", 1.8f, 1, StaffJob.Serve, "Always networking. Customers love him."),
+            new ResidentDef("210_TripoClown", "Bonkers", CustomResidentHeight, 1, StaffJob.Serve, "Juggles three plates and a joke at every table. The crowd loves him."),
             new ResidentDef("054_Lydia", "Lydia", 1.62f, 1, StaffJob.Cook, "Came for one burger. Stayed for the kitchen.", Gait.Light),
             new ResidentDef("136_SlugPerson", "Slug", 1.45f, 1, StaffJob.Clean, "Slow walker. Leaves every floor shining."),
             new ResidentDef("139_CoolHydrant", "Hydrant", 1.3f, 2, StaffJob.Clean, "Built-in water pressure. The ultimate dishwasher.").Picky(10),
@@ -58,6 +58,10 @@ namespace RestaurantCity {
             { "035_Wolfman", "204_TripoReaper" },        // rare, night, cleaner  -> Grim
             { "043_Dracula", "205_TripoVampire" },       // rare, night, server   -> Dracula (new look)
             { "052_Jennifer", "206_TripoCheerleader" },  // common, server        -> Pepper
+            { "056_Olivia", "207_TripoGothGirl" },       // common, cleaner       -> Raven
+            { "008_Hugo", "208_TripoConstruction" },     // common, cook, brawler -> Buck
+            { "069_Kyle", "209_TripoFootball" },         // common, server, fast  -> Blitz
+            { "102_BizDude", "210_TripoClown" },         // uncommon, server      -> Bonkers
         };
         public static string Current(string id) => id != null && Replaced.TryGetValue(id, out var to) ? to : id;
         static readonly Dictionary<string, ResidentDef> byId = new Dictionary<string, ResidentDef>();

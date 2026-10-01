@@ -51,9 +51,9 @@ namespace RestaurantCity {
      var lydia=new WorkerState{Id="054_Lydia",Energy=100};var jimmy=new WorkerState{Id="003_Jimmy",Energy=100};
      Check(RestaurantController.WorkerSpeed(lydia,"grill")>RestaurantController.WorkerSpeed(jimmy,"grill")*1.5f,"a Cooking-5 chef works the grill much faster than a Cooking-1 server");
      Check(StaffStats.WalkMultiplier(StaffStats.For("003_Jimmy"),false)>StaffStats.WalkMultiplier(StaffStats.For("033_Franky"),false),"Speed and Sprinter make Jimmy walk faster than Franky");
-     Check(StaffStats.DrainMultiplier(StaffStats.For("033_Franky"))<.5f*StaffStats.DrainMultiplier(StaffStats.For("008_Hugo")),"Tireless Franky drains energy far slower than Hugo");
-     var tired=new WorkerState{Id="070_Robert",Energy=10};var tired2=new WorkerState{Id="008_Hugo",Energy=10};
-     Check(RestaurantController.WorkerSpeed(tired,"grill")>.9f&&RestaurantController.WorkerSpeed(tired2,"grill")<.5f,"Steady Robert keeps his speed when tired; Hugo slows down");}
+     Check(StaffStats.DrainMultiplier(StaffStats.For("033_Franky"))<.5f*StaffStats.DrainMultiplier(StaffStats.For("208_TripoConstruction")),"Tireless Franky drains energy far slower than Buck");
+     var tired=new WorkerState{Id="070_Robert",Energy=10};var tired2=new WorkerState{Id="208_TripoConstruction",Energy=10};
+     Check(RestaurantController.WorkerSpeed(tired,"grill")>.9f&&RestaurantController.WorkerSpeed(tired2,"grill")<.5f,"Steady Robert keeps his speed when tired; Buck slows down");}
     // Raids: Greasy Gus (1 star) after dark. He brings one imp per crew member; pairs fight one-on-one; the player beats Gus.
     {var g=st;var rc=Game.Restaurant;var gus=Rivals.GreasyGus;float clock0=g.Clock;int cash0=g.Cash,flux0=g.Flux,rank0=rc.Data.Rank,xp0=g.Xp;bool knew=g.Knows("cyclops");
      rc.Data.Rank=0;g.Clock=60;Check(!RaidRules.CanRaid(g,gus,false,out _),"Gus's truck is only there after dark");

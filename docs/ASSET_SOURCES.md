@@ -45,3 +45,7 @@ New custom resident imports use `ResidentCast.CustomResidentHeight` (currently 2
 ## Grim, Dracula's new look and Pepper (October 1, 2026)
 
 From the user's Tripo exports (Mixamo-preset Humanoid rigs) in `ThirdParty-Downloads`: `204_TripoReaper` (grim+reaper+3d+model.zip, Grim, a rare night visitor), `205_TripoVampire` (vampire+character+3d+model.zip, the new model for the existing rare resident Dracula; his id `043_Dracula` is unchanged so saves and the People book carry over) and `206_TripoCheerleader` (cheerleader+3d+model.zip, Pepper, a common). Each has the FBX and its base-colour map; the other maps stay in the ZIPs. Custom-character textures import at a 1024 maximum (`ResidentImport`). Retain the user's Tripo subscription and concept records for release licensing.
+
+## Raven, Buck, Blitz and Bonkers (October 1, 2026)
+
+From the user's Tripo exports in `ThirdParty-Downloads`: `207_TripoGothGirl` (gothic+girl, Raven, common, replaces Olivia), `208_TripoConstruction` (construction+worker, Buck, common, replaces Hugo), `209_TripoFootball` (football+player, Blitz, common, replaces Kyle) and `210_TripoClown` (clown+character, Bonkers, uncommon, replaces Biz Dude). FBX plus base-colour map each; `ResidentCast.Replaced` carries old saves over.
