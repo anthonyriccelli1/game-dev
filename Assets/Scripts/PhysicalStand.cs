@@ -46,6 +46,7 @@ namespace RestaurantCity {
                 obj.transform.position = InTruck ? StandOrigin + TruckStations[i] : SP(StandX[i], 0, StandZ);
                 // Stations face the cook, who works from the sidewalk side (z 9.35); customers stay on the street side.
                 obj.transform.rotation = Quaternion.Euler(0, InTruck && TruckStations[i].z > 9 ? 180 : 0, 0);
+                if (InTruck) FitInTruck(obj, TruckStations[i].z > 9);
                 var target = obj.AddComponent<RestaurantTarget>(); target.InstanceId = id;
                 foreach (var child in obj.GetComponentsInChildren<RestaurantTarget>()) child.InstanceId = id;
                 if (obj.GetComponentsInChildren<Collider>().Length == 0) { var c = obj.AddComponent<BoxCollider>(); c.center = new Vector3(0, .65f, 0); c.size = new Vector3(kind == "grill" ? 1.8f : .9f, 1.3f, .9f); }
@@ -54,6 +55,25 @@ namespace RestaurantCity {
             BuildMilo(world);
             BuildStandSign();
             BuildStandTables(world);
+        }
+
+        // Pack stations are deeper than a truck counter. Keep each one between its wall and the cook lane
+        // (frame z 7.86..8.9 along the window, 10.05..11.05 on the back wall): squeeze its depth if it is too deep,
+        // then slide it back so nothing pokes out through the truck's side.
+        void FitInTruck(GameObject obj, bool backWall) {
+            float o = StandOrigin.z, lo = o + (backWall ? 10.05f : 7.86f), hi = o + (backWall ? 11.05f : 8.9f);
+            var b = VisualBounds(obj); if (b.size.z < .01f) return;
+            if (b.size.z > hi - lo) { var sc = obj.transform.localScale; sc.z *= (hi - lo) / b.size.z; obj.transform.localScale = sc; b = VisualBounds(obj); }
+            float dz = b.min.z < lo ? lo - b.min.z : b.max.z > hi ? hi - b.max.z : 0;
+            obj.transform.position += new Vector3(0, 0, dz);
+        }
+        static Bounds VisualBounds(GameObject obj) {
+            bool any = false; var b = new Bounds(obj.transform.position, Vector3.zero);
+            foreach (var r in obj.GetComponentsInChildren<Renderer>()) {
+                if (!r.enabled || r is ParticleSystemRenderer || r.GetComponent<TextMesh>()) continue;
+                if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds);
+            }
+            return b;
         }
 
         // The stand art is a visual shell. The original scene objects keep their colliders and the

@@ -1,3 +1,9 @@
+newmtl LF_Under
+Kd 0.141 0.157 0.173
+
+newmtl LF_Trim
+Kd 0.369 0.400 0.431
+
 newmtl LF_Teal
 Kd 0.180 0.549 0.541
 

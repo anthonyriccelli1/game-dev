@@ -491,7 +491,7 @@ public static class CityMap {
         if (model) {
             var m = (GameObject)Object.Instantiate(model, t); m.name = "Little Flame model"; m.transform.localPosition = Vector3.zero; m.transform.localRotation = Quaternion.identity;
             StripColliders(m.transform);
-            var palette = new[] { ("Teal", "2E8C8A"), ("Cream", "F1E6CF"), ("Coral", "E0603C"), ("Chrome", "C9CED3"), ("Tyre", "1B1C1F"), ("Floor", "6B5646"), ("InnerLow", "2E8C8A"), ("Inner", "EFE4CC") };
+            var palette = new[] { ("Under", "24282C"), ("Trim", "5E666E"), ("Teal", "2E8C8A"), ("Cream", "F1E6CF"), ("Coral", "E0603C"), ("Chrome", "C9CED3"), ("Tyre", "1B1C1F"), ("Floor", "6B5646"), ("InnerLow", "2E8C8A"), ("Inner", "EFE4CC") };
             foreach (var r in m.GetComponentsInChildren<Renderer>()) {
                 var mats = r.sharedMaterials;
                 for (int k = 0; k < mats.Length; k++) foreach (var (name, hex) in palette) if (mats[k] && mats[k].name.Contains("LF_" + name)) { mats[k] = InteriorMat("Flame" + name, hex); break; }
@@ -523,12 +523,47 @@ public static class CityMap {
         var bulb = GlowMat("FLAMEBULB", "FFE3A0", 1.5f);
         for (int i = 0; i < 7; i++) { var b = GameObject.CreatePrimitive(PrimitiveType.Sphere); b.name = "Bulb"; Object.DestroyImmediate(b.GetComponent<Collider>()); b.transform.SetParent(t, false); b.transform.localPosition = new Vector3(-2.65f + i * .43f, 2.85f, -2.35f); b.transform.localScale = Vector3.one * .09f; b.GetComponent<Renderer>().sharedMaterial = bulb; }
         var cream = InteriorMat("FlameCream", "F1E6CF"); var coral = InteriorMat("FlameCoral", "E0603C");
+        // Roof sign in the truck's colours: cream board, teal frame, 3D pack letters ("LITTLE" teal, "FLAME" coral).
+        var tealM = InteriorMat("FlameTeal", "2E8C8A");
         Slab("Roof sign", TruckSpot + new Vector3(-1f, 4.15f, -.9f), new Vector3(4.4f, .72f, .08f), cream, t, false);
-        Slab("Roof sign edge", TruckSpot + new Vector3(-1f, 4.15f, -.86f), new Vector3(4.6f, .86f, .04f), coral, t, false);
-        foreach (float x in new[] { -2.6f, .6f }) Slab("Roof sign post", TruckSpot + new Vector3(x, 3.75f, -.84f), new Vector3(.06f, .5f, .06f), coral, t, false);
-        SignText("LITTLE FLAME", TruckSpot + new Vector3(-1f, 4.17f, -.95f), 2, .27f, new Color(.72f, .2f, .1f), t);
-        SignText("LITTLE FLAME", TruckSpot + new Vector3(-.5f, 2.55f, zn + .2f), 0, .2f, new Color(.85f, .3f, .18f), t);
-        SignText("BURGERS  /  SALAD", TruckSpot + new Vector3(-.5f, 2.05f, zn + .2f), 0, .09f, new Color(.16f, .45f, .44f), t);
+        Slab("Roof sign edge", TruckSpot + new Vector3(-1f, 4.15f, -.86f), new Vector3(4.6f, .86f, .04f), tealM, t, false);
+        foreach (float x in new[] { -2.6f, .6f }) Slab("Roof sign post", TruckSpot + new Vector3(x, 3.75f, -.84f), new Vector3(.06f, .5f, .06f), tealM, t, false);
+        if (!Letters3D("LITTLE FLAME", TruckSpot + new Vector3(-1f, 4.15f, -1.02f), false, .46f, 4.1f, tealM, coral, t))
+            SignText("LITTLE FLAME", TruckSpot + new Vector3(-1f, 4.17f, -.95f), 2, .27f, new Color(.72f, .2f, .1f), t);
+        // Street side: the name in letters across the cream band, the menu line under it.
+        if (!Letters3D("LITTLE FLAME", TruckSpot + new Vector3(-.5f, 2.55f, zn + .2f), true, .42f, 4.6f, tealM, coral, t))
+            SignText("LITTLE FLAME", TruckSpot + new Vector3(-.5f, 2.55f, zn + .2f), 0, .2f, new Color(.85f, .3f, .18f), t);
+        SignText("BURGERS  /  SALAD", TruckSpot + new Vector3(-.5f, 2.0f, zn + .2f), 0, .09f, new Color(.16f, .45f, .44f), t);
+    }
+    // A word in POLYGON Shops 3D letters, centred on `centre`, facing the plaza (-Z) or the street behind (+Z).
+    // The first word takes `first`, the rest `rest`. Shrinks to fit `maxWidth`. False if the pack is missing.
+    static bool Letters3D(string text, Vector3 centre, bool faceNorth, float height, float maxWidth, Material first, Material rest, Transform parent) {
+        const string dir = "Assets/Synty/PolygonShops/Prefabs/Signs/SM_Sign_3dText_Letter_";
+        var made = new List<(GameObject g, float w)>(); float gap = .03f, space = height * .45f, total = 0; bool firstWord = true;
+        foreach (char ch in text) {
+            if (ch == ' ') { made.Add((null, space)); total += space; firstWord = false; continue; }
+            var src = AssetDatabase.LoadAssetAtPath<GameObject>(dir + ch + ".prefab"); if (!src) { foreach (var m in made) if (m.g) Object.DestroyImmediate(m.g); return false; }
+            var g = (GameObject)PrefabUtility.InstantiatePrefab(src, parent); g.name = "Letter " + ch;
+            StripColliders(g.transform);
+            // Pack letters read from +Z unrotated; turned 180 they read from -Z.
+            g.transform.rotation = Quaternion.Euler(0, faceNorth ? 0 : 180, 0);
+            var b = RendererBounds(g); g.transform.localScale *= height / b.size.y; b = RendererBounds(g);
+            foreach (var r in g.GetComponentsInChildren<Renderer>()) r.sharedMaterial = firstWord ? first : rest;
+            made.Add((g, b.size.x)); total += b.size.x + gap;
+        }
+        total -= gap; float k = total > maxWidth ? maxWidth / total : 1;
+        // Reading left to right runs toward +X when seen from -Z, toward -X when seen from +Z.
+        float dirX = faceNorth ? -1 : 1, cursor = -total * k / 2;
+        foreach (var (g, w) in made) {
+            if (!g) { cursor += w * k; continue; }
+            g.transform.localScale *= k; var b = RendererBounds(g); float wk = w * k;
+            g.transform.position += new Vector3(centre.x + dirX * (cursor + wk / 2) - b.center.x, centre.y - b.center.y, centre.z - b.center.z);
+            cursor += wk + gap * k;
+        }
+        return true;
+    }
+    static Bounds RendererBounds(GameObject g) {
+        var rs = g.GetComponentsInChildren<Renderer>(); var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); return b;
     }
     static void TruckPark() {
         var p = new GameObject("Truck Park").transform; p.SetParent(root, false);
@@ -541,7 +576,7 @@ public static class CityMap {
         foreach (var (x, z) in new[] { (-24f, -61f), (24f, -61f), (-24f, -94f), (24f, -94f) }) Put("Props/SM_Prop_Trashbin_01", new Vector3(x, 0, z), 0, p);
         // String lights: two warm catenaries between four poles, plus two soft lights.
         var pole = InteriorMat("LightPole", "2A2E33"); var bulb = GlowMat("PARKBULB", "FFD98A", 1.6f); var cable = InteriorMat("Cable", "1E1F22");
-        foreach (float z in new[] { -66f, -84 }) {
+        foreach (float z in new[] { -76f, -89 }) {   // south of the tables, so the cables never cross the truck's roof sign
             foreach (float x in new[] { -24f, 24 }) Slab("String light pole", new Vector3(x, 2.4f, z), new Vector3(.14f, 4.8f, .14f), pole, p, true);
             Vector3 prev = new Vector3(-24, 4.6f, z);
             for (int i = 1; i <= 16; i++) {

@@ -4,6 +4,6 @@
 - Processed for the game (not hand-edited in a DCC tool): scaled 0.085 to metres, turned so the serving window faces -Z,
   the baked counter under the window, the open door leaf and the wheel-well hump on the back wall removed (our real
   stations stand there), triangles split at the paint lines and painted by region into eight flat materials
-  (teal body, cream upper band and roof, coral stripe, coral/cream awning, chrome trim, tyres, floor, interior).
+  (teal body, cream upper band and roof, coral stripe, coral/cream awning, chrome bumpers and steps, dark mirrors, dark wheel wells and underside, tyres, floor, interior). A triangle is only painted tyre or chrome when all three corners sit inside that part, so colours do not bleed onto the body in jagged wedges.
 - The Tripo texture was not used (that export came out an almost uniform teal).
 - Colliders are simple boxes and a door ramp built in `CityMap.LittleFlame()`; the mesh has none.
