@@ -54,10 +54,6 @@ From the user's Tripo exports in `ThirdParty-Downloads`: `207_TripoGothGirl` (go
 
 `211_TripoPumpkin` from the user's Tripo export `pumpkin+head+scarecrow+3d+model.zip`: Jack, a rare night cook, replacing Franky. FBX plus base-colour map.
 
-## Back-colour repair for Tripo textures (October 1, 2026)
+## Character textures are used exactly as exported (October 1, 2026)
 
-Tripo invents each character's back from a front concept, and it comes out darker and grey-blue. `Tools/fix_tripo_backs.py <fbx> <png> <out.png>` finds the texels painted on back-facing surfaces (bind pose) and shifts their brightness, colour cast and saturation toward the front's averages, keeping local detail. It also lifts the whole texture's saturation by 15%. All `2xx_Tripo*` / Gus base-colour PNGs in `Resources/Residents` have been processed; the untouched originals are in the source ZIPs and in Git history. Run it on each new character's base-colour map before importing.
-
-### Repair v2 (October 1, 2026)
-
-v1 matched each back to the front's overall average, which pulled the humans' skin toward their clothes' colour and left arms and hands pale white. `Tools/fix_tripo_backs.py` now matches region by region: the T-pose is cut into small cells (forearm, sleeve, thigh...), and each cell's back is matched to the same cell's front. The back of the head is matched to the hair at the top of the head, never the face. Applied from the original exports to 201-210. Jack (211) keeps v1, which suits the pumpkin, and Frank (212) needs none because he was rendered front and back. Characters also now use a matte material (`Assets/Resources/ResidentMaterial.mat`: no specular highlight, no sky reflection), which removes a cold sheen on the painted skin.
+An automatic back-colour repair and a matte character material were tried on the Tripo characters and then removed at the user's request. Every `2xx` base-colour map in `Resources/Residents` is the untouched Tripo export, at full 2048 resolution. If a character's colours need changing, it is re-rendered in Tripo (front and back views), not recoloured in code.

@@ -13,11 +13,6 @@ public class ResidentImport : AssetPostprocessor {
         importer.materialImportMode = ModelImporterMaterialImportMode.None;
         importer.importAnimation = IsClip(assetPath);
     }
-    // Custom (Tripo) characters ship 2048 textures; at our camera distance 1024 looks the same at a quarter of the memory.
-    void OnPreprocessTexture() {
-        if (!IsResident(assetPath) || !System.IO.Path.GetFileName(assetPath).StartsWith("2")) return;
-        ((TextureImporter)assetImporter).maxTextureSize = 1024;
-    }
     void OnPreprocessAnimation() {
         if (!IsClip(assetPath)) return;
         var importer = (ModelImporter)assetImporter;
