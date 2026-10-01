@@ -40,7 +40,7 @@ namespace RestaurantCity {
   public void ClearPlayerFocus(FirstPersonPlayer p){prompts[p.ActorId]="";if(!p.InteractHeld)Game.State.Kitchen.ReleaseWork(p.ActorId);}
   public bool HandlePlayerInput(FirstPersonPlayer p,bool pressed,bool held,bool secondary,bool menu,bool build){
    if(PanelOpen||PlacementActive)return true;
-   if(menu){ShowPanel("Service");return true;}
+   if(menu){ShowPanel(!Data.Owned&&Game.State.StandBuilt?"Reviews":"Service");return true;}   // truck phase: Tab shows the road to your first star
    if(build&&!ServiceInProgress){
     int id=-1;
     if(p.TryResolveInteractionHit(out var hit)){var target=hit.collider.GetComponentInParent<RestaurantTarget>();if(target&&target.Kind=="Furniture")id=target.InstanceId;}

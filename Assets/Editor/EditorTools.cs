@@ -50,7 +50,9 @@ public static class EditorTools {
         var exe = Path.GetFullPath("Builds/Windows/RestaurantCity.exe");
         if (!File.Exists(exe)) return "no build";
         if (Directory.Exists("Snapshots")) foreach (var f in Directory.GetFiles("Snapshots", "*.png")) File.Delete(f);
-        System.Diagnostics.Process.Start(exe, "--snapshots -screen-fullscreen 0 -screen-width 1600 -screen-height 900");
+        // Optional: snapshot-only.txt (project root) limits the tour to shots whose name contains its text.
+        string only = File.Exists("snapshot-only.txt") ? " --snapshot-only=" + File.ReadAllText("snapshot-only.txt").Trim() : "";
+        System.Diagnostics.Process.Start(exe, "--snapshots -screen-fullscreen 0 -screen-width 1600 -screen-height 900" + only);
         return "launched";
     }
 

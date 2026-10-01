@@ -406,6 +406,18 @@ namespace RestaurantCity {
             Reviews.Insert(0,new RestaurantReview{Customer=ResidentCast.Get(o.ResidentId)?.Name??RestaurantCatalog.Customers[o.CustomerType].Name,Score=score,Comment=comment,DishId=o.DishId});
             if(Reviews.Count>12)Reviews.RemoveAt(Reviews.Count-1);Satisfaction=Reviews.Average(r=>r.Score);
         }
+        // Little Flame counts toward your first stars: the truck is where your reputation starts.
+        // Score depends only on how long they waited at the window (patience left when served).
+        public float RecordTruckGuest(string residentId,string dish,float patienceLeft){
+            float r=Clamp(patienceLeft,0,1),score=r>.6f?88:r>.3f?72:52;
+            string comment=r>.6f?"Hot off the truck, barely waited. Great stuff!":r>.3f?"Tasty, but the line moved slowly.":"Good food, but I waited forever at the window.";
+            Served++;AddTruckReview(residentId,dish,score,comment);UpdateRank();return score;
+        }
+        public void RecordTruckWalkout(string residentId,string dish){Lost++;AddTruckReview(residentId,dish,15,"Waited at the truck window and nobody served me. I left.");}
+        void AddTruckReview(string residentId,string dish,float score,string comment){
+            Reviews.Insert(0,new RestaurantReview{Customer=ResidentCast.Get(residentId)?.Name??"Truck guest",Score=score,Comment=comment,DishId=dish});
+            if(Reviews.Count>12)Reviews.RemoveAt(Reviews.Count-1);Satisfaction=Reviews.Average(r=>r.Score);
+        }
         public void RecordQueueLoss(int customerType){Lost++;Rep("Guests who left",Reputation.LostCustomer);AddReview(new RestaurantOrder{CustomerType=customerType,DishId="burger"},20,"No clean table became available. Clear and wash dishes, or add seating.");}
         // Stars climb one at a time. The first comes quickly (a couple of good shifts); later ones need more guests,
         // happier guests and a nicer room. Served is lifetime, so a lost star is won back faster than it was first earned.

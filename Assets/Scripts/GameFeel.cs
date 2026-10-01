@@ -4,7 +4,7 @@ namespace RestaurantCity {
     // Turns kitchen and service moments (GameState.Events) into sound, floating pop-ups and guest reactions,
     // runs the sizzle/bubble loops on cooking stations, and announces the rush.
     public partial class RestaurantController {
-        AudioSource fx; float clinkCooldown; string lastPhase = ""; bool lastStandRush;
+        AudioSource fx; float clinkCooldown; string lastPhase = ""; bool lastStandRush, lastRushSoon;
         readonly Dictionary<int, AudioSource> stationLoops = new Dictionary<int, AudioSource>();
         sealed class FloatText { public TextMesh Text; public float Age; public Vector3 Start; }
         readonly List<FloatText> floaters = new List<FloatText>();
@@ -36,8 +36,13 @@ namespace RestaurantCity {
             }
             // The stand's lunch and night rushes announce themselves too.
             if (s.StandRush != lastStandRush) {
-                if (s.StandRush) { Fx(SoundFx.Horn, .9f); Game.Notify((s.IsNight ? "NIGHT RUSH" : "LUNCH RUSH") + " at the stand! Customers are lining up.", 4); }
+                if (s.StandRush) { Fx(SoundFx.Horn, .9f); Game.Notify((s.IsNight ? "NIGHT RUSH" : "LUNCH RUSH") + " at the truck! Customers are lining up.", 4); }
+                else if (s.StandOpen) Game.Notify("The rush is over. Catch your breath: wash plates, clear tables, restock at Milo's cart.", 5);
                 lastStandRush = s.StandRush;
+            }
+            if (s.StandRushSoon != lastRushSoon) {
+                if (s.StandRushSoon) { Fx(SoundFx.Doorbell, .6f); Game.Notify((s.IsNight ? "Night" : "Lunch") + " rush coming! Get plates clean and patties ready.", 4); }
+                lastRushSoon = s.StandRushSoon;
             }
             TickStationLoops();
             for (int i = floaters.Count - 1; i >= 0; i--) {

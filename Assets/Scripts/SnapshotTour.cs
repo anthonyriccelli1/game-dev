@@ -85,6 +85,10 @@ namespace RestaurantCity {
             ("108_cart_shop", new Vector3(-10.5f, 0, -65.6f), 0, 6, 60),
             ("109_tripo_cast_back_a", new Vector3(-1.45f, 0, -71.4f), 180, 7, 60),
             ("109_tripo_cast_back_b", new Vector3(-1.45f, 0, -71.4f), 180, 7, 60),
+            ("110_truck_ui_hud", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
+            ("111_truck_ui_stars", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
+            ("112_truck_ui_menu", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
+            ("113_truck_ui_phone", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
             ("81_raid_planner", new Vector3(17.5f, 0, -40), 0, 4, 190),
             ("82_raid_fight", new Vector3(17.5f, 0, -45.5f), 0, 6, 190),
             ("83_raid_ko", new Vector3(17.5f, 0, -45.5f), 0, 8, 190),
@@ -127,6 +131,7 @@ namespace RestaurantCity {
         };
 
         static bool dressed;
+        bool truckOwned0;
         IEnumerator Start() {
             var dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "..", "Snapshots"));
             if (Application.isEditor) dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Snapshots"));
@@ -409,6 +414,15 @@ namespace RestaurantCity {
                     for (int i = 0; i < 10; i++) { p.transform.position = shot.pos; rc.Advance(.02f); yield return null; }
                 }
                 if (rc && shot.name.Contains("gus_truck")) { for (int i = 0; i < 150; i++) { rc.Advance(.2f); p.transform.position = pos; yield return null; } }
+                if (rc && shot.name.Contains("truck_ui")) {
+                    // Truck phase (no restaurant yet): the goal card, the road to the first star, the read-only menu, the phone.
+                    var gs = Game.State; var d = gs.Restaurant; if (shot.name.Contains("hud")) truckOwned0 = d.Owned; d.Owned = false; gs.StandBuilt = true; gs.StandOpen = true; gs.Cash = 140;
+                    if (d.Served < 5) { d.Served = 5; d.Reviews.Clear(); d.RecordTruckGuest("", "burger", .9f); d.RecordTruckGuest("", "salad", .5f); d.RecordTruckWalkout("", "burger"); d.Served = 5; d.Rank = 0; }
+                    for (int i = 0; i < 10; i++) { rc.Advance(.05f); p.transform.position = pos; yield return null; }
+                    if (shot.name.Contains("stars")) rc.ShowPanel("Reviews");
+                    if (shot.name.Contains("menu")) rc.ShowPanel("Menu");
+                    if (shot.name.Contains("phone")) rc.ShowPanel("Phone");
+                }
                 if (rc && shot.name.Contains("cart_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); Debug.LogWarning("CART_SHOP atCart=" + rc.AtCart + " atSupplier=" + rc.AtSupplier); }
                 if (rc && shot.name.Contains("milo_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); }
                 if (rc && shot.name.Contains("stand_tables")) {
@@ -425,6 +439,7 @@ namespace RestaurantCity {
                 ScreenCapture.CaptureScreenshot(Path.Combine(dir, shot.name + ".png"));
                 for (int i = 0; i < 5; i++) yield return null;
                 if (rc && rc.PanelOpen) rc.ClosePanel();
+                if (shot.name.Contains("truck_ui_phone")) Game.State.Restaurant.Owned = truckOwned0;
             }
             yield return new WaitForSeconds(1);
             Application.Quit();

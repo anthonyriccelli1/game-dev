@@ -100,7 +100,7 @@ namespace RestaurantCity {
             summary.Append(waiting).Append(" waiting  /  ").Append(cooking).Append(" cooking  /  ").Append(ready).Append(" ready\nTab to manage orders");
             orderSummary.text = summary.ToString();
             // The crew "phone" (Staff tab) works before you own the restaurant, as soon as the stand is up.
-            bool panelVisible = visible || ((Owner.Panel == "Map" || Owner.Panel == "Raid" || Owner.Panel == "Pawn" || Owner.Panel == "Supplies" || Owner.Panel == "Phone" || (Owner.Panel == "Staff" && Owner.Game.State.StandBuilt)) && Owner.Game.Started && !Owner.Game.Paused);
+            bool panelVisible = visible || ((Owner.Panel == "Map" || Owner.Panel == "Raid" || Owner.Panel == "Pawn" || Owner.Panel == "Supplies" || Owner.Panel == "Phone" || ((Owner.Panel == "Staff" || Owner.Panel == "Menu" || Owner.Panel == "Cookbook" || Owner.Panel == "Reviews") && Owner.Game.State.StandBuilt)) && Owner.Game.Started && !Owner.Game.Paused);
             if (!Owner.PanelOpen || !panelVisible) {
                 if (modal) { modal.gameObject.SetActive(false); Destroy(modal.gameObject); modal = null; }
                 tickLabels.Clear(); signature = ""; return;
@@ -134,11 +134,13 @@ namespace RestaurantCity {
             Button(sheet, "Close  x", 1060, 24, 130, 36, () => Owner.ClosePanel(), ink, paper);
             Label(sheet, "Time pauses while management is open.", 823, 62, 365, 19, 12, muted, false, TextAnchor.MiddleRight);
             string[] panels = { "Catalog", "Service", "Menu", "Cookbook", "Staff", "Map", "Reviews", "Furniture" };
+            // Truck phase: no customising (Shop / Service / Arrange) until you own a restaurant.
+            if (!Owner.Data.Owned) panels = new[] { "Reviews", "Menu", "Cookbook", "Staff", "Map" };
             // Milo's shop and property listings are places in the city, not restaurant management: no tabs.
             if (Owner.Panel == "Supplies" || Owner.Panel == "Phone" || Owner.Panel == "Raid" || Owner.Panel == "Pawn") panels = new string[0];
             for (int i = 0; i < panels.Length; i++) {
                 string tab = panels[i]; bool active = Owner.Panel == tab;
-                Button(sheet, tab == "Catalog" ? "Shop" : tab == "Furniture" ? "Arrange" : tab, 30 + i * 114, 78, 108, 35, () => { Owner.ShowPanel(tab); signature = ""; Refresh(); }, active ? teal : pale, active ? white : ink);
+                Button(sheet, tab == "Catalog" ? "Shop" : tab == "Furniture" ? "Arrange" : tab == "Reviews" && !Owner.Data.Owned ? "Stars" : tab, 30 + i * 114, 78, 108, 35, () => { Owner.ShowPanel(tab); signature = ""; Refresh(); }, active ? teal : pale, active ? white : ink);
             }
             Label(sheet, "Your budget  $" + Owner.Game.State.Cash, 950, 82, 236, 28, 17, ink, true, TextAnchor.MiddleRight);
             Block(sheet, "Rule", 30, 124, 1160, 2, pale);
@@ -155,7 +157,7 @@ namespace RestaurantCity {
             else if (Owner.Panel == "Furniture") BuildFurniture(sheet);
             else BuildService(sheet);
             Text panelNotice = Label(sheet, "", 30, 667, 1156, 29, 14, muted);
-            tickLabels.Add(() => { if (panelNotice) panelNotice.text = !string.IsNullOrEmpty(Owner.Game.Notice) ? Owner.Game.Notice : Owner.Panel == "Catalog" ? (Owner.Data.CanCustomize ? "Purchases and layouts save automatically. Choose an item to see it in your restaurant." : "Close service and let the last guest leave before renovating.") : "B Catalog / Tab Manage / Esc Close    |    Your progress saves automatically."; });
+            tickLabels.Add(() => { if (panelNotice) panelNotice.text = !string.IsNullOrEmpty(Owner.Game.Notice) ? Owner.Game.Notice : Owner.Panel == "Catalog" ? (Owner.Data.CanCustomize ? "Purchases and layouts save automatically. Choose an item to see it in your restaurant." : "Close service and let the last guest leave before renovating.") : (Owner.Data.Owned ? "B Catalog / Tab Manage / Esc Close" : "Tab Stars / P Phone / Esc Close") + "    |    Your progress saves automatically."; });
             if (scroll) scroll.verticalNormalizedPosition = previousScroll;
             if(EventSystem.current && !EventSystem.current.currentSelectedGameObject){var first=sheet.GetComponentInChildren<Button>();if(first)EventSystem.current.SetSelectedGameObject(first.gameObject);}
         }
@@ -243,7 +245,8 @@ namespace RestaurantCity {
 
         // Menu: every dish with hands-on steps. Starters (burger, salad) are always known; others are bought or found.
         void BuildMenu(RectTransform sheet) {
-            Label(sheet, "Offer fewer dishes for an easier shift, or a wider menu for more favorites and better takings.", 30, 141, 1148, 29, 16, ink);
+            bool truck = !Owner.Data.Owned;
+            Label(sheet, truck ? "Little Flame serves burgers and salads. Your own restaurant will let you choose its menu." : "Offer fewer dishes for an easier shift, or a wider menu for more favorites and better takings.", 30, 141, 1148, 29, 16, ink);
             var dishes = RecipeBook.Recipes.Select(r => RestaurantCatalog.Dish(r.DishId)).Where(x => x != null).ToList();
             var content = Scroller(sheet, 30, 182, 1160, 390, Mathf.CeilToInt(dishes.Count / 2f) * 155);
             var st = Owner.Game.State;
@@ -262,13 +265,15 @@ namespace RestaurantCity {
                 Label(card, "$" + entry.Price, 441, 11, 101, 30, 23, teal, true, TextAnchor.MiddleRight);
                 Label(card, "Uses " + string.Join(" + ", Ingredients.For(entry.Id).Select(Ingredients.Name)) + (string.IsNullOrEmpty(entry.Equipment) ? "" : "  /  " + EquipmentName(entry.Equipment)), 142, 44, 400, 25, 14, muted);
                 bool starLocked = cook != null && cook.StarGated && Owner.Data.Stars < cook.Stars;
-                string help = !known ? RecipeBook.HowToGet(entry.Id) : !hasGear ? "Now buy a " + EquipmentName(entry.Equipment) + " in the Shop." : starLocked ? "Needs " + StarText.Words(cook.Stars) + " to serve." : active ? "Guests can order this dish." : "Add it so guests can order it.";
+                bool onTruck = entry.Id == "burger" || entry.Id == "salad" || entry.Id == "midnight";
+                string help = truck ? (!known ? "Unlocks after you own a restaurant." : onTruck ? "On the truck. Customers order it at the window." : "Restaurant only.") : !known ? RecipeBook.HowToGet(entry.Id) : !hasGear ? "Now buy a " + EquipmentName(entry.Equipment) + " in the Shop." : starLocked ? "Needs " + StarText.Words(cook.Stars) + " to serve." : active ? "Guests can order this dish." : "Add it so guests can order it.";
                 Label(card, help, 142, 76, 220, 56, 14, known && !starLocked ? ink : coral);
-                Button(card, !available ? (known ? (starLocked ? "Needs stars" : "Needs gear") : "Locked") : active ? "On menu" : "Add to menu", 372, 87, 171, 35, () => Owner.ToggleDish(entry.Id), available && active ? teal : pale, available && active ? white : available ? ink : muted, available);
+                if (truck) Label(card, !known ? "Locked" : onTruck ? "On the truck" : "Restaurant", 372, 87, 171, 35, 15, known && onTruck ? teal : muted, true, TextAnchor.MiddleCenter);
+                else Button(card, !available ? (known ? (starLocked ? "Needs stars" : "Needs gear") : "Locked") : active ? "On menu" : "Add to menu", 372, 87, 171, 35, () => Owner.ToggleDish(entry.Id), available && active ? teal : pale, available && active ? white : available ? ink : muted, available);
             }
             var pantry = Block(sheet, "Pantry", 30, 589, 1160, 61, ink);
             Label(pantry, "Pantry: " + string.Join("   ", Ingredients.All.Where(i => Owner.Data.Stock(i.Id) > 0 || i.Source == Ingredients.Milo && i.Recipe == null).Select(i => Ingredients.Name(i.Id) + " " + Owner.Data.Stock(i.Id))), 16, 16, 760, 33, 17, paper, true);
-            Label(pantry, "Restock by talking to Milo.", 800, 16, 344, 35, 16, paper, false, TextAnchor.MiddleRight);
+            Label(pantry, truck ? "Restock at Milo's cart by the truck." : "Restock by talking to Milo.", 800, 16, 344, 35, 16, paper, false, TextAnchor.MiddleRight);
         }
 
         // Cookbook: how every dish is built, and where new recipes come from (bought here, or found in the city).
@@ -277,7 +282,7 @@ namespace RestaurantCity {
         void BuildCookbook(RectTransform sheet) {
             var st = Owner.Game.State; var book = DistrictCookbook.OldMarket;
             Label(sheet, DistrictCookbook.District.ToUpper() + " COOKBOOK  /  " + DistrictCookbook.Known(st) + " of " + book.Length + " recipes", 30, 136, 760, 34, 22, ink, true);
-            Label(sheet, "Your restaurant  <size=24>" + StarText.Of(Owner.Data.Stars) + "</size>", 760, 134, 428, 36, 18, gold, true, TextAnchor.MiddleRight);
+            Label(sheet, (Owner.Data.Owned ? "Your restaurant  " : "Your stars  ") + "<size=24>" + StarText.Of(Owner.Data.Stars) + "</size>", 760, 134, 428, 36, 18, gold, true, TextAnchor.MiddleRight);
             var content = Scroller(sheet, 30, 180, 1160, 470, Mathf.CeilToInt(book.Length / 2f) * 168);
             for (int i = 0; i < book.Length; i++) {
                 var e = book[i]; string id = e.DishId; bool known = st.Knows(id); var dish = RestaurantCatalog.Dish(id);
@@ -291,8 +296,9 @@ namespace RestaurantCity {
                     Label(card, (dish != null ? "Sells for $" + dish.Price + "   /   " : "") + e.Blurb, 156, 48, 392, 44, 14, muted);
                     Label(card, greyed ? "Win back " + StarText.Words(e.Stars) + " to cook it again." : Owner.Data.ActiveMenu.Contains(id) ? "On your menu." : "Learned. Add it on the Menu tab.", 156, 100, 392, 40, 15, greyed ? coral : teal, true);
                 } else {
-                    Label(card, e.Hint, 156, 48, 392, 44, 15, ink);
-                    if (e.Source == RecipeSource.Cookbook) {
+                    Label(card, Owner.Data.Owned ? e.Hint : "You'll learn where this recipe comes from once you own a restaurant.", 156, 48, 392, 44, 15, Owner.Data.Owned ? ink : muted);
+                    if (!Owner.Data.Owned) { }
+                    else if (e.Source == RecipeSource.Cookbook) {
                         bool starsOk = Owner.Data.Stars >= e.Stars, cash = st.Cash >= e.Price, can = e.Ready && starsOk && cash;
                         string label = !e.Ready ? "Coming soon" : !starsOk ? "Needs " + StarText.Of(e.Stars).Substring(0, e.Stars) : "Buy recipe  /  $" + e.Price;
                         Button(card, label, 156, 102, 250, 38, () => Owner.BuyRecipe(id), can ? teal : pale, can ? white : muted, can);
@@ -308,9 +314,16 @@ namespace RestaurantCity {
             Button(sheet, "Crew  (your workers)", 35, 166, 300, 50, () => Owner.ShowPanel("Staff"), teal, white);
             Button(sheet, "Map  (M)", 35, 226, 300, 50, () => Owner.ShowPanel("Map"), teal, white);
             if (Owner.Data.Owned) Button(sheet, "My restaurant  (Tab)", 35, 286, 300, 50, () => Owner.ShowPanel("Service"), teal, white);
+            else {
+                Button(sheet, "Stars  (Tab)", 35, 286, 300, 50, () => Owner.ShowPanel("Reviews"), teal, white);
+                Button(sheet, "Menu", 35, 346, 300, 50, () => Owner.ShowPanel("Menu"), teal, white);
+                Button(sheet, "Cookbook", 35, 406, 300, 50, () => Owner.ShowPanel("Cookbook"), teal, white);
+            }
             Label(sheet, "CONTACTS", 365, 140, 300, 22, 13, muted, true);
             var milo = Block(sheet, "Contact Milo", 365, 166, 825, 70, white);
             Label(milo, "Milo", 20, 10, 300, 28, 21, ink, true); Label(milo, "Everyday ingredients. Visit his shop in person.", 20, 40, 780, 22, 14, muted);
+            // Zeeb stays off the phone until you own a restaurant (no raid or secret-recipe hints on the truck).
+            if (!Owner.Data.Owned && !st.Knows("midnight")) return;
             var card = Block(sheet, "Contact Zeeb", 365, 248, 825, 400, st.Knows("midnight") ? ink : new Color(.25f, .25f, .28f));
             var face = Block(card, "Zeeb avatar", 20, 20, 90, 90, st.Knows("midnight") ? purple : new Color(.35f, .35f, .38f));
             Label(face, st.Knows("midnight") ? "Z" : "?", 0, 0, 90, 90, 48, white, true, TextAnchor.MiddleCenter);
@@ -446,6 +459,7 @@ namespace RestaurantCity {
             var gs = Owner.Game.State; bool people = People.UseResidents;
             Label(sheet, "Your Flux: " + gs.Flux + ".  Feed a resident once and they join your People book; then recruit them with Flux. Anyone can do any job." + (gs.StandWorker != null ? "   Stand: " + gs.StandWorkerStatus + "  Earned $" + gs.StandWorkerEarned : ""), 30, 140, 1144, 35, 15, ink);
             string[] rivals = { "Maestro Vey|Head chef. Gold toque, glowing eyes. Runs a kitchen like an orchestra.", "Nyx|Sommelier with a crystal halo. Guests tip double when she pours.", "K-9|Chrome line cook with four arms and a neon visor. Never tires.", "Aurora|Maitre d'. Her monocle sees every empty seat before you do.", "Seraphine|Winged pastry chef. Desserts so good customers float out.", "Obsidian Titan|Doorman. Nobody makes a scene with him at the door.", "Lumen|Mixologist with a neon crest. Every drink glows." };
+            if (!Owner.Data.Owned) rivals = new string[0];   // rival crews show up once you own a restaurant
             // Crew cards: cash hires, plus anyone already recruited. Legacy special recruits only show once hired.
             var crew = new List<StaffDefinition>();
             foreach (var w in RestaurantCatalog.Staff) if (!w.Special || !people || Owner.Data.Workers.Exists(x => x.Id == w.Id)) crew.Add(w);
@@ -487,7 +501,7 @@ namespace RestaurantCity {
                 }
             }
             // The Gilded Orbit's elite crew: visible, desirable, and not available yet.
-            Label(content, "THE GILDED ORBIT'S CREW  /  Rival exclusives", 22, rivalTop + 10, 1110, 40, 24, ink, true);
+            if (rivals.Length > 0) Label(content, "THE GILDED ORBIT'S CREW  /  Rival exclusives", 22, rivalTop + 10, 1110, 40, 24, ink, true);
             for (int i = 0; i < rivals.Length; i++) {
                 var parts = rivals[i].Split('|');
                 var card = Block(content, parts[0], (i % 2) * 580, rivalTop + 60 + (i / 2) * 320, 562, 303, ink);
@@ -611,6 +625,7 @@ namespace RestaurantCity {
             }
             foreach (var (x0, z0, x1, z1) in CityDistricts.Roads) { var a = P(x0, z1); Block(sheet, "Street", a.x, a.y, (x1 - x0) * sc, (z1 - z0) * sc, new Color(.24f, .26f, .29f)); }
             foreach (var place in CityDistricts.Places) {
+                if (!Owner.Data.Owned && place.Kind == "recipe") continue;   // secrets show up once you own a restaurant
                 var d = CityDistricts.At(place.X, place.Z); bool open = CityDistricts.Unlocked(d, rank);
                 Color k = place.Kind == "rival" ? coral : place.Kind == "supply" ? teal : place.Kind == "restaurant" ? new Color(.95f, .76f, .3f) : place.Kind == "recipe" ? new Color(.62f, .45f, .9f) : place.Kind == "you" ? white : place.Kind == "gate" ? new Color(.2f, .2f, .22f) : new Color(.35f, .55f, .9f);
                 var q = P(place.X, place.Z);
@@ -619,7 +634,7 @@ namespace RestaurantCity {
                 Label(sheet, place.Name, right ? q.x - 146 : q.x + 8, q.y - 8, 140, 16, 11, new Color(.13f, .12f, .12f), true, right ? TextAnchor.UpperRight : TextAnchor.UpperLeft);
             }
             // Tonight's stash: a purple circle around the rough area, not the exact spot.
-            if (st.StashActive) {
+            if (st.StashActive && Owner.Data.Owned) {
                 var spot = NightStashes.Spots[st.StashSpot]; var c = P(spot.X + 4, spot.Z - 3); float r = 12 * sc;
                 Block(sheet, "Stash area", c.x - r, c.y - r, r * 2, r * 2, new Color(.62f, .45f, .9f, .35f));
                 Label(sheet, "Zeeb's drop: near " + spot.Hint, c.x + r + 2, c.y - 8, 190, 16, 10, new Color(.85f, .75f, 1f), true);
@@ -660,7 +675,7 @@ namespace RestaurantCity {
             Label(banner, StarText.Of(s.Stars) + "   " + (s.Stars + 1 < RestaurantState.StarGoals.Length ? "The road to " + StarText.Words(s.Stars + 1) : "Top of " + DistrictCookbook.District), 20, 15, 1096, 36, 27, gold, true);
             var goal = s.NextStarGoal;
             Label(banner, "Serve " + goal.served + " guests    " + Mathf.Min(s.Served, goal.served) + "/" + goal.served + "          Satisfaction    " + s.Satisfaction.ToString("0") + "/" + goal.satisfaction + (goal.ambience > 0 ? "          Ambience    " + s.Ambience + "/" + goal.ambience : ""), 20, 62, 1097, 28, 19, paper);
-            Label(banner, "Your next star unlocks premium furnishings and a new dish. Food, speed, cleanliness and atmosphere all matter.", 20, 99, 1117, 25, 14, paper);
+            Label(banner, !s.Owned ? "Little Flame's customers count. Serve fast for happy reviews; customers who walk away hurt your satisfaction." : "Your next star unlocks premium furnishings and a new dish. Food, speed, cleanliness and atmosphere all matter.", 20, 99, 1117, 25, 14, paper);
             int guestStart = Mathf.Max(244, s.Reviews.Count * 105 + 16);
             var content = Scroller(sheet, 30, 292, 1160, 357, guestStart + 354);
             if (s.Reviews.Count == 0) {

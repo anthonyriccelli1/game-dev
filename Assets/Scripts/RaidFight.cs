@@ -298,6 +298,8 @@ namespace RestaurantCity {
         bool InspectRaid(FirstPersonPlayer p, Interactable city, bool pressed) {
             if (city.Kind != InteractionKind.Raid) return false;
             var rival = Rivals.Get(city.Site); if (rival == null) return false;
+            // Raids are a restaurant-owner's game: on the truck, Gus is just the competition across the street.
+            if (!Data.Owned) { prompts[p.ActorId] = rival.Name + "  " + StarText.Of(rival.Stars) + "\nThe competition. Out-serve him from Little Flame."; return true; }
             bool ok = RaidRules.CanRaid(Game.State, rival, ServiceInProgress, out var why);
             prompts[p.ActorId] = rival.Name + "  " + StarText.Of(rival.Stars) + "\n" + (ActiveRaid ? "Raid under way!" : ok ? "E / A  Plan a raid" : why);
             if (pressed && !ActiveRaid) OpenRaid(rival.Id);

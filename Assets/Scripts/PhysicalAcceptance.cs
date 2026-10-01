@@ -113,7 +113,9 @@ namespace RestaurantCity {
     Check(RestaurantSites.All.Length==1&&GameObject.Find("Saffron Bay (greybox districts)")==null&&GameObject.Find("Property for lease / The Bayside")==null,"Old Market has one restaurant and no greybox around it");
     Check(CityDistricts.At(0,0)?.Id=="market"&&CityDistricts.At(-190,-15)==null&&System.Array.TrueForAll(NightStashes.Spots,sp=>System.Math.Abs(sp.X)<78&&sp.Z<78&&sp.Z>-119),"every stash spot and place is inside the block");
     // Pacing: the stand pays cash, not reputation. Earning a lease-and-renovation budget there must stay far from Line Cook (400).
-    Check(st.Xp<=60,"stand alone earns only token reputation ("+st.Xp+")");Check(st.RepSources.Exists(r=>r.Source=="Stand sales"),"reputation sources are tracked");Check(Game.Restaurant.BuyRestaurant(),"purchase integration");Game.Restaurant.ClosePanel();
+    {var ns=st.RepSources.Find(r=>r.Source=="New stars");int starXp=ns==null?0:ns.Amount;Check(st.Xp-starXp<=60,"stand alone earns only token reputation besides its first star ("+st.Xp+")");}
+    {float c0=st.Clock;bool o0=st.StandOpen;st.StandOpen=true;st.Clock=20;float calm=st.StandArrivalSeconds;st.Clock=60;float steady=st.StandArrivalSeconds;st.Clock=80;float rush=st.StandArrivalSeconds;st.Clock=c0;st.StandOpen=o0;Check(calm>steady&&steady>rush,"the truck day has a rhythm: calm "+calm+"s, steady "+steady+"s, rush "+rush+"s between customers");}
+    {var rs=st.Restaurant;int s0=rs.Served,rank0=rs.Rank,pend0=rs.PendingRep.Count;float sat0=rs.Satisfaction;rs.RecordTruckGuest("","burger",.9f);Check(rs.Served==s0+1&&rs.Reviews[0].Score>=80,"a fast truck sale counts toward stars with a happy review");rs.Reviews.RemoveAt(0);rs.Served=s0;rs.Rank=rank0;rs.Satisfaction=sat0;if(rs.PendingRep.Count>pend0)rs.PendingRep.RemoveRange(pend0,rs.PendingRep.Count-pend0);}Check(st.RepSources.Exists(r=>r.Source=="Stand sales"),"reputation sources are tracked");Check(Game.Restaurant.BuyRestaurant(),"purchase integration");Game.Restaurant.ClosePanel();
     Check(Game.Restaurant.Data.SiteId=="oddtable","The Odd Table is the starter restaurant");
     // The lease is an empty room now; install the starter kitchen the way a player would from the catalog (test tops up the budget).
     st.Cash=Math.Max(st.Cash,2000);foreach(var (id,x,z) in new[]{("pantry",0,0),("plate_rack",2,0),("prep_bench",4,0),("assembly",8,0),("grill",0,4),("sink",9,4),("cafe_table",8,7)})Check(Game.Restaurant.Data.Place(st,id,x,z,0,out var pm)||InstallFirstFree(id),"install "+id+" "+pm);
@@ -131,6 +133,7 @@ namespace RestaurantCity {
     // Planet soup: buy the recipe, simmer with a stir, ladle onto a plate. An unstirred pot scorches.
     Check(!st.Knows("soup")&&!Game.Restaurant.Data.IsDishAvailable(st,"soup"),"soup starts unknown");
     Check(InstallFirstFree("stove"),"install a stove");st.Kitchen.EnsureStations(Game.Restaurant.Data);Game.Restaurant.RebuildLayout();
+    Game.Restaurant.Data.Rank=0;   // truck sales may already have earned the first star; check the 0-star gate itself
     Check(!st.BuyRecipe("soup",out var zm)&&Game.Restaurant.Data.Stars==0,"Planet Soup is a 1-star cookbook recipe (new restaurants start at 0 stars): "+zm);Game.Restaurant.Data.Rank=Math.Max(1,Game.Restaurant.Data.Rank);Check(st.BuyRecipe("soup",out var bm),"buy Planet soup in the Cookbook: "+bm);Check(Game.Restaurant.Data.IsDishAvailable(st,"soup"),"soup can go on the menu once bought with a stove");
     st.Restaurant.AddStock("soup_veg",4);var stove=Station("stove");
     Act("pantry","soup");Act("stove");st.Kitchen.Tick(st,6);Act("stove");st.Kitchen.Tick(st,8.1f);Check(st.Kitchen.At(stove)?.Kind==KitchenItemKind.Soup,"a stirred pot becomes soup");

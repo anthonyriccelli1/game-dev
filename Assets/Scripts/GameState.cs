@@ -127,16 +127,21 @@ namespace RestaurantCity {
             if (washing) { if (dirtyTable >= 0) StandTableDirty[dirtyTable] = false; else StandDirty--; StandClean++; return; }
             Restaurant.UseFor(front.Dish);
             int earned = (int)Math.Round(KitchenState.StandPrice(this, front.Dish) * (1 - StandWorkerCut));
-            Cash += earned; StandWorkerEarned += earned; Served++; w.TasksCompleted++;
+            Cash += earned; StandWorkerEarned += earned; Served++; w.TasksCompleted++; Restaurant.RecordTruckGuest(front.ResidentId, front.Dish, front.Patience / Math.Max(1f, front.MaxPatience));
             StandClean--; front.Stage = 2; front.EatLeft = StandEatSeconds; SyncStandFront();
         }
         // Two cafe tables x two chairs = four seats. StandTableDirty and StandOrder.Table are per SEAT (seat / 2 = table).
         public const int StandQueueMax = 5, StandPlates = 4, StandTables = 2, StandSeats = 4;
         public const float StandEatSeconds = 12, StandPatience = 75, StandFirstPatience = 100;
         public List<bool> StandTableDirty = new List<bool> { false, false, false, false };
-        // The stand has a lunch rush and a (bigger-paying) night rush: guests arrive twice as fast.
+        // The truck day has a rhythm: a calm opening, a steady build, the lunch rush, an afternoon lull to
+        // catch up (wash, restock), a steady evening, the night rush, then a quiet late stretch.
+        // Patience never changes; only how often guests walk up does.
         public bool StandRush => StandOpen && (Clock >= 70 && Clock < 110 || Clock >= 180 && Clock < 215);
-        public float StandArrivalSeconds => (Players > 1 ? 14 : 22) * (StandRush ? .5f : 1);
+        public bool StandLull => StandOpen && !StandRush && (Clock < 50 || Clock >= 110 && Clock < 150 || Clock >= 215);
+        public bool StandRushSoon => StandOpen && (Clock >= 62 && Clock < 70 || Clock >= 172 && Clock < 180);
+        public string StandPace => !StandOpen ? "closed" : StandRush ? "rush" : StandLull ? "calm" : "steady";
+        public float StandArrivalSeconds => (Players > 1 ? 14 : 22) * (StandRush ? .5f : StandLull ? 1.6f : 1);
         public int FreeStandTable() {
             for (int t = 0; t < StandSeats; t++) {
                 if (StandTableDirty[t]) continue;
@@ -260,6 +265,7 @@ namespace RestaurantCity {
                 else { o.EatLeft -= seconds; if (o.EatLeft <= 0 && o.Table >= 0) StandTableDirty[o.Table] = true; }
             }
             StandQueue.RemoveAll(o => o.Stage == 2 && o.EatLeft <= 0);   // finished: they leave the dirty plate on the table
+            foreach (var o in StandQueue) if (o.Stage < 2 && o.Patience <= 0 && Restaurant != null) Restaurant.RecordTruckWalkout(o.ResidentId, o.Dish);
             int walked = StandQueue.RemoveAll(o => o.Stage < 2 && o.Patience <= 0); if (walked > 0) Emit("stand_walkout"); Missed += walked; if (walked > 0) GainReputation(walked * Reputation.LostCustomer, "Stand walk-outs");
             if (StandBuilt && StandOpen && StandQueue.Count < StandQueueMax) {
                 NextCustomer -= seconds;

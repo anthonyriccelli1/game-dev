@@ -146,7 +146,7 @@ namespace RestaurantCity {
             return true;
         }
         public void ShowPanel(string panel) {
-            bool phone = (panel == "Staff" && Game.State.StandBuilt) || panel == "Map" || panel == "Supplies" && Game.State.StandBuilt || panel == "Phone" && Game.State.StandBuilt || panel == "Raid" && (Game.State.StandBuilt || Data.Owned) || panel == "Pawn";
+            bool phone = (panel == "Staff" || panel == "Menu" || panel == "Cookbook" || panel == "Reviews") && Game.State.StandBuilt || panel == "Map" || panel == "Supplies" && Game.State.StandBuilt || panel == "Phone" && Game.State.StandBuilt || panel == "Raid" && (Game.State.StandBuilt || Data.Owned) || panel == "Pawn";
             if (!Data.Owned && !phone) { Feedback("Earn $" + RestaurantSites.StarterPrice + " and buy the restaurant at its front sign."); return; }
             if (ServiceInProgress && panel != "Staff" && panel != "Service" && panel != "Map" && panel != "Supplies" && panel != "Phone" && panel != "Raid" && panel != "Pawn") { Feedback("Service is live. Use the stations; E at the door sign stops new arrivals. Management is available after the last guest leaves."); return; }
             if (PlacementActive) CancelPlacement(false);
