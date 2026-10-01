@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 namespace RestaurantCity {
-    // Every resident (and every legacy recruit) has four stats from 1 to 5 plus one perk.
+    // Every resident (and every legacy recruit) has four stats from 1 to 5. No perks: the stats are the whole story
+    // (the Perk field stays for old code paths and is always None).
     //   Cooking: speed at food stations.   Speed: walking, and washing at the sink.
     //   Stamina: how slowly energy drains.  Brawn: damage in raids (and raid health with Stamina).
     // Commons total 10 points, uncommons 12, rares 14 (PhysicalAcceptance checks it).
@@ -14,39 +15,39 @@ namespace RestaurantCity {
         public static readonly ResidentStats Default = new ResidentStats(2, 2, 2, 2, Perk.None);
         static readonly Dictionary<string, ResidentStats> table = new Dictionary<string, ResidentStats> {
             // Old Market commons
-            { "003_Jimmy", new ResidentStats(1, 4, 3, 2, Perk.Sprinter) },
-            { "006_Cappy", new ResidentStats(2, 2, 4, 2, Perk.QuickHands) },
-            { "208_TripoConstruction", new ResidentStats(3, 1, 2, 4, Perk.Brawler) },   // Buck
-            { "209_TripoFootball", new ResidentStats(1, 4, 2, 3, Perk.Sprinter) },     // Blitz
-            { "070_Robert", new ResidentStats(4, 2, 2, 2, Perk.Steady) },
-            { "012_Chill", new ResidentStats(2, 2, 4, 2, Perk.Steady) },
-            { "128_RandomBoi", new ResidentStats(2, 3, 2, 3, Perk.NightOwl) },
-            { "038_Kate", new ResidentStats(4, 2, 3, 1, Perk.QuickHands) },
-            { "053_Erika", new ResidentStats(2, 4, 3, 1, Perk.Steady) },
-            { "207_TripoGothGirl", new ResidentStats(2, 3, 3, 2, Perk.NightOwl) },     // Raven
-            { "206_TripoCheerleader", new ResidentStats(1, 4, 2, 3, Perk.Rally) },   // Pepper: fast on the floor, fires up a raid crew
+            { "003_Jimmy", new ResidentStats(1, 4, 3, 2, Perk.None) },
+            { "006_Cappy", new ResidentStats(2, 2, 4, 2, Perk.None) },
+            { "208_TripoConstruction", new ResidentStats(3, 1, 2, 4, Perk.None) },   // Buck
+            { "209_TripoFootball", new ResidentStats(1, 4, 2, 3, Perk.None) },     // Blitz
+            { "070_Robert", new ResidentStats(4, 2, 2, 2, Perk.None) },
+            { "012_Chill", new ResidentStats(2, 2, 4, 2, Perk.None) },
+            { "128_RandomBoi", new ResidentStats(2, 3, 2, 3, Perk.None) },
+            { "038_Kate", new ResidentStats(4, 2, 3, 1, Perk.None) },
+            { "053_Erika", new ResidentStats(2, 4, 3, 1, Perk.None) },
+            { "207_TripoGothGirl", new ResidentStats(2, 3, 3, 2, Perk.None) },     // Raven
+            { "206_TripoCheerleader", new ResidentStats(1, 4, 2, 3, Perk.None) },   // Pepper: fast on the floor, fires up a raid crew
             // uncommons
-            { "071_LilBro", new ResidentStats(2, 4, 3, 3, Perk.Rally) },
-            { "091_BigBro_a", new ResidentStats(3, 2, 3, 4, Perk.Brawler) },
-            { "074_Baldman", new ResidentStats(2, 3, 3, 4, Perk.Tough) },
-            { "210_TripoClown", new ResidentStats(3, 4, 3, 2, Perk.Rally) },           // Bonkers
-            { "054_Lydia", new ResidentStats(5, 2, 3, 2, Perk.QuickHands) },
-            { "136_SlugPerson", new ResidentStats(3, 1, 5, 3, Perk.Tireless) },
-            { "044_Zombie", new ResidentStats(3, 1, 5, 3, Perk.NightOwl) },
+            { "071_LilBro", new ResidentStats(2, 4, 3, 3, Perk.None) },
+            { "091_BigBro_a", new ResidentStats(3, 2, 3, 4, Perk.None) },
+            { "074_Baldman", new ResidentStats(2, 3, 3, 4, Perk.None) },
+            { "210_TripoClown", new ResidentStats(3, 4, 3, 2, Perk.None) },           // Bonkers
+            { "054_Lydia", new ResidentStats(5, 2, 3, 2, Perk.None) },
+            { "136_SlugPerson", new ResidentStats(3, 1, 5, 3, Perk.None) },
+            { "044_Zombie", new ResidentStats(3, 1, 5, 3, Perk.None) },
             // rares
-            { "139_CoolHydrant", new ResidentStats(3, 3, 5, 3, Perk.QuickHands) },
-            { "146_CoolTrash", new ResidentStats(2, 3, 5, 4, Perk.Tough) },
-            { "201_TripoAlien", new ResidentStats(2, 5, 4, 3, Perk.Sprinter) },
-            { "204_TripoReaper", new ResidentStats(2, 3, 4, 5, Perk.Tough) },   // Grim: the best brawler in Old Market
-            { "033_Franky", new ResidentStats(4, 2, 5, 3, Perk.Tireless) },
-            { "205_TripoVampire", new ResidentStats(3, 5, 3, 3, Perk.NightOwl) },
+            { "139_CoolHydrant", new ResidentStats(3, 3, 5, 3, Perk.None) },
+            { "146_CoolTrash", new ResidentStats(2, 3, 5, 4, Perk.None) },
+            { "201_TripoAlien", new ResidentStats(2, 5, 4, 3, Perk.None) },
+            { "204_TripoReaper", new ResidentStats(2, 3, 4, 5, Perk.None) },   // Grim: the best brawler in Old Market
+            { "211_TripoPumpkin", new ResidentStats(4, 2, 5, 3, Perk.None) },   // Jack
+            { "205_TripoVampire", new ResidentStats(3, 5, 3, 3, Perk.None) },
             // legacy special recruits
-            { "ember", new ResidentStats(4, 2, 4, 2, Perk.Tireless) },
-            { "moss", new ResidentStats(2, 4, 3, 1, Perk.Sprinter) },
-            { "velvet", new ResidentStats(2, 5, 3, 2, Perk.Sprinter) },
-            { "p04", new ResidentStats(3, 3, 5, 2, Perk.Steady) },
-            { "bront", new ResidentStats(4, 2, 3, 5, Perk.Brawler) },
-            { "ink", new ResidentStats(5, 2, 4, 3, Perk.QuickHands) },
+            { "ember", new ResidentStats(4, 2, 4, 2, Perk.None) },
+            { "moss", new ResidentStats(2, 4, 3, 1, Perk.None) },
+            { "velvet", new ResidentStats(2, 5, 3, 2, Perk.None) },
+            { "p04", new ResidentStats(3, 3, 5, 2, Perk.None) },
+            { "bront", new ResidentStats(4, 2, 3, 5, Perk.None) },
+            { "ink", new ResidentStats(5, 2, 4, 3, Perk.None) },
         };
         public static ResidentStats For(string id) { id = ResidentCast.Current(id); return id != null && table.TryGetValue(id, out var s) ? s : Default; }
         public static bool Has(string id) { id = ResidentCast.Current(id); return id != null && table.ContainsKey(id); }

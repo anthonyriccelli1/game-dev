@@ -44,16 +44,16 @@ namespace RestaurantCity {
      st.Restaurant.Workers.RemoveAll(w=>w.Id==metId);st.Flux=flux0;}
     // Resident stats: every recruitable resident has four 1-5 stats and a perk, totals by rarity, and the stats change real work.
     {bool statsOk=true;foreach(var r in ResidentCast.OldMarket){var rs=StaffStats.For(r.Id);int want=r.Tier==0?10:r.Tier==1?12:14;
-      if(!StaffStats.Has(r.Id)||rs.Perk==Perk.None||rs.Total!=want||rs.Cooking<1||rs.Cooking>5||rs.Speed<1||rs.Speed>5||rs.Stamina<1||rs.Stamina>5||rs.Brawn<1||rs.Brawn>5){statsOk=false;Debug.LogWarning("STATS_BAD "+r.Id+" total "+rs.Total);}}
-     Check(statsOk,"every Old Market resident has 1-5 stats, a perk, and the rarity's point total");
+      if(!StaffStats.Has(r.Id)||rs.Perk!=Perk.None||rs.Total!=want||rs.Cooking<1||rs.Cooking>5||rs.Speed<1||rs.Speed>5||rs.Stamina<1||rs.Stamina>5||rs.Brawn<1||rs.Brawn>5){statsOk=false;Debug.LogWarning("STATS_BAD "+r.Id+" total "+rs.Total);}}
+     Check(statsOk,"every Old Market resident has 1-5 stats, no perk, and the rarity's point total");
      {var old=new GameState();old.MetResidents.Add("043_Dracula");old.MetResidents.Add("205_TripoVampire");old.Restaurant.Workers.Add(new WorkerState{Id="035_Wolfman"});old.SanitizeAfterLoad();
       Check(old.MetResidents.Count(m=>m=="205_TripoVampire")==1&&!old.MetResidents.Contains("043_Dracula")&&old.Restaurant.Workers.Exists(w=>w.Id=="204_TripoReaper")&&ResidentCast.Get("046_Mafiossini")?.Name=="Zilo","a save that knew a placeholder resident gets the custom character in its place");}
      var lydia=new WorkerState{Id="054_Lydia",Energy=100};var jimmy=new WorkerState{Id="003_Jimmy",Energy=100};
      Check(RestaurantController.WorkerSpeed(lydia,"grill")>RestaurantController.WorkerSpeed(jimmy,"grill")*1.5f,"a Cooking-5 chef works the grill much faster than a Cooking-1 server");
-     Check(StaffStats.WalkMultiplier(StaffStats.For("003_Jimmy"),false)>StaffStats.WalkMultiplier(StaffStats.For("033_Franky"),false),"Speed and Sprinter make Jimmy walk faster than Franky");
-     Check(StaffStats.DrainMultiplier(StaffStats.For("033_Franky"))<.5f*StaffStats.DrainMultiplier(StaffStats.For("208_TripoConstruction")),"Tireless Franky drains energy far slower than Buck");
-     var tired=new WorkerState{Id="070_Robert",Energy=10};var tired2=new WorkerState{Id="208_TripoConstruction",Energy=10};
-     Check(RestaurantController.WorkerSpeed(tired,"grill")>.9f&&RestaurantController.WorkerSpeed(tired2,"grill")<.5f,"Steady Robert keeps his speed when tired; Buck slows down");}
+     Check(StaffStats.WalkMultiplier(StaffStats.For("003_Jimmy"),false)>StaffStats.WalkMultiplier(StaffStats.For("211_TripoPumpkin"),false),"Speed 4 Jimmy walks faster than Speed 2 Jack");
+     Check(StaffStats.DrainMultiplier(StaffStats.For("211_TripoPumpkin"))<.8f*StaffStats.DrainMultiplier(StaffStats.For("208_TripoConstruction")),"Stamina 5 Jack drains energy slower than Stamina 2 Buck");
+     var tired=new WorkerState{Id="070_Robert",Energy=10};var rested=new WorkerState{Id="070_Robert",Energy=100};
+     Check(RestaurantController.WorkerSpeed(rested,"grill")>.9f&&RestaurantController.WorkerSpeed(tired,"grill")<.5f,"an exhausted worker slows right down until they rest");}
     // Raids: Greasy Gus (1 star) after dark. He brings one imp per crew member; pairs fight one-on-one; the player beats Gus.
     {var g=st;var rc=Game.Restaurant;var gus=Rivals.GreasyGus;float clock0=g.Clock;int cash0=g.Cash,flux0=g.Flux,rank0=rc.Data.Rank,xp0=g.Xp;bool knew=g.Knows("cyclops");
      rc.Data.Rank=0;g.Clock=60;Check(!RaidRules.CanRaid(g,gus,false,out _),"Gus's truck is only there after dark");
@@ -73,7 +73,7 @@ namespace RestaurantCity {
      Check(b.Fighters.Where(f=>!f.Ours&&!f.Boss).All(f=>f.Down),"a strong crew wins their one-on-ones");
      int blows=0;while(!b.BossFighter.Down&&blows<40){b.PlayerHit(b.BossFighter,Game.Player,Weapons.Fists.Damage*2,Vector3.zero,true);blows++;}b.Step(.05f);
      Check(blows>=10&&blows<=13,"Gus soaks about a dozen heavy punches ("+blows+")");
-     Check(RaidRules.Duel(StaffStats.For("091_BigBro_a"),gus.Roster[0].Stats)>=1.15f&&RaidRules.Duel(StaffStats.For("003_Jimmy"),gus.Roster[0].Stats)<1,"Big Bro is favoured against Gus's first imp; Jimmy is not");
+     Check(RaidRules.Duel(StaffStats.For("204_TripoReaper"),gus.Roster[0].Stats)>=1.15f&&RaidRules.Duel(StaffStats.For("003_Jimmy"),gus.Roster[0].Stats)<1,"Grim (Brawn 5) is favoured against Gus's first imp; Jimmy is not");
      Check(b.Over&&b.Won&&g.Cash>=cash0+gus.CashMin&&g.Flux==flux0+gus.Flux,"beating Gus pays cash and Flux");
      Check(!RaidRules.CanRaid(g,gus,false,out _),"one raid per rival per day");
      Check(rc.Data.Workers.Where(w=>crewIds.Contains(w.Id)).All(w=>w.Energy<100),"the crew comes back tired");

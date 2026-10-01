@@ -49,3 +49,7 @@ From the user's Tripo exports (Mixamo-preset Humanoid rigs) in `ThirdParty-Downl
 ## Raven, Buck, Blitz and Bonkers (October 1, 2026)
 
 From the user's Tripo exports in `ThirdParty-Downloads`: `207_TripoGothGirl` (gothic+girl, Raven, common, replaces Olivia), `208_TripoConstruction` (construction+worker, Buck, common, replaces Hugo), `209_TripoFootball` (football+player, Blitz, common, replaces Kyle) and `210_TripoClown` (clown+character, Bonkers, uncommon, replaces Biz Dude). FBX plus base-colour map each; `ResidentCast.Replaced` carries old saves over.
+
+## Jack (October 1, 2026)
+
+`211_TripoPumpkin` from the user's Tripo export `pumpkin+head+scarecrow+3d+model.zip`: Jack, a rare night cook, replacing Franky. FBX plus base-colour map.

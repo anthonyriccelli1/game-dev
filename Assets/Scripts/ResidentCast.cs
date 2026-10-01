@@ -46,7 +46,7 @@ namespace RestaurantCity {
             new ResidentDef("146_CoolTrash", "Trash Can", 1.4f, 2, StaffJob.Clean, "One man's trash is this can's whole personality.").Picky(0),
             new ResidentDef("201_TripoAlien", "Zilo", CustomResidentHeight, 2, StaffJob.Serve, "A sharp-eyed visitor who gets hot plates to the right table fast."),
             new ResidentDef("044_Zombie", "Zombie", 1.76f, 1, StaffJob.Cook, "Only comes out at night. Doesn't mind the heat.", Gait.Zombie, true).Picky(0),
-            new ResidentDef("033_Franky", "Franky", 2.0f, 2, StaffJob.Cook, "Stitched together, never tired. Comes out at night.", Gait.Zombie, true),
+            new ResidentDef("211_TripoPumpkin", "Jack", CustomResidentHeight, 2, StaffJob.Cook, "Carved grin, glowing eyes, never tired. Works the grill from dusk till the candle burns out.", Gait.Standard, true),
             new ResidentDef("205_TripoVampire", "Dracula", CustomResidentHeight, 2, StaffJob.Serve, "Charming night-shift host. Hates garlic orders.", Gait.Standard, true).Picky(18),
             new ResidentDef("204_TripoReaper", "Grim", CustomResidentHeight, 2, StaffJob.Clean, "Never late, never rushed. Clears every table, eventually all of them. Comes out at night.", Gait.Standard, true).Picky(16),
         };
@@ -62,6 +62,7 @@ namespace RestaurantCity {
             { "008_Hugo", "208_TripoConstruction" },     // common, cook, brawler -> Buck
             { "069_Kyle", "209_TripoFootball" },         // common, server, fast  -> Blitz
             { "102_BizDude", "210_TripoClown" },         // uncommon, server      -> Bonkers
+            { "033_Franky", "211_TripoPumpkin" },        // rare, night, cook     -> Jack
         };
         public static string Current(string id) => id != null && Replaced.TryGetValue(id, out var to) ? to : id;
         static readonly Dictionary<string, ResidentDef> byId = new Dictionary<string, ResidentDef>();
