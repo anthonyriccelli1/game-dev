@@ -54,6 +54,7 @@ namespace RestaurantCity {
                 var grill = Station("grill");
                 RunStationFeedbackChecks(grill, Station("sink"));
                 RunChoppingChecks(prep);
+                RunScrubChecks(Station("sink"));
                 yield return null; // Rebuild cleanup is deferred until the end of the frame.
                 Physics.SyncTransforms();
                 var table = R.Data.Layout.First(x => RestaurantCatalog.Find(x.CatalogId).Seats > 0).InstanceId;
@@ -334,6 +335,27 @@ namespace RestaurantCity {
                 pixels.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0); pixels.Apply();
                 System.IO.File.WriteAllBytes(System.IO.Path.GetFullPath("InteractionEvidence/" + file), pixels.EncodeToPNG());
             } finally { P.View.rect = previousRect; Canvas.ForceUpdateCanvases(); RenderTexture.active = previous; target.Release(); Destroy(target); Destroy(pixels); }
+        }
+        // Hands-on washing: lift, scrub, put down (keeps progress), and only scrubbing the grime off finishes the plate.
+        void RunScrubChecks(int sink) {
+            foreach (var it in K.Items.Where(i => i.Holder == "station:" + sink).ToList()) K.Items.Remove(it);
+            K.ReleaseWork(P.ActorId); var st = K.Stations.First(s => s.InstanceId == sink); st.Progress = 0; st.WorkOwner = null;
+            K.Items.Add(new KitchenItem { Id = K.NextItemId++, Kind = KitchenItemKind.DirtyPlate, Holder = "station:" + sink });
+            int clean0 = K.CleanPlates; var scrub = PlateScrub.Of(P);
+            Check(scrub.Begin(sink, out var m) && scrub.Active && PlateScrub.HeldAt(sink), "E at the sink lifts the dirty plate up to scrub " + m);
+            for (int i = 0; i < 10; i++) scrub.Tick(null, null, null, .1f);
+            Check(st.Progress == 0, "holding the plate without scrubbing cleans nothing");
+            scrub.ScrubPath(new Vector2(.3f, .45f), new Vector2(.7f, .5f), new Vector2(.3f, .55f)); scrub.Tick(null, null, null, .02f);
+            float part = st.Progress;
+            Check(part > 0 && K.At(sink) != null && scrub.CleanRatio > 0 && scrub.CleanRatio < .96f, "a few strokes clean part of the plate (" + scrub.CleanRatio + ")");
+            scrub.End();
+            Check(!scrub.Active && K.At(sink) != null && Mathf.Approximately(st.Progress, part) && string.IsNullOrEmpty(st.WorkOwner), "putting it down keeps the partial progress");
+            Check(scrub.Begin(sink, out _), "pick it back up");
+            Check(!K.Work(Game.State, "staff:test", sink, 1, out _), "nobody else can wash the plate you're holding");
+            var path = new System.Collections.Generic.List<Vector2>();
+            for (int pass = 0; pass < 5; pass++) for (float y = .06f; y < .95f; y += .03f) { bool odd = Mathf.RoundToInt(y / .03f) % 2 == 1; path.Add(new Vector2(odd ? .05f : .95f, y)); path.Add(new Vector2(odd ? .95f : .05f, y)); }
+            scrub.ScrubPath(path.ToArray()); scrub.Tick(null, null, null, .02f);
+            Check(!scrub.Active && K.At(sink) == null && K.CleanPlates == clean0 + 1 && !PlateScrub.HeldAt(sink), "scrubbing it clean returns exactly one clean plate (" + scrub.CleanRatio + ")");
         }
         int Station(string id) => R.Data.Layout.First(x => x.CatalogId == id).InstanceId;
         static int TargetId(RaycastHit hit) { var t = hit.collider ? hit.collider.GetComponentInParent<RestaurantTarget>() : null; return t ? t.InstanceId : -1; }

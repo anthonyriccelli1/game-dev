@@ -20,6 +20,7 @@ namespace RestaurantCity {
   static KitchenAction NeedsHold(string label)=>new KitchenAction{Allowed=false,Kind=KitchenActionKind.Hold,FailReason=label,Label=label};
   static KitchenAction Tap(string label,Func<string> apply)=>new KitchenAction{Allowed=true,Kind=KitchenActionKind.Tap,Label=label,FailReason="",Apply=apply};
   public const float WashSeconds=3.5f;
+  public static float WashDuration(GameState game,int stationId)=>WashSeconds*StationUpgrades.WorkScale(game.Restaurant.LevelOf(stationId));
   // Restaurant plates: 4 per plate rack you own. Dirty plates stack beside the sink and are washed one at a time.
   public static int PlateCapacity(RestaurantState r){int n=r.Layout.Where(p=>p.CatalogId=="plate_rack").Sum(p=>StationUpgrades.Plates(Math.Max(1,p.Level)));return Math.Max(4,n);}
   int PlatesInPlay=>Items.Count(i=>!i.Disposable&&!i.StandPlate&&(i.Kind==KitchenItemKind.Plate||i.Kind==KitchenItemKind.DirtyPlate));

@@ -85,6 +85,7 @@ namespace RestaurantCity {
             ("108_cart_shop", new Vector3(-10.5f, 0, -65.6f), 0, 6, 60),
             ("109_tripo_cast_back_a", new Vector3(-1.45f, 0, -71.4f), 180, 7, 60),
             ("109_tripo_cast_back_b", new Vector3(-1.45f, 0, -71.4f), 180, 7, 60),
+            ("114_scrub_plate", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
             ("110_truck_ui_hud", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
             ("111_truck_ui_stars", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
             ("112_truck_ui_menu", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
@@ -414,6 +415,19 @@ namespace RestaurantCity {
                     for (int i = 0; i < 10; i++) { p.transform.position = shot.pos; rc.Advance(.02f); yield return null; }
                 }
                 if (rc && shot.name.Contains("gus_truck")) { for (int i = 0; i < 150; i++) { rc.Advance(.2f); p.transform.position = pos; yield return null; } }
+                if (rc && shot.name.Contains("scrub_plate")) {
+                    // Lift a dirty plate out of the truck sink and scrub a few strokes: half grimy, half clean, suds on.
+                    var gs = Game.State; gs.StandBuilt = true; var k = gs.Kitchen;
+                    var sink = k.Stations.Find(s => s.CatalogId == "sink" && KitchenState.IsStandStation(s.InstanceId));
+                    if (sink != null && k.At(sink.InstanceId) == null) { var d = new KitchenItem { Id = k.NextItemId++, Kind = KitchenItemKind.DirtyPlate, StandPlate = true, Holder = "station:" + sink.InstanceId }; k.Items.Add(d); }
+                    var scrub = PlateScrub.Of(p); bool began = sink != null && scrub.Begin(sink.InstanceId, out var why);
+                    Debug.LogWarning("SCRUB_SHOT began=" + began);
+                    for (int i = 0; i < 12; i++) { p.transform.position = pos; scrub.Tick(null, null, null, .05f); yield return null; }
+                    var path = new System.Collections.Generic.List<Vector2>(); for (int i = 0; i <= 40; i++) { float t = i / 40f; path.Add(new Vector2(.25f + t * .45f, .5f + Mathf.Sin(t * 30) * .17f)); }
+                    scrub.ScrubPath(path.ToArray());
+                    for (int i = 0; i < 3; i++) { scrub.Tick(null, null, null, .02f); yield return null; }
+                    Debug.LogWarning("SCRUB_SHOT clean=" + scrub.CleanRatio);
+                }
                 if (rc && shot.name.Contains("truck_ui")) {
                     // Truck phase (no restaurant yet): the goal card, the road to the first star, the read-only menu, the phone.
                     var gs = Game.State; var d = gs.Restaurant; if (shot.name.Contains("hud")) truckOwned0 = d.Owned; d.Owned = false; gs.StandBuilt = true; gs.StandOpen = true; gs.Cash = 140;
@@ -440,6 +454,7 @@ namespace RestaurantCity {
                 for (int i = 0; i < 5; i++) yield return null;
                 if (rc && rc.PanelOpen) rc.ClosePanel();
                 if (shot.name.Contains("truck_ui_phone")) Game.State.Restaurant.Owned = truckOwned0;
+                if (shot.name.Contains("scrub_plate")) PlateScrub.Of(p).End();
             }
             yield return new WaitForSeconds(1);
             Application.Quit();

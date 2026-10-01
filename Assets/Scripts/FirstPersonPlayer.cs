@@ -55,6 +55,9 @@ namespace RestaurantCity {
             Target = null;
             if (!Game.Paused) swingTimer = Mathf.Max(0, swingTimer - Time.deltaTime);
             if (Game.Paused || Game.SmokeMode || suppressed) { InteractHeld = false; return; }
+            // Scrubbing a plate at the sink takes over the hands and the look input until it's clean or put down.
+            var scrub = GetComponent<PlateScrub>();
+            if (scrub && scrub.Active) { InteractHeld = false; scrub.Tick(keys, mouse, pad, Time.deltaTime); return; }
             bool interact = keys != null && keys.eKey.wasPressedThisFrame || pad != null && pad.buttonSouth.wasPressedThisFrame;
             bool secondary = keys != null && keys.qKey.wasPressedThisFrame || pad != null && pad.buttonEast.wasPressedThisFrame;
             bool menu = keys != null && keys.tabKey.wasPressedThisFrame || pad != null && pad.leftShoulder.wasPressedThisFrame;

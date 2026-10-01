@@ -80,6 +80,9 @@ namespace RestaurantCity {
                     bubbles[n].transform.localScale = new Vector3(.032f, .017f, .016f) * (.75f + .25f * Mathf.Sin(phase * 4 + n));
                 }
             } else Stop();
+            // Lifted out of the sink to scrub by hand: the basin shows only running water.
+            bool lifted = PlateScrub.HeldAt(station.InstanceId);
+            plate.SetActive(OwnsFood && !lifted); sponge.gameObject.SetActive(!lifted); if (lifted) water.SetActive(true);
             previousItem = item?.Id ?? -1; previousProgress = station.Progress;
         }
         void Stop() {

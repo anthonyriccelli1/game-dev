@@ -89,6 +89,7 @@ namespace RestaurantCity {
     v.Tickets.transform.parent.gameObject.SetActive(tickets!="");v.Tickets.text=tickets;
     // Size the ticket card to its text instead of a fixed half-screen box.
     int lineCount=tickets==""?0:tickets.Split('\n').Length;var card=(RectTransform)v.Tickets.transform.parent;card.anchorMin=new Vector2(.7f,Mathf.Max(.45f,1-(.035f*lineCount+.03f)));
+    var promptRect=(RectTransform)v.Prompt.transform.parent;var ps=p.GetComponent<PlateScrub>();bool scrubbing=ps&&ps.Active;promptRect.anchorMin=scrubbing?new Vector2(.3f,.82f):new Vector2(.25f,.3f);promptRect.anchorMax=scrubbing?new Vector2(.7f,.97f):new Vector2(.75f,.46f);var aim=v.Canvas.transform.Find("Aim");if(aim)aim.gameObject.SetActive(!scrubbing);
     string prompt=Game.Restaurant.PromptFor(p.ActorId);if(prompt==""&&p.Target)prompt="E / A  "+p.Target.Prompt(Game);
     var held=k.Hold(p.ActorId);string checklist=Game.Restaurant.HeldPlateChecklist(p.ActorId);
     string holding=held==null?"":"<size=14><color=#9FD8C8>Holding: "+k.Label(held)+(checklist==""?"":"  |  "+checklist)+"</color></size>\n";

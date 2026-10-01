@@ -165,7 +165,8 @@ namespace RestaurantCity {
             var inv = Hotbar.For(State, Player.PlayerId);
             bool handsBusy = State.Kitchen != null && State.Kitchen.Hold(Player.ActorId) != null;
             var r = Player.Game.Restaurant;
-            bool visible = !Player.Elevated && !handsBusy && !(r && (r.PanelOpen || r.PlacementActive)) && Player.Game.Started;
+            var scrub = Player.GetComponent<PlateScrub>();
+            bool visible = !Player.Elevated && !handsBusy && !(scrub && scrub.HandsBusy) && !(r && (r.PanelOpen || r.PlacementActive)) && Player.Game.Started;
             if (rig.gameObject.activeSelf != visible) rig.gameObject.SetActive(visible);
             ShowWeapon(inv.Weapon.Id);
             // Pose: idle bob, block guard, wind-up while charging, then the strike.
