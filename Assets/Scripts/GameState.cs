@@ -211,6 +211,14 @@ namespace RestaurantCity {
         public void Respawn() {
             Cash = Math.Max(StandBuilt ? 0 : 10, Cash - 10); Health = 100; Discard(); HasOrder = false; ClearStandGuests(); NextCustomer = 8;
         }
+        // Placeholder residents replaced by custom characters (ResidentCast.Replaced): carry over who you met and hired.
+        void MigrateReplacedResidents() {
+            for (int i = 0; i < MetResidents.Count; i++) MetResidents[i] = ResidentCast.Current(MetResidents[i]);
+            var seen = new HashSet<string>(); MetResidents.RemoveAll(m => !seen.Add(m));
+            var ws = Restaurant.Workers; if (ws != null) { foreach (var w in ws) if (w != null) w.Id = ResidentCast.Current(w.Id); var hired = new HashSet<string>(); ws.RemoveAll(w => w == null || !hired.Add(w.Id)); }
+            if (Restaurant.Orders != null) foreach (var o in Restaurant.Orders) if (o != null) o.ResidentId = ResidentCast.Current(o.ResidentId) ?? "";
+            if (StandQueue != null) foreach (var o in StandQueue) if (o != null) o.ResidentId = ResidentCast.Current(o.ResidentId) ?? "";
+        }
         public void SanitizeAfterLoad() {
             Inventories = Inventories ?? new List<PlayerInventory>(); foreach (var inv in Inventories) foreach (var sl in inv.Slots) if (Weapons.Get(sl.Item) == null) sl.Item = "";
             Raids = Raids ?? new List<RaidRecord>(); Raids.RemoveAll(r => r == null || Rivals.Get(r.RivalId) == null);
@@ -226,6 +234,7 @@ namespace RestaurantCity {
             // Old saves kept stand "Stock" separately; it now lives in the one shared pantry.
             if (Stock > 0) { Restaurant.AddStock("patty", Stock); Restaurant.AddStock("bun", Stock); Stock = 0; }
             Kitchen = Kitchen ?? new KitchenState(); Kitchen.SanitizeAfterLoad(this); Flux = Math.Max(0, Flux); MetResidents = MetResidents ?? new List<string>();
+            MigrateReplacedResidents();
             if(RecipeUnlocked&&!FluxIntroduced){Flux+=3;FluxIntroduced=true;}
             Cash = Math.Max(StandBuilt ? 0 : 10, Math.Min(999999, Cash)); Stock = Math.Max(0, Math.Min(99, Stock));
             Served = Math.Max(0, Served); Missed = Math.Max(0, Missed); Day = Math.Max(1, Day);

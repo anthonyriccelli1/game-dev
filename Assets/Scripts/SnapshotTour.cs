@@ -79,6 +79,9 @@ namespace RestaurantCity {
             ("103_gus_truck_lot", new Vector3(11.5f, 0, -38.5f), 40, 6, 60),
             ("104_gus_truck_street", new Vector3(23.5f, 0, -40.5f), 330, 6, 60),
             ("105_gus_truck_window", new Vector3(12.6f, 0, -30.4f), 90, -6, 60),
+            ("106_milo_cart", new Vector3(-8.2f, 0, -69.2f), -20, 6, 60),
+            ("107_tripo_cast", new Vector3(-2.2f, 0, -71.6f), 180, 4, 60),
+            ("108_cart_shop", new Vector3(-10.5f, 0, -65.6f), 0, 6, 60),
             ("81_raid_planner", new Vector3(17.5f, 0, -40), 0, 4, 190),
             ("82_raid_fight", new Vector3(17.5f, 0, -45.5f), 0, 6, 190),
             ("83_raid_ko", new Vector3(17.5f, 0, -45.5f), 0, 8, 190),
@@ -116,6 +119,8 @@ namespace RestaurantCity {
             ("56_inspector_chase", new Vector3(-30, 0, -1.5f), 90, 4, 190),
             ("52_people_book", new Vector3(0, 0, 3), 0, 0, 60),
             ("53_people_book_top", new Vector3(0, 0, 3), 0, 0, 60),
+            ("92_zilo_staff", new Vector3(-10f, 0, -10.2f), 180, 8, 70),
+            ("93_zilo_closeup", new Vector3(-9f, 0, -10.4f), 180, 3, 70),
         };
 
         static bool dressed;
@@ -132,7 +137,10 @@ namespace RestaurantCity {
             }
             yield return new WaitForSeconds(2);
             Game.State.StandBuilt = true; Game.SetPaused(false); Game.SyncWorld();
+            string only = Array.Find(Environment.GetCommandLineArgs(), a => a.StartsWith("--snapshot-only="));
+            if (only != null) only = only.Substring("--snapshot-only=".Length);
             foreach (var shot in Shots) {
+                if (only != null && !shot.name.Contains(only)) continue;
                 Game.State.Clock = shot.clock; Game.SyncWorld();
                 RenderSettings.fog = !(shot.name.Contains("map") || shot.name.Contains("aerial"));
                 // Stand shots are written in the stand's own frame, which sits inside Little Flame in the city.
@@ -142,6 +150,25 @@ namespace RestaurantCity {
                 p.transform.position = pos; p.transform.rotation = Quaternion.Euler(0, shot.yaw, 0);
                 p.View.transform.localRotation = Quaternion.Euler(shot.pitch, 0, 0);
                 var rc = FindFirstObjectByType<RestaurantController>();
+                if (rc && shot.name.Contains("zilo_")) {
+                    var d = Game.State.Restaurant;
+                    d.Owned = true;
+                    if (!Game.State.MetResidents.Contains("201_TripoAlien")) Game.State.MetResidents.Add("201_TripoAlien");
+                    if (!d.Workers.Exists(w => w.Id == "201_TripoAlien")) {
+                        Game.State.Flux = ResidentCast.Get("201_TripoAlien").FluxCost;
+                        if (!d.Hire(Game.State, "201_TripoAlien", out var hireMessage) || Game.State.Flux != 0)
+                            throw new Exception("Zilo five-Flux recruitment failed: " + hireMessage);
+                        Debug.LogWarning("ZILO_HIRED " + hireMessage);
+                    }
+                    rc.RebuildLayout();
+                    rc.Advance(.05f);
+                    var zilo = GameObject.Find("Zilo");
+                    if (zilo) {
+                        zilo.transform.position = shot.name.Contains("closeup") ? new Vector3(-9f, .055f, -12.0f) : new Vector3(-9f, .055f, -13.1f);
+                        zilo.transform.rotation = Quaternion.Euler(0, 0, 0);
+                    }
+                    Debug.LogWarning("ZILO_STAFF " + (zilo ? "spawned" : "missing") + " cost=" + ResidentCast.Staff("201_TripoAlien")?.FluxCost);
+                }
                 if (rc && shot.name.Contains("phone_map")) rc.ShowPanel("Map");
                 if (rc && (shot.name.Contains("stand_pantry") || shot.name.Contains("pantry_from_street"))) { foreach (var i in new[] { "patty", "bun" }) rc.Data.AddStock(i, 14); rc.Advance(.05f); }
                 if (rc && (shot.name.Contains("menu_tab") || shot.name.Contains("cookbook_tab"))) { rc.Data.Owned = true; Game.State.Cash = 120; rc.ShowPanel(shot.name.Contains("menu") ? "Menu" : "Cookbook"); }
@@ -152,10 +179,17 @@ namespace RestaurantCity {
                     var crate = GameObject.Find("Night stash"); if (crate) { var c = crate.transform.position; p.transform.position = new Vector3(c.x, 0, c.z - 5.5f); Debug.LogWarning("STASH_SPOT " + spot + " at " + c); }
                 }
                 if (rc && shot.name.Contains("phone_zeeb")) { Game.State.Learn("midnight"); Game.State.DropBottles = 0; Game.State.ZeebDebt = 33; Game.State.Cash = 60; rc.Advance(.01f); rc.ShowPanel("Phone"); }
+                if (shot.name.Contains("tripo_cast")) {
+                    // The custom (Tripo) cast side by side at their shared 2 m height.
+                    var old = GameObject.Find("Tripo lineup"); if (old) Destroy(old);
+                    var line = new GameObject("Tripo lineup").transform;
+                    string[] ids = { "206_TripoCheerleader", "201_TripoAlien", "205_TripoVampire", "204_TripoReaper", "202_GreasyGus", "203_GusImp" };
+                    for (int i = 0; i < ids.Length; i++) { var c = ResidentModels.Spawn(ids[i], line, ResidentCast.CustomResidentHeight); if (c) { c.transform.position = new Vector3(-6.2f + i * 1.6f, 0, -76.2f); c.transform.rotation = Quaternion.identity; } }
+                }
                 if (shot.name.Contains("style_residents")) {
                     var old = GameObject.Find("Style lineup"); if (old) Destroy(old);
                     var line = new GameObject("Style lineup").transform;
-                    string[] ids = { "003_Jimmy", "043_Dracula", "044_Zombie", "002_CoolAlien", "051_Polybot", "049_CaptainLobster", "087_HotDog", "033_Franky" };
+                    string[] ids = { "003_Jimmy", "205_TripoVampire", "044_Zombie", "002_CoolAlien", "051_Polybot", "049_CaptainLobster", "087_HotDog", "033_Franky" };
                     for (int i = 0; i < ids.Length; i++) { var c = ResidentModels.Spawn(ids[i], line); if (c) { c.transform.position = new Vector3(-14.4f + i * 1.4f, 0, -1.2f); c.transform.rotation = Quaternion.identity; } }
                     Game.State.StandOpen = false;
                 }
@@ -324,7 +358,7 @@ namespace RestaurantCity {
                 }
                 if (rc && shot.name.Contains("people_book")) {
                     var gs = Game.State; gs.StandBuilt = true; gs.Flux = 4; gs.MetResidents.Clear();
-                    foreach (var id in new[] { "003_Jimmy", "038_Kate", "008_Hugo", "091_BigBro_a", "012_Chill", "046_Mafiossini" }) gs.MetResidents.Add(id);
+                    foreach (var id in new[] { "003_Jimmy", "038_Kate", "008_Hugo", "091_BigBro_a", "012_Chill", "201_TripoAlien" }) gs.MetResidents.Add(id);
                     if (!gs.Restaurant.Workers.Exists(w => w.Id == "038_Kate")) gs.Restaurant.Workers.Add(new WorkerState { Id = "038_Kate", Job = StaffJob.Cook });
                     rc.ShowPanel("Staff");
                     for (int i = 0; i < 3; i++) yield return null;
@@ -332,7 +366,7 @@ namespace RestaurantCity {
                     Debug.LogWarning("PEOPLE_BOOK scroll=" + (sr ? sr.verticalNormalizedPosition : -1));
                 }
                 if (rc && shot.name.Contains("raid_")) {
-                    var gs = Game.State; rc.Data.Rank = 0; string[] crewIds = { "091_BigBro_a", "046_Mafiossini", "035_Wolfman" };
+                    var gs = Game.State; rc.Data.Rank = 0; string[] crewIds = { "091_BigBro_a", "204_TripoReaper", "201_TripoAlien" };
                     foreach (var id in crewIds) if (!rc.Data.Workers.Exists(w => w.Id == id)) rc.Data.Workers.Add(new WorkerState { Id = id, Job = StaffJob.Cook, Energy = 100 });
                     if (shot.name.Contains("planner")) { gs.Raids.Clear(); rc.RaidCrew.Clear(); rc.OpenRaid("gus"); rc.ToggleRaidCrew(crewIds[0]); rc.ToggleRaidCrew(crewIds[1]); }
                     else {
@@ -362,6 +396,7 @@ namespace RestaurantCity {
                     for (int i = 0; i < 10; i++) { p.transform.position = shot.pos; rc.Advance(.02f); yield return null; }
                 }
                 if (rc && shot.name.Contains("gus_truck")) { for (int i = 0; i < 150; i++) { rc.Advance(.2f); p.transform.position = pos; yield return null; } }
+                if (rc && shot.name.Contains("cart_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); Debug.LogWarning("CART_SHOP atCart=" + rc.AtCart + " atSupplier=" + rc.AtSupplier); }
                 if (rc && shot.name.Contains("milo_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); }
                 if (rc && shot.name.Contains("stand_tables")) {
                     // Two seated stand guests (one served and eating) and a dirty plate: walk them in, then shoot.

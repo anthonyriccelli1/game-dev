@@ -31,21 +31,21 @@ namespace RestaurantCity {
             var lamp = new GameObject("Raid work light").AddComponent<Light>(); lamp.transform.SetParent(root, false);
             lamp.transform.position = Center + Vector3.up * 7; lamp.type = LightType.Point; lamp.range = 22; lamp.intensity = 5f; lamp.color = new Color(1f, .86f, .62f); lamp.shadows = LightShadows.None;
             // Gus steps out beside his serving hatch.
-            var boss = Spawn(rival.BossModel, rival.Boss, 1.95f, new Vector3(rival.X - 2.6f, 0, rival.Z - 1.5f), 180, false, true);
+            var boss = Spawn(rival.BossModel, rival.Boss, ResidentCast.CustomResidentHeight, new Vector3(rival.X - 2.6f, 0, rival.Z - 1.5f), 180, false, true);
             boss.Hp = boss.MaxHp = rival.BossHealth; boss.Damage = rival.BossDamage; boss.Interval = 1.15f; boss.Speed = 2.9f;
             bool rally = crew.Any(w => StaffStats.For(w.Id).Perk == Perk.Rally);
             for (int i = 0; i < crew.Count; i++) {
                 float x = rival.X + (i - (crew.Count - 1) / 2f) * 3f;
                 var rf = rival.Roster[i % rival.Roster.Length];
-                var g = Spawn(rf.Model, rf.Name, 1.72f, new Vector3(x, 0, rival.Z - 5.5f), 180, false, false);
-                Stats(g, rf.Stats); FryCookUniform(g);
+                var g = Spawn(rf.Model, rf.Name, ResidentCast.CustomResidentHeight, new Vector3(x, 0, rival.Z - 5.5f), 180, false, false);
+                Stats(g, rf.Stats);
                 var w = crew[i]; var s = StaffStats.For(w.Id); var def = ResidentCast.ForWorker(w.Id);
-                var f = Spawn(def.Id, RestaurantCatalog.Worker(w.Id)?.Name ?? def.Name, def.Height, new Vector3(x, 0, rival.Z - 11f), 0, true, false);
+                var f = Spawn(def.Model ?? def.Id, RestaurantCatalog.Worker(w.Id)?.Name ?? def.Name, def.Height, new Vector3(x, 0, rival.Z - 11f), 0, true, false);
                 f.Worker = w; Stats(f, s); if (rally) f.Damage *= 1.15f; if (s.Perk == Perk.Tough) f.Armor = .7f;
                 f.Opponent = g; g.Opponent = f;
             }
             owner.Feedback(crew.Count == 0 ? "RAID! Just you and " + rival.Boss + ". Hold click for a heavy hit, right click to block." :
-                "RAID! " + crew.Count + " vs " + crew.Count + ": your crew take his fry cooks, you take " + rival.Boss + ". Hold click to wind up, right click to block.");
+                "RAID! " + crew.Count + " vs " + crew.Count + ": your crew take his imps, you take " + rival.Boss + ". Hold click to wind up, right click to block.");
         }
         static void Stats(RaidFighter f, ResidentStats s) {
             f.Hp = f.MaxHp = StaffStats.RaidHealth(s); f.Damage = StaffStats.RaidDamage(s); f.Interval = StaffStats.RaidInterval(s); f.Speed = 2.2f * (.7f + .1f * s.Speed);

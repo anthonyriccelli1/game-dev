@@ -16,17 +16,17 @@ namespace RestaurantCity {
 
     public static class Rivals {
         public static readonly RivalDef GreasyGus = new RivalDef {
-            Id = "gus", Name = "Greasy Gus's truck", Place = "the vacant lot off South Avenue", Boss = "Greasy Gus", BossModel = "087_HotDog",
+            Id = "gus", Name = "Greasy Gus's truck", Place = "the vacant lot off South Avenue", Boss = "Greasy Gus", BossModel = "202_GreasyGus",
             Stars = 1, X = 17.5f, Z = -31.5f, NightOnly = true, BossHealth = 240, BossDamage = 18,
-            // A one-star rival's crew: commons-level fighters (10 stat points). A common of yours is an even fight; bring
+            // Gus's imps are commons-level fighters (10 stat points). A common of yours is an even fight; bring
             // someone with more Brawn or Stamina and you're favoured.
             Roster = new[] {
-                new RivalFighter("Deep-fry Dom", "002_CoolAlien", new ResidentStats(1, 2, 3, 4, Perk.None)),
-                new RivalFighter("Marla", "057_Rose", new ResidentStats(2, 3, 2, 3, Perk.None)),
-                new RivalFighter("Slick", "007_Observer", new ResidentStats(1, 4, 2, 3, Perk.None)),
+                new RivalFighter("Gus's Imp One", "203_GusImp", new ResidentStats(1, 2, 3, 4, Perk.None)),
+                new RivalFighter("Gus's Imp Two", "203_GusImp", new ResidentStats(2, 3, 2, 3, Perk.None)),
+                new RivalFighter("Gus's Imp Three", "203_GusImp", new ResidentStats(1, 4, 2, 3, Perk.None)),
             },
             CashMin = 45, CashMax = 70, Flux = 2, RecipeId = "cyclops", DropChance = .4f, Pity = 3,
-            Pitch = "A one-star food truck that parks in the vacant lot after dark. Gus fights dirty and headbutts hard. He brings one fry cook for every crew member you bring.",
+            Pitch = "A one-star food truck that parks in the vacant lot after dark. Gus fights dirty and headbutts hard. He brings one imp for every crew member you bring.",
         };
         public static readonly RivalDef[] All = { GreasyGus };
         public static RivalDef Get(string id) => Array.Find(All, r => r.Id == id);

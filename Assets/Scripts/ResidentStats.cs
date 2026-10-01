@@ -3,7 +3,7 @@ namespace RestaurantCity {
     // Every resident (and every legacy recruit) has four stats from 1 to 5 plus one perk.
     //   Cooking: speed at food stations.   Speed: walking, and washing at the sink.
     //   Stamina: how slowly energy drains.  Brawn: damage in raids (and raid health with Stamina).
-    // Commons total about 10 points, uncommons 12, rares 14.
+    // Commons total 10 points, uncommons 12, rares 14 (PhysicalAcceptance checks it).
     public enum Perk { None, Sprinter, QuickHands, Tireless, NightOwl, Brawler, Tough, Rally, Steady }
     public struct ResidentStats {
         public int Cooking, Speed, Stamina, Brawn; public Perk Perk;
@@ -24,7 +24,7 @@ namespace RestaurantCity {
             { "038_Kate", new ResidentStats(4, 2, 3, 1, Perk.QuickHands) },
             { "053_Erika", new ResidentStats(2, 4, 3, 1, Perk.Steady) },
             { "056_Olivia", new ResidentStats(2, 3, 3, 2, Perk.QuickHands) },
-            { "052_Jennifer", new ResidentStats(1, 4, 2, 3, Perk.Tough) },
+            { "206_TripoCheerleader", new ResidentStats(1, 4, 2, 3, Perk.Rally) },   // Pepper: fast on the floor, fires up a raid crew
             // uncommons
             { "071_LilBro", new ResidentStats(2, 4, 3, 3, Perk.Rally) },
             { "091_BigBro_a", new ResidentStats(3, 2, 3, 4, Perk.Brawler) },
@@ -34,12 +34,12 @@ namespace RestaurantCity {
             { "136_SlugPerson", new ResidentStats(3, 1, 5, 3, Perk.Tireless) },
             { "044_Zombie", new ResidentStats(3, 1, 5, 3, Perk.NightOwl) },
             // rares
-            { "046_Mafiossini", new ResidentStats(3, 3, 3, 5, Perk.Rally) },
             { "139_CoolHydrant", new ResidentStats(3, 3, 5, 3, Perk.QuickHands) },
             { "146_CoolTrash", new ResidentStats(2, 3, 5, 4, Perk.Tough) },
+            { "201_TripoAlien", new ResidentStats(2, 5, 4, 3, Perk.Sprinter) },
+            { "204_TripoReaper", new ResidentStats(2, 3, 4, 5, Perk.Tough) },   // Grim: the best brawler in Old Market
             { "033_Franky", new ResidentStats(4, 2, 5, 3, Perk.Tireless) },
-            { "043_Dracula", new ResidentStats(3, 5, 3, 3, Perk.NightOwl) },
-            { "035_Wolfman", new ResidentStats(3, 4, 3, 4, Perk.Brawler) },
+            { "205_TripoVampire", new ResidentStats(3, 5, 3, 3, Perk.NightOwl) },
             // legacy special recruits
             { "ember", new ResidentStats(4, 2, 4, 2, Perk.Tireless) },
             { "moss", new ResidentStats(2, 4, 3, 1, Perk.Sprinter) },

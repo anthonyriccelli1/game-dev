@@ -31,7 +31,7 @@ namespace RestaurantCity {
         // A full resident: a root (moved/rotated by the game) holding the scaled model, animated by shared Mixamo clips.
         public static GameObject Create(ResidentDef def, Transform parent) {
             var root = new GameObject(def.Name); root.transform.SetParent(parent, false);
-            var model = Spawn(def.Id, root.transform, def.Height);
+            var model = Spawn(def.Model ?? def.Id, root.transform, def.Height);
             if (model) {
                 var animator = model.GetComponent<Animator>();
                 if (animator && animator.avatar && animator.avatar.isHuman && ResidentAnimator.Available) model.AddComponent<ResidentAnimator>().Init(animator, def.Gait);

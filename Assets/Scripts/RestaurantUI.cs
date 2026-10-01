@@ -533,10 +533,10 @@ namespace RestaurantCity {
             Label(prize, known ? "Recipe: " + dish.Name + " (already yours)" : "Chance: the " + dish.Name + " recipe (" + Mathf.RoundToInt(rival.DropChance * 100) + "%, guaranteed by win " + rival.Pity + ")", 18, 64, 330, 44, 15, known ? paper : gold, true);
             Label(prize, "Wins " + rec.Wins + "  /  raids " + rec.Attempts, 18, 116, 330, 22, 13, paper);
             Label(sheet, "THE FIGHT", 35, 232, 600, 22, 14, muted, true);
-            Label(sheet, "You always fight " + rival.Boss + " (" + rival.BossHealth + " health). Click to jab, hold to wind up a heavy, right click to block (block just before a hit to parry).\nHe sends one of his crew against each of yours (below); if your crew member goes down, their fry cook comes for you. If YOU go down you lose $" + RaidRules.CashLoss(st.Cash) + " and your crew's energy.", 35, 250, 790, 58, 14, ink);
+            Label(sheet, "You always fight " + rival.Boss + " (" + rival.BossHealth + " health). Click to jab, hold to wind up a heavy, right click to block (block just before a hit to parry).\nHe sends one imp against each of your crew (below); if your crew member goes down, their imp comes for you. If YOU go down you lose $" + RaidRules.CashLoss(st.Cash) + " and your crew's energy.", 35, 250, 790, 58, 14, ink);
             Label(sheet, "PICK YOUR CREW  (up to " + RaidRules.MaxCrew + "; needs " + RaidRules.MinEnergy + "+ energy; anyone knocked out needs rest after)", 35, 312, 1100, 22, 14, muted, true);
             var workers = Owner.Data.Workers; float x = 35;
-            if (workers.Count == 0) Label(sheet, "No crew yet. Recruit residents in the Staff tab, or go in alone against the fry cooks too.", 35, 340, 1100, 30, 16, coral, true);
+            if (workers.Count == 0) Label(sheet, "No crew yet. Recruit residents in the Staff tab, or go in alone against Gus.", 35, 340, 1100, 30, 16, coral, true);
             foreach (var w in workers) {
                 string id = w.Id; bool picked = Owner.RaidCrew.Contains(id), can = RaidRules.CanFight(w); var s = StaffStats.For(id);
                 var card = Block(sheet, "Crew " + id, x, 340, 220, 150, picked ? new Color(.86f, .95f, .9f) : can ? white : pale);

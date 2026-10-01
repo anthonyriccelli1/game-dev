@@ -9,6 +9,7 @@ namespace RestaurantCity {
    var k=Game.State.Kitchen;
    foreach(var worker in Data.Workers){
     string actor="staff:"+worker.Id;
+    string workerName=RestaurantCatalog.Worker(worker.Id)?.Name??worker.Id;
     if(!employees.TryGetValue(worker.Id,out var view)){var root=People.Worker(worker.Id,RestaurantCatalog.Worker(worker.Id)?.ModelType??8,transform);root.transform.position=W(-9,.055f,-12);view=new EmployeeView{Root=root,Motion=root.GetComponent<CharacterMotion>(),Bubble=WorldCaption(root.transform,"",new Vector3(0,2.4f,0),.023f)};employees[worker.Id]=view;}
     if(!workerPlans.TryGetValue(worker.Id,out var plan)){plan=new Queue<KitchenTask>();workerPlans[worker.Id]=plan;}
     if(view.Job!=worker.Job){
@@ -22,8 +23,8 @@ namespace RestaurantCity {
     view.Motion.Working=false;view.Motion.Walking=false;
     // Stand workers are drawn at the street stand (PhysicalStand), not in the restaurant.
     view.Root.SetActive(worker.Job!=StaffJob.Stand);if(worker.Job==StaffJob.Stand){view.Commute.Clear();k.ReleaseWork(actor);continue;}
-    if(view.Commute.Count>0){view.Motion.Walking=Follow(view.Root.transform,view.Commute,dt*2.7f);SetBubble(view.Bubble,worker.Id+" / heading to the restaurant");continue;}
-    if(worker.Job==StaffJob.Off||worker.Energy<=2||!ServiceInProgress){SetBubble(view.Bubble,worker.Id+" / resting / "+(int)worker.Energy+" energy");continue;}
+    if(view.Commute.Count>0){view.Motion.Walking=Follow(view.Root.transform,view.Commute,dt*2.7f);SetBubble(view.Bubble,workerName+" / heading to the restaurant");continue;}
+    if(worker.Job==StaffJob.Off||worker.Energy<=2||!ServiceInProgress){SetBubble(view.Bubble,workerName+" / resting / "+(int)worker.Energy+" energy");continue;}
     // Zombie Cafe rule: each worker does exactly the one job you assign.
     var job=worker.Job;
     if(plan.Count==0){
@@ -34,14 +35,14 @@ namespace RestaurantCity {
      else if(job==StaffJob.Cook){var order=Data.Orders.FirstOrDefault(o=>o.Stage==RestaurantOrderStage.Waiting&&!employees.Values.Any(v=>v!=view&&v.OrderId==o.Id)&&!k.Items.Any(i=>k.RecipeOf(i)==o.DishId));if(order!=null&&order.DishId=="float"){view.OrderId=order.Id;plan.Enqueue(new KitchenTask("drink_machine"));plan.Enqueue(new KitchenTask("drink_machine","work"));plan.Enqueue(new KitchenTask("drink_machine"));}
       else if(order!=null&&k.Stations.Any(s=>s.CatalogId=="assembly"&&k.At(s.InstanceId)==null)){view.OrderId=order.Id;plan.Enqueue(new KitchenTask("plate_rack"));plan.Enqueue(new KitchenTask("assembly"));AddIngredient(plan,order.DishId=="salad"?"greens":order.DishId=="soup"?"soup":order.DishId=="cometdog"?"sausage":"protein");if(order.DishId!="salad"&&order.DishId!="soup"){plan.Enqueue(new KitchenTask("pantry","bun"));plan.Enqueue(new KitchenTask("assembly"));}if(order.DishId=="midnight")AddIngredient(plan,"sauce");if(order.DishId=="cyclops")AddIngredient(plan,"egg");}}
     }
-    if(plan.Count==0){SetBubble(view.Bubble,worker.Id+" / ready / "+(int)worker.Energy+" energy");continue;}
+    if(plan.Count==0){SetBubble(view.Bubble,workerName+" / ready / "+(int)worker.Energy+" energy");continue;}
     var task=plan.Peek();Vector3 destination;KitchenStation stationData=null;
     if(task.Station=="guest"){if(!guests.TryGetValue(task.Target,out var guest)||!guest.Seat){plan.Clear();continue;}destination=guest.Seat.position;}
     else if(task.Station=="table"){if(!Furnishings.TryGetValue(task.Target,out var table)){plan.Clear();continue;}destination=table.transform.position+Vector3.forward;}
     else{string cat=task.Station;if(cat=="pantry"){var ing=Ingredients.ForShelf(task.Action);if(ing!=null&&ing.Cold&&Data.HasEquipment("fridge"))cat="fridge";}   // cold food is fetched from the fridge
      stationData=k.Stations.FirstOrDefault(s=>!KitchenState.IsStandStation(s.InstanceId)&&s.CatalogId==cat&&(task.Target==0||s.InstanceId==task.Target));if(stationData==null)continue;var furniture=Furnishings[stationData.InstanceId];var wp=furniture.transform.Find("WorkPoint");destination=wp?wp.position:furniture.transform.position+Vector3.forward;}
     destination.y=.055f;var stats=StaffStats.For(worker.Id);worker.Energy=Mathf.Max(0,worker.Energy-dt*WorkerDrain*StaffStats.DrainMultiplier(stats));
-    SetBubble(view.Bubble,worker.Id+" / "+task.Station.Replace('_',' ')+" / "+(int)worker.Energy+" energy");
+    SetBubble(view.Bubble,workerName+" / "+task.Station.Replace('_',' ')+" / "+(int)worker.Energy+" energy");
     if(Vector3.Distance(view.Root.transform.position,destination)>1.2f){if(view.Path.Count==0)AppendRoute(view.Path,view.Root.transform.position,destination);view.Motion.Walking=Follow(view.Root.transform,view.Path,dt*(StaffStats.Exhausted(stats,worker.Energy)?1.3f:2.3f)*StaffStats.WalkMultiplier(stats,Game.State.IsNight));continue;}
     view.Path.Clear();view.Motion.Working=true;bool done=false;
     if(task.Action=="work"){k.Work(Game.State,actor,stationData.InstanceId,dt*WorkerSpeed(worker,task.Station,Game.State.IsNight),out _);var item=k.At(stationData.InstanceId);done=item==null||!(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.RawGreens||item.Kind==KitchenItemKind.RawSauce||item.Kind==KitchenItemKind.DirtyPlate||item.Kind==KitchenItemKind.FloatCup);}
@@ -75,4 +76,3 @@ namespace RestaurantCity {
   }
 }
 }
-

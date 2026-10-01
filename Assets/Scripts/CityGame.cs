@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.IO;
 using UnityEngine;
 
@@ -16,6 +17,7 @@ namespace RestaurantCity {
         public bool Paused { get; private set; } = true;
         public bool Started { get; private set; }
         public bool SmokeMode { get; private set; }
+        public bool PreviewMode { get; private set; }
         public string Notice { get; private set; }
         public string SaveStatus { get; private set; } = "Progress saves automatically";
         float noticeUntil, saveTimer;
@@ -25,7 +27,9 @@ namespace RestaurantCity {
 
         void Awake() {
             SmokeMode = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--smoke-test" || arg == "--snapshots" || arg.StartsWith("--physical-") || arg.StartsWith("--interaction-"));
+            PreviewMode = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--dev-zilo");
             if (!SmokeMode) Load(); else State = new GameState();
+            if (PreviewMode) SaveStatus = "Developer preview - progress is not saved";
             SetPaused(true);
             if (Customer) customerPosition = Customer.transform.position;
         }
@@ -34,9 +38,26 @@ namespace RestaurantCity {
             CoOp = gameObject.AddComponent<LocalCoop>(); CoOp.Initialize(this);
             gameObject.AddComponent<PhysicalHud>().Game = this;
             SyncWorld();
+            if (PreviewMode) StartCoroutine(PreviewZilo());
             if (Array.IndexOf(Environment.GetCommandLineArgs(), "--smoke-test") >= 0) gameObject.AddComponent<PrototypeSmokeTest>().Game = this;
             if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg.StartsWith("--physical-"))) gameObject.AddComponent<PhysicalAcceptance>().Game = this;
             if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg.StartsWith("--interaction-"))) gameObject.AddComponent<InteractionAcceptance>().Game = this;
+        }
+        IEnumerator PreviewZilo() {
+            yield return null;
+            const string id = "201_TripoAlien";
+            State.StandBuilt = true;
+            State.Restaurant.Owned = true;
+            if (!State.MetResidents.Contains(id)) State.MetResidents.Add(id);
+            if (!State.Restaurant.Workers.Exists(w => w.Id == id))
+                State.Restaurant.Workers.Add(new WorkerState { Id = id, Job = StaffJob.Serve, Energy = 100 });
+            Restaurant.RebuildLayout();
+            Restaurant.Advance(.05f);
+            Player.Teleport(RestaurantController.W(-9f, .15f, -10.5f));
+            Player.LookAt(RestaurantController.W(-9f, 1.3f, -12f));
+            SetPaused(false);
+            Notify("Developer preview: Zilo is here. This session will not change your save.", 10);
+            Debug.Log("ZILO_DEV_PREVIEW_READY worker=" + State.Restaurant.Workers.Exists(w => w.Id == id) + " savingDisabled=" + PreviewMode);
         }
         void Update() {
             if (Time.unscaledTime > noticeUntil) Notice = "";
@@ -149,7 +170,7 @@ namespace RestaurantCity {
             Save(); SetPaused(false); Notify("A new beginning. Little Flame is parked in Truck Park.");
         }
         public void Save() {
-            if (SmokeMode) return;
+            if (SmokeMode || PreviewMode) return;
             SaveTo(SavePath);
         }
         public bool SaveTo(string path) {

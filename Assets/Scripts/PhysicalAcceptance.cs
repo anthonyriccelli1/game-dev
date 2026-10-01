@@ -46,31 +46,34 @@ namespace RestaurantCity {
     {bool statsOk=true;foreach(var r in ResidentCast.OldMarket){var rs=StaffStats.For(r.Id);int want=r.Tier==0?10:r.Tier==1?12:14;
       if(!StaffStats.Has(r.Id)||rs.Perk==Perk.None||rs.Total!=want||rs.Cooking<1||rs.Cooking>5||rs.Speed<1||rs.Speed>5||rs.Stamina<1||rs.Stamina>5||rs.Brawn<1||rs.Brawn>5){statsOk=false;Debug.LogWarning("STATS_BAD "+r.Id+" total "+rs.Total);}}
      Check(statsOk,"every Old Market resident has 1-5 stats, a perk, and the rarity's point total");
+     {var old=new GameState();old.MetResidents.Add("043_Dracula");old.MetResidents.Add("205_TripoVampire");old.Restaurant.Workers.Add(new WorkerState{Id="035_Wolfman"});old.SanitizeAfterLoad();
+      Check(old.MetResidents.Count(m=>m=="205_TripoVampire")==1&&!old.MetResidents.Contains("043_Dracula")&&old.Restaurant.Workers.Exists(w=>w.Id=="204_TripoReaper")&&ResidentCast.Get("046_Mafiossini")?.Name=="Zilo","a save that knew a placeholder resident gets the custom character in its place");}
      var lydia=new WorkerState{Id="054_Lydia",Energy=100};var jimmy=new WorkerState{Id="003_Jimmy",Energy=100};
      Check(RestaurantController.WorkerSpeed(lydia,"grill")>RestaurantController.WorkerSpeed(jimmy,"grill")*1.5f,"a Cooking-5 chef works the grill much faster than a Cooking-1 server");
      Check(StaffStats.WalkMultiplier(StaffStats.For("003_Jimmy"),false)>StaffStats.WalkMultiplier(StaffStats.For("033_Franky"),false),"Speed and Sprinter make Jimmy walk faster than Franky");
      Check(StaffStats.DrainMultiplier(StaffStats.For("033_Franky"))<.5f*StaffStats.DrainMultiplier(StaffStats.For("008_Hugo")),"Tireless Franky drains energy far slower than Hugo");
      var tired=new WorkerState{Id="070_Robert",Energy=10};var tired2=new WorkerState{Id="008_Hugo",Energy=10};
      Check(RestaurantController.WorkerSpeed(tired,"grill")>.9f&&RestaurantController.WorkerSpeed(tired2,"grill")<.5f,"Steady Robert keeps his speed when tired; Hugo slows down");}
-    // Raids: Greasy Gus (1 star) after dark. He brings one fry cook per crew member; pairs fight one-on-one; the player beats Gus.
+    // Raids: Greasy Gus (1 star) after dark. He brings one imp per crew member; pairs fight one-on-one; the player beats Gus.
     {var g=st;var rc=Game.Restaurant;var gus=Rivals.GreasyGus;float clock0=g.Clock;int cash0=g.Cash,flux0=g.Flux,rank0=rc.Data.Rank,xp0=g.Xp;bool knew=g.Knows("cyclops");
      rc.Data.Rank=0;g.Clock=60;Check(!RaidRules.CanRaid(g,gus,false,out _),"Gus's truck is only there after dark");
      g.Clock=180;Check(!RaidRules.CanRaid(g,gus,true,out _),"no raids while your restaurant is mid-service");
      Check(RaidRules.CanRaid(g,gus,false,out var why0),"a zero-star restaurant may raid one-star Gus: "+why0);
      Check(GameObject.Find("Greasy Gus's truck")?.GetComponent<Interactable>()?.Kind==InteractionKind.Raid,"Gus's food truck in the vacant lot opens the raid planner");
-     string[] crewIds={"091_BigBro_a","046_Mafiossini"};
+     string[] crewIds={"091_BigBro_a","204_TripoReaper"};
      foreach(var id in crewIds)if(!rc.Data.Workers.Exists(w=>w.Id==id))rc.Data.Workers.Add(new WorkerState{Id=id,Job=StaffJob.Cook,Energy=100});
      rc.RaidCrew.Clear();rc.OpenRaid("gus");rc.UI.Refresh();Check(GameObject.Find("Raid prize")!=null,"the raid planner shows the prize");
      foreach(var id in crewIds)rc.ToggleRaidCrew(id);Check(rc.RaidCrew.Count==2,"pick a crew of two");
      Check(rc.StartRaid(out var rm)&&rc.ActiveRaid!=null,"the raid starts: "+rm);
      var b=rc.ActiveRaid;b.BossPassive=true;b.enabled=false;
-     Check(b.Fighters.Count(f=>f.Ours)==2&&b.Fighters.Count(f=>!f.Ours&&!f.Boss)==2&&b.BossFighter!=null,"two crew bring out exactly two fry cooks, plus Gus");
-     Check(b.Fighters.Where(f=>f.Ours).All(f=>f.Opponent!=null&&f.Opponent.Opponent==f),"each crew member is paired with one fry cook");
+     Check(b.Fighters.Count(f=>f.Ours)==2&&b.Fighters.Count(f=>!f.Ours&&!f.Boss)==2&&b.BossFighter!=null,"two crew bring out exactly two imps, plus Gus");
+     Check(b.Fighters.Where(f=>!f.Ours&&!f.Boss).All(f=>f.GetComponentInChildren<Animator>()!=null&&f.Name.Contains("Imp")),"both rival workers use the imp model");
+     Check(b.Fighters.Where(f=>f.Ours).All(f=>f.Opponent!=null&&f.Opponent.Opponent==f),"each crew member is paired with one imp");
      for(int i=0;i<1200&&b.Fighters.Any(f=>!f.Ours&&!f.Boss&&!f.Down);i++)b.Step(.05f);
      Check(b.Fighters.Where(f=>!f.Ours&&!f.Boss).All(f=>f.Down),"a strong crew wins their one-on-ones");
      int blows=0;while(!b.BossFighter.Down&&blows<40){b.PlayerHit(b.BossFighter,Game.Player,Weapons.Fists.Damage*2,Vector3.zero,true);blows++;}b.Step(.05f);
      Check(blows>=10&&blows<=13,"Gus soaks about a dozen heavy punches ("+blows+")");
-     Check(RaidRules.Duel(StaffStats.For("091_BigBro_a"),gus.Roster[0].Stats)>=1.15f&&RaidRules.Duel(StaffStats.For("003_Jimmy"),gus.Roster[0].Stats)<1,"Big Bro is favoured against Deep-fry Dom; Jimmy is not");
+     Check(RaidRules.Duel(StaffStats.For("091_BigBro_a"),gus.Roster[0].Stats)>=1.15f&&RaidRules.Duel(StaffStats.For("003_Jimmy"),gus.Roster[0].Stats)<1,"Big Bro is favoured against Gus's first imp; Jimmy is not");
      Check(b.Over&&b.Won&&g.Cash>=cash0+gus.CashMin&&g.Flux==flux0+gus.Flux,"beating Gus pays cash and Flux");
      Check(!RaidRules.CanRaid(g,gus,false,out _),"one raid per rival per day");
      Check(rc.Data.Workers.Where(w=>crewIds.Contains(w.Id)).All(w=>w.Energy<100),"the crew comes back tired");
@@ -79,7 +82,7 @@ namespace RestaurantCity {
      // Going down in a raid: lose 20% of your cash (capped) and your crew's energy, and wake up away from the lot.
      g.Raids.Clear();foreach(var w in rc.Data.Workers.Where(w=>crewIds.Contains(w.Id)))w.Energy=100;g.Cash=300;
      rc.RaidCrew.Clear();rc.ToggleRaidCrew(crewIds[0]);Check(rc.StartRaid(out _),"a second raid starts");var b2=rc.ActiveRaid;b2.enabled=false;
-     Check(b2.Fighters.Count(f=>!f.Ours&&!f.Boss)==1,"one crew member brings out one fry cook");
+     Check(b2.Fighters.Count(f=>!f.Ours&&!f.Boss)==1,"one crew member brings out one imp");
      Game.Player.Teleport(b2.Center);Game.HurtPlayer(Game.Player,500,null);
      Check(b2.Over&&!b2.Won&&b2.CashLost==60&&RaidRules.CashLoss(301)==61&&g.Cash<=240&&rc.Data.Workers.Find(w=>w.Id==crewIds[0]).Energy==0,"knocked out: lose $60 of $300 and the crew's energy (over "+b2.Over+" won "+b2.Won+" cash "+g.Cash+" energy "+rc.Data.Workers.Find(w=>w.Id==crewIds[0]).Energy+" hp "+Game.Player.Health+")");
      Check(Vector3.Distance(Game.Player.transform.position,b2.Center)>10&&Game.Player.Health>0,"you wake up away from the lot");
@@ -201,7 +204,6 @@ namespace RestaurantCity {
   void Fail(Exception e){Debug.LogError("PHYSICAL_RUNTIME_FAIL "+e);Application.Quit(1);}
  }
 }
-
 
 
 

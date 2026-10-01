@@ -29,3 +29,19 @@ The chopping knife, intermediate food presentation and procedural station animat
 ## POLYGON Shops restaurant architecture (September 29, 2026)
 
 The current restaurant storefront, finish materials, furnishings and the placeable partition wall, open service window, and service counter use the user's imported Synty Studios **POLYGON - Shops Pack** under `Assets/Synty/PolygonShops`. `Assets/Editor/ArtPackDressing.cs` generates scaled runtime override prefabs from those sources. The original pack files and their materials remain in the project; the generated overrides are derivative arrangements of pack assets. The pack's specific license grant is not recorded in this repository, so do not treat the earlier procedural-art/no-external-assets statement as applying to this architecture pass. Confirm the purchased entitlement and distribution terms before shipping the game or sharing source assets.
+
+## Tripo alien pilot (September 30, 2026)
+
+`Assets/Resources/Residents/201_TripoAlien.fbx` and `201_TripoAlien.png` were generated in Tripo Studio from the user's alien character concept. The user supplied the completed Mixamo-preset Humanoid rig export in `ThirdParty-Downloads/alien-rigged.zip` under their Tripo Pro subscription. The FBX has 5,121 triangles and a valid Unity Humanoid avatar; the base-color texture is the only map currently imported for the resident material. Normal, roughness and metallic maps remain in the source ZIP. The character is Zilo, a rare Old Market visitor and five-Flux recruit. Tripo's published paid-plan rights are described at https://www.tripo3d.ai/help/privacy-policy/how-to-use-tripo-models-commercially ; retain the user's purchase records and original concept source when preparing a release.
+
+New custom resident imports use `ResidentCast.CustomResidentHeight` (currently 2.0 m) for consistent in-game scale. This scales the Unity instance; no new Tripo generation or export is required.
+
+## Greasy Gus raid boss (September 30, 2026)
+
+`Assets/Resources/Residents/202_GreasyGus.fbx` and `202_GreasyGus.png` come from the user's Tripo export `ThirdParty-Downloads/demon+chef+3d+model.zip`, generated from their Gus Demon concept. This character replaces the temporary hot-dog model as the boss of Greasy Gus's food-truck raid. The base-color texture is imported for the current resident material; normal, roughness and metallic maps remain in the source ZIP. The boss uses the project's 2.0 m custom-character height. Retain the user's Tripo subscription and source-concept records for release licensing.
+
+`Assets/Resources/Residents/203_GusImp.fbx` and `203_GusImp.png` come from the user's Tripo export `Downloads/stylized+character+3d+model.zip`, generated from their Gus Food Truck Imp concept. The model appears in both of Gus's worker slots, and in the third slot when the player brings three crew. Each slot retains its former combat stats. The base-color map is imported; other maps remain in the ZIP. The similarly named `gus+imp+worker.zip` is actually a byte-for-byte copy of the earlier alien export and is not used.
+
+## Grim, Dracula's new look and Pepper (October 1, 2026)
+
+From the user's Tripo exports (Mixamo-preset Humanoid rigs) in `ThirdParty-Downloads`: `204_TripoReaper` (grim+reaper+3d+model.zip, Grim, a rare night visitor), `205_TripoVampire` (vampire+character+3d+model.zip, the new model for the existing rare resident Dracula; his id `043_Dracula` is unchanged so saves and the People book carry over) and `206_TripoCheerleader` (cheerleader+3d+model.zip, Pepper, a common). Each has the FBX and its base-colour map; the other maps stay in the ZIPs. Custom-character textures import at a 1024 maximum (`ResidentImport`). Retain the user's Tripo subscription and concept records for release licensing.
