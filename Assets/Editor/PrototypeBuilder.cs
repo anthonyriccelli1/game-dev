@@ -197,9 +197,21 @@ public static class PrototypeBuilder {
         }
         Debug.Log("RESTAURANT_CITY_VALIDATION_PASSED");
     }
+    // Characters use a matte Lit material: no specular highlight and no sky reflection. On the pale painted skin of the
+    // Tripo humans those two added a cold white sheen (arms and hands looked white and washed out). Kept as an asset in
+    // Resources so the build includes the shader variants these switches need.
+    const string ResidentMat = "Assets/Resources/ResidentMaterial.mat";
+    static void ResidentMaterialAsset() {
+        var m = AssetDatabase.LoadAssetAtPath<Material>(ResidentMat);
+        if (!m) { m = new Material(Shader.Find("Universal Render Pipeline/Lit")); AssetDatabase.CreateAsset(m, ResidentMat); }
+        m.SetFloat("_Smoothness", 0); m.SetFloat("_Metallic", 0);
+        m.SetFloat("_SpecularHighlights", 0); m.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+        m.SetFloat("_EnvironmentReflections", 0); m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+        m.color = Color.white; EditorUtility.SetDirty(m); AssetDatabase.SaveAssets();
+    }
     [MenuItem("Restaurant City/Build Windows Player")]
     public static void Build() {
-        Open(); Validate(); Directory.CreateDirectory("Builds/Windows");
+        Open(); ResidentMaterialAsset(); Validate(); Directory.CreateDirectory("Builds/Windows");
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions {
             scenes = new[] { ScenePath }, locationPathName = "Builds/Windows/RestaurantCity.exe",
             target = BuildTarget.StandaloneWindows64, options = BuildOptions.Development

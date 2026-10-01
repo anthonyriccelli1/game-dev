@@ -9,9 +9,11 @@ namespace RestaurantCity {
             if (!prefab) { Debug.LogWarning("Resident model missing: " + id); return null; }
             var go = Object.Instantiate(prefab, parent, false); go.name = "Resident " + id;
             var tex = Resources.Load<Texture2D>("Residents/" + id);
-            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = "Resident " + id };
+            // Matte: no specular or sky reflection (see PrototypeBuilder.ResidentMaterialAsset).
+            var matte = Resources.Load<Material>("ResidentMaterial");
+            var mat = matte ? new Material(matte) { name = "Resident " + id } : new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = "Resident " + id };
             if (tex) { mat.SetTexture("_BaseMap", tex); mat.mainTexture = tex; }
-            mat.SetFloat("_Smoothness", .12f); mat.color = Color.white;
+            if (!matte) mat.SetFloat("_Smoothness", .12f); mat.color = Color.white;
             foreach (var r in go.GetComponentsInChildren<Renderer>(true)) { var ms = new Material[r.sharedMaterials.Length]; for (int i = 0; i < ms.Length; i++) ms[i] = mat; r.sharedMaterials = ms; }
             // Skinned-mesh bounds are unreliable before the first skinning pass, so measure the baked (bind-pose) mesh.
             float minY = float.MaxValue, maxY = float.MinValue; var baked = new Mesh();
