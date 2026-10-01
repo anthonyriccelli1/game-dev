@@ -393,10 +393,11 @@ namespace RestaurantCity {
         public bool CompleteServing(GameState wallet,int id,out string message) {
             var o=Orders.Find(x=>x.Id==id);if(o==null||o.Stage!=RestaurantOrderStage.Ready)return Fail("Choose a ready dish to serve.",out message);
             var c=RestaurantCatalog.Customers[o.CustomerType];var d=RestaurantCatalog.Dish(o.DishId);
-            float waitRatio=o.Wait/PatienceOf(o),score=45+o.Quality*30+(waitRatio<.35f?10:waitRatio>.7f?-15:0)+Math.Min(10,Ambience*.55f)*c.AmbienceWeight+(Cleanliness-60)*.15f*c.CleanlinessWeight+(c.FavoriteDish==o.DishId?5:0);
+            float waitRatio=o.Wait/PatienceOf(o),score=45+o.Quality*30+(waitRatio<.35f?10:waitRatio>.7f?-15:0)+Math.Min(10,Ambience*.55f)*c.AmbienceWeight+(Cleanliness-60)*.15f*c.CleanlinessWeight+(c.FavoriteDish==o.DishId?5:0)+(o.Quality>=.99f&&Ingredients.For(o.DishId).Contains("patty")?6:0);
             score=Clamp(score,0,100);int tip=score>=85?4:score>=70?2:0,wage=WagesPerOrder,revenue=Math.Max(0,d.Price+tip-wage);
             wallet.Cash+=revenue;Earnings+=revenue;Served++;int rep=score>=70?Reputation.HappyCustomer:score>=45?Reputation.OkCustomer:0;if(score>=60&&o.CustomerType>=0&&o.CustomerType<ServedByType.Length){ServedByType[o.CustomerType]++;}bool met=wallet.MeetResident(o.ResidentId,Reputation.NewResident);Rep(rep>Reputation.HappyCustomer?"New kinds of guests":"Restaurant guests",rep);Cleanliness=Math.Max(0,Cleanliness-4);
-            string food=o.Quality>.85f?"Food fresh":o.Quality>.6f?"Food cooled":"Food sat too long";
+            bool pattyDish=Ingredients.For(o.DishId).Contains("patty");
+            string food=pattyDish&&o.Quality>=.99f?"Perfect patty":pattyDish&&o.Quality<.66f?"Patty overdone":pattyDish&&o.Quality<.8f&&o.Quality>.7f?"Patty pale on one side":o.Quality>.85f?"Food fresh":o.Quality>.6f?"Food cooled":"Food sat too long";
             string wait=waitRatio<.35f?"short wait":waitRatio>.7f?"long wait":"reasonable wait";
             string room=Cleanliness<45?"dirty tables":Cleanliness>75?"spotless room":"room could be cleaner";
             AddReview(o,score,$"{food}; {wait}; {room}; {(Ambience>=12?"lovely ambience":"plain surroundings")}{(c.FavoriteDish==o.DishId?"; my favorite dish!":".")}");
@@ -408,9 +409,11 @@ namespace RestaurantCity {
         }
         // Little Flame counts toward your first stars: the truck is where your reputation starts.
         // Score depends only on how long they waited at the window (patience left when served).
-        public float RecordTruckGuest(string residentId,string dish,float patienceLeft){
+        public float RecordTruckGuest(string residentId,string dish,float patienceLeft,float quality=.9f,bool perfect=false){
             float r=Clamp(patienceLeft,0,1),score=r>.6f?88:r>.3f?72:52;
             string comment=r>.6f?"Hot off the truck, barely waited. Great stuff!":r>.3f?"Tasty, but the line moved slowly.":"Good food, but I waited forever at the window.";
+            if(perfect){score=Math.Min(100,score+8);comment="Perfect patty! "+comment;}
+            else if(quality<.8f){score-=15;comment="The patty was "+(quality<.66f?"overdone. ":"pale on one side. ")+comment;}
             Served++;AddTruckReview(residentId,dish,score,comment);UpdateRank();return score;
         }
         public void RecordTruckWalkout(string residentId,string dish){Lost++;AddTruckReview(residentId,dish,15,"Waited at the truck window and nobody served me. I left.");}

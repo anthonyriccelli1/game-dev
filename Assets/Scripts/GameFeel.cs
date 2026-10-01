@@ -101,6 +101,24 @@ namespace RestaurantCity {
                     if (obj) Pop(obj.transform.position + Vector3.up * 1.9f, kind == "burn" ? "BURNT!" : "SCORCHED!", "E1543B", .032f);
                     break;
                 }
+                case "flipready": { Fx(SoundFx.Clink, .55f); var obj = StationObject(A(1)); if (obj) Pop(obj.transform.position + Vector3.up * 1.7f, "Flip it!", "F2C94C", .03f); break; }
+                case "flip": {
+                    string g = parts.Length > 2 ? parts[2] : ""; Fx(SoundFx.Thud, .55f); var obj = StationObject(A(1)); if (!obj) break;
+                    var at = obj.transform.position + Vector3.up * 1.7f;
+                    if (g == "perfect") { Fx(SoundFx.Tip, .6f); Pop(at, "Perfect flip!", "4FCB7A", .03f); }
+                    else if (g == "almost") Pop(at, "Just a touch early", "E8C34A", .026f);
+                    else if (g == "early") Pop(at, "Too early!", "E8973A", .026f);
+                    else if (g == "late") Pop(at, "A little dark", "E8973A", .026f);
+                    else if (g == "charred") Pop(at, "Charred!", "E1543B", .028f);
+                    break;
+                }
+                case "pattydone": {
+                    string g = parts.Length > 2 ? parts[2] : ""; var obj = StationObject(A(1)); if (!obj) break; var at = obj.transform.position + Vector3.up * 1.9f;
+                    if (g == "perfect") { Fx(SoundFx.Tip, .9f); Pop(at, "PERFECT PATTY!", "F2C94C", .034f); }
+                    else if (g == "good") { Fx(SoundFx.Clink, .6f); Pop(at, "Ready!", "4FCB7A", .028f); }
+                    else Pop(at, g == "pale" ? "Ready, but pale on top. Flip next time!" : "Ready, but overdone", "E8973A", .024f);
+                    break;
+                }
                 case "stirwarn": { Fx(SoundFx.Warning, .6f); var obj = StationObject(A(1)); if (obj) Pop(obj.transform.position + Vector3.up * 1.9f, "Stir it!", "E8973A", .028f); break; }
             }
         }
@@ -119,7 +137,11 @@ namespace RestaurantCity {
                 }
                 if (!src) continue;
                 var clip = st.CatalogId == "stove" ? SoundFx.Bubble : SoundFx.Sizzle;
-                if (on) { if (src.clip != clip) src.clip = clip; src.volume = item.Kind == KitchenItemKind.CookedPatty ? .75f : .5f; if (!src.isPlaying) src.Play(); }
+                if (on) {
+                    if (src.clip != clip) src.clip = clip; src.volume = item.Kind == KitchenItemKind.CookedPatty ? .75f : .5f; src.pitch = 1;
+                    if (st.CatalogId == "grill" && KitchenState.Flippable(item)) { float r = KitchenState.DownSide(item) / KitchenState.SideGolden("grill", Game.State.Restaurant.LevelOf(st.InstanceId)); src.volume = r < 1 ? .45f + r * .2f : r <= KitchenState.GoodHigh ? .85f : 1f; src.pitch = r < 1 ? 1 : r <= KitchenState.PerfectSide ? 1.12f : .85f; }
+                    if (!src.isPlaying) src.Play();
+                }
                 else if (src.isPlaying) src.Stop();
             }
         }

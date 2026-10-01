@@ -73,7 +73,7 @@ namespace RestaurantCity {
     string line=preview.Kind==KitchenActionKind.None?preview.FailReason:glyph+(preview.Allowed?preview.Label:preview.FailReason);
     prompts[actor]=station.CatalogId.Replace('_',' ')+(string.IsNullOrEmpty(line)?"":"\n"+line);
     prompts[actor]+=CookStatus(station,k.At(station.InstanceId));
-    if(station.CatalogId=="grill"&&k.At(station.InstanceId) is KitchenItem onGrill&&!KitchenState.NoFlip(onGrill.Kind))prompts[actor]+="\nLeft click / RB: flip patty";
+    if(station.CatalogId=="grill"&&k.At(station.InstanceId) is KitchenItem onGrill&&!KitchenState.NoFlip(onGrill.Kind))prompts[actor]+="\nClick, flick the mouse up, or RB: flip";
     if(station.CatalogId=="trash")prompts[actor]+="\nContents "+station.WasteCount+" / 6";
     // A dirty plate in the sink: E lifts it up to scrub by hand (first person). Elevated view keeps hold-to-wash.
     if(station.CatalogId=="sink"&&!p.Elevated&&k.Hold(actor)==null&&k.At(station.InstanceId) is KitchenItem dirtyPlate&&dirtyPlate.Kind==KitchenItemKind.DirtyPlate){
@@ -134,6 +134,14 @@ namespace RestaurantCity {
    if(item==null||(s.CatalogId!="grill"&&s.CatalogId!="oven"))return "";
    var times=KitchenState.GrillTimes(s.CatalogId,Data.LevelOf(s.InstanceId),item.Kind);float done=times.cook,burn=times.burn,t=s.Progress;
    if(KitchenState.GrillBurnt(item.Kind))return "\n<color=#E1543B>BURNT - take it and press Q to discard</color>";
+   if(s.CatalogId=="grill"&&KitchenState.Flippable(item)){
+    float g=KitchenState.SideGolden("grill",Data.LevelOf(s.InstanceId)),dn=KitchenState.DownSide(item)/g,up=KitchenState.UpSide(item)/g;
+    string D(float r)=>r<KitchenState.GoodLow?"raw":r<1?"browning":r<=KitchenState.PerfectSide?"GOLDEN":r<=KitchenState.GoodHigh?"getting dark":"BURNING";
+    string line="\n<color="+(dn>KitchenState.GoodHigh?"#E1543B":dn>=1&&dn<=KitchenState.PerfectSide?"#4FCB7A":"#E8C34A")+">Underside "+D(dn)+"   /   Top "+D(up)+"</color>";
+    if(up<1&&dn>=1)line+="\n<color=#4FCB7A>FLIP IT!</color>";
+    else if(item.Kind==KitchenItemKind.CookedPatty)line+=item.Quality>=.99f?"\n<color=#F2C94C>PERFECT - grab it now!</color>":item.Quality>=.85f?"\n<color=#4FCB7A>READY</color>":"\n<color=#E8973A>READY ("+KitchenState.PattyVerdict(item.Quality)+")</color>";
+    return line;
+   }
    if(KitchenState.GrillDone(item.Kind)){int left=Mathf.Max(0,Mathf.CeilToInt(burn-t));return "\n<color="+(left<6?"#E1543B":"#4FCB7A")+">READY"+(left<6?" - burning in "+left+"s!":"")+"</color>";}
    if(!KitchenState.GrillRaw(item.Kind))return "";
    int filled=Mathf.Clamp(Mathf.FloorToInt(t/done*10),0,10);

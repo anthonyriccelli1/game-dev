@@ -86,6 +86,29 @@ public static class EditorTools {
         }
         File.WriteAllText("EditorOutput/shelf-heights.txt", sb.ToString()); return "shelves written";
     }
+    // Up-facing surfaces of render-list prefabs, grouped by height, with their X/Z extents (finds a grill's grate area).
+    public static string DumpTopAreas() {
+        var sb = new StringBuilder();
+        foreach (var line in File.ReadAllLines("EditorOutput/render-list.txt").Select(l => l.Trim().Split(' ')[0]).Where(l => l.Length > 0)) {
+            var src = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath(line)); if (!src) continue;
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(src); sb.AppendLine(Path.GetFileName(line));
+            var groups = new System.Collections.Generic.SortedDictionary<float, Vector4>(); var areas = new System.Collections.Generic.Dictionary<float, float>();
+            foreach (var mf in go.GetComponentsInChildren<MeshFilter>()) {
+                var m = mf.sharedMesh; var v = m.vertices; var t = m.triangles;
+                for (int i = 0; i < t.Length; i += 3) {
+                    Vector3 a = mf.transform.TransformPoint(v[t[i]]), b = mf.transform.TransformPoint(v[t[i + 1]]), c = mf.transform.TransformPoint(v[t[i + 2]]);
+                    var n = Vector3.Cross(b - a, c - a); float area = n.magnitude * .5f; if (area < .00001f || n.normalized.y < .9f) continue;
+                    float y = Mathf.Round((a.y + b.y + c.y) / 3 * 100) / 100;
+                    var g = groups.TryGetValue(y, out var g0) ? g0 : new Vector4(9, -9, 9, -9);
+                    foreach (var p in new[] { a, b, c }) g = new Vector4(Mathf.Min(g.x, p.x), Mathf.Max(g.y, p.x), Mathf.Min(g.z, p.z), Mathf.Max(g.w, p.z));
+                    groups[y] = g; areas[y] = (areas.TryGetValue(y, out var s0) ? s0 : 0) + area;
+                }
+            }
+            foreach (var kv in groups) sb.AppendLine("  y=" + kv.Key.ToString("F2") + " x[" + kv.Value.x.ToString("F3") + "," + kv.Value.y.ToString("F3") + "] z[" + kv.Value.z.ToString("F3") + "," + kv.Value.w.ToString("F3") + "] area=" + areas[kv.Key].ToString("F4"));
+            Object.DestroyImmediate(go);
+        }
+        File.WriteAllText("EditorOutput/top-areas.txt", sb.ToString()); return "top areas written";
+    }
     public static string DumpPrefabSizes() {
         var sb = new StringBuilder();
         foreach (var line in File.ReadAllLines("EditorOutput/render-list.txt").Select(l => l.Trim().Split(' ')[0]).Where(l => l.Length > 0)) {

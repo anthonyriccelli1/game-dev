@@ -8,7 +8,7 @@ namespace RestaurantCity {
  // invoking the very same Apply callback it returned, so the on-screen prompt and the executed action can
  // never disagree (Stage A / A1).
  public struct KitchenAction { public bool Allowed; public string Label; public KitchenActionKind Kind; public string FailReason; public Func<string> Apply; }
- [Serializable] public class KitchenItem { public int Id,Parts,TableInstanceId,SeatNumber; public KitchenItemKind Kind; public float Quality=1,Age; public string Holder; public List<string> Components=new List<string>(); public bool Disposable,StandPlate; public float Stir; }   // SeatNumber: one-based, zero for legacy plates. Stir: seconds since a simmering pot was last stirred
+ [Serializable] public class KitchenItem { public int Id,Parts,TableInstanceId,SeatNumber; public KitchenItemKind Kind; public float Quality=1,Age; public string Holder; public List<string> Components=new List<string>(); public bool Disposable,StandPlate; public float Stir; public float SideA,SideB,FlipLock; public int Flips; }   // SeatNumber: one-based, zero for legacy plates. Stir: seconds since a simmering pot was last stirred
  [Serializable] public class KitchenStation { public int InstanceId; public string CatalogId,WorkOwner,InputAction; public float Progress; public int WasteCount; }
  [Serializable] public class ShiftReport { public int GrossSales,Wages,Net,Served,Lost,StarsBefore,StarsAfter; public float IngredientCosts,Satisfaction; public List<string> Comments=new List<string>(); public string StaffSummary; }
  [Serializable] public class KitchenState {
@@ -294,10 +294,10 @@ namespace RestaurantCity {
    if(order.Stage==0)return Fail("They're still waiting for a free table. Clear a dirty one.",out message);
    if(order.Stage==2)return Fail("They're already eating.",out message);
    if(dish!=order.Dish)return Fail(dish==""?"Make a "+DishName(order.Dish)+" first: "+HowTo(order.Dish)+".":"They ordered a "+DishName(order.Dish)+".",out message);
-   int price=StandPrice(game,dish);bool fast=order.Patience>order.MaxPatience*.6f;if(fast)price+=2;
-   game.Cash+=price;if(fast)game.GainReputation(Reputation.StandFast,"Stand sales");game.Served++;game.Restaurant.RecordTruckGuest(order.ResidentId,dish,order.Patience/Math.Max(1f,order.MaxPatience));game.Emit("stand_served:"+order.Id+":"+(fast?2:0));bool met=game.MeetResident(order.ResidentId);
+   int price=StandPrice(game,dish);bool fast=order.Patience>order.MaxPatience*.6f;if(fast)price+=2;bool perfect=PerfectDish(item);if(perfect)price+=2;
+   game.Cash+=price;if(fast)game.GainReputation(Reputation.StandFast,"Stand sales");game.Served++;game.Restaurant.RecordTruckGuest(order.ResidentId,dish,order.Patience/Math.Max(1f,order.MaxPatience),item.Quality,perfect);game.Emit("stand_served:"+order.Id+":"+(fast?2:0));bool met=game.MeetResident(order.ResidentId);
    order.Stage=2;order.EatLeft=GameState.StandEatSeconds;Items.Remove(item);   // the plate stays on their table until they finish
-   message="+$"+price+(fast?" (incl. $2 speed tip)  +"+Reputation.StandFast+" rep":"")+(met?"  NEW: "+ResidentCast.Get(order.ResidentId).Name+" joined your People book!":"  Enjoy! Clear the plate when they're done.");return true;
+   message="+$"+price+(perfect?" (incl. $2 perfect-patty tip)":"")+(fast?" (incl. $2 speed tip)  +"+Reputation.StandFast+" rep":"")+(met?"  NEW: "+ResidentCast.Get(order.ResidentId).Name+" joined your People book!":"  Enjoy! Clear the plate when they're done.");return true;
   }
   // Serve whichever seated guest ordered what you're carrying (the table/guest target picks exactly; this is the fallback).
   public bool ServeStand(GameState game,string actor,out string message){
@@ -338,6 +338,26 @@ namespace RestaurantCity {
   public static bool Egg(KitchenItemKind k)=>k==KitchenItemKind.RawEgg||k==KitchenItemKind.FriedEgg||k==KitchenItemKind.BurntEgg;
   // Grill food that is never flipped: sausages roll themselves, the Cyclops egg is sunny side up.
   public static bool NoFlip(KitchenItemKind k)=>Sausage(k)||Egg(k);
+  // Two-sided patties on the grill: only the side facing down cooks. A side turns golden at half the cook time.
+  // Perfect = both sides inside the golden window; good = neither side pale or dark; otherwise uneven / overdone.
+  // Never flipping still gives a cooked (pale-topped) patty, so workers and slow hands are never stuck.
+  public const float PerfectSide=1.45f,GoodLow=.7f,GoodHigh=2.6f,SideBurnShare=.6f,FlipCooldown=.55f;
+  public static float SideGolden(string catalogId,int level)=>StationUpgrades.CookSeconds(catalogId,level)*.5f;
+  public static float DownSide(KitchenItem i)=>i.Flips%2==0?i.SideA:i.SideB;
+  public static float UpSide(KitchenItem i)=>i.Flips%2==0?i.SideB:i.SideA;
+  public static float PattyQuality(KitchenItem i,float golden){float a=i.SideA/golden,b=i.SideB/golden;if(a>=1&&b>=1&&a<=PerfectSide&&b<=PerfectSide)return 1;if(Math.Min(a,b)<GoodLow)return .72f;if(Math.Max(a,b)>GoodHigh)return .62f;return .9f;}
+  public static string PattyVerdict(float q)=>q>=.99f?"perfect":q>=.85f?"good":q>=.7f?"pale":"overdone";
+  public static bool PerfectDish(KitchenItem plate)=>plate!=null&&plate.Quality>=.99f&&plate.Components!=null&&plate.Components.Contains("cooked_patty");
+  public static bool Flippable(KitchenItem i)=>i!=null&&(i.Kind==KitchenItemKind.RawProtein||i.Kind==KitchenItemKind.CookedPatty);
+  // Flip the patty on a grill. Anyone can flip (co-op); a short lock stops double flips. Graded by how cooked the underside was.
+  public bool FlipPatty(GameState game,int stationId,out string grade){
+   grade="";var s=Stations.Find(x=>x.InstanceId==stationId);var item=At(stationId);
+   if(s==null||s.CatalogId!="grill"||!Flippable(item)||item.FlipLock>0)return false;
+   float g=SideGolden(s.CatalogId,game.Restaurant.LevelOf(stationId)),down=DownSide(item)/g;
+   grade=down<GoodLow?"early":down<1?"almost":down<=PerfectSide?"perfect":down<=GoodHigh?"late":"charred";
+   item.Flips++;item.FlipLock=FlipCooldown;if(item.Kind==KitchenItemKind.CookedPatty)item.Quality=PattyQuality(item,g);
+   game.Emit("flip:"+stationId+":"+grade);return true;
+  }
   public static bool GrillRaw(KitchenItemKind k)=>k==KitchenItemKind.RawProtein||k==KitchenItemKind.RawSausage||k==KitchenItemKind.RawEgg;
   public static bool GrillDone(KitchenItemKind k)=>k==KitchenItemKind.CookedPatty||k==KitchenItemKind.CookedSausage||k==KitchenItemKind.FriedEgg;
   public static bool GrillBurnt(KitchenItemKind k)=>k==KitchenItemKind.BurntPatty||k==KitchenItemKind.BurntSausage||k==KitchenItemKind.BurntEgg;
@@ -355,7 +375,12 @@ namespace RestaurantCity {
    if(seconds<=0||float.IsNaN(seconds)||float.IsInfinity(seconds))return;
    BalancePlates(game.Restaurant);
    foreach(var s in Stations){if(s.CatalogId!="stove")continue;var pot=At(s.InstanceId);if(pot!=null)TickStove(game,s,pot,seconds*StationUpgrades.SoupSpeed(game.Restaurant.LevelOf(s.InstanceId)));}
-   foreach(var s in Stations){var item=At(s.InstanceId);if((s.CatalogId!="grill"&&s.CatalogId!="oven")||item==null)continue;if(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.CookedPatty){int lvl=game.Restaurant.LevelOf(s.InstanceId);s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=StationUpgrades.BurnSeconds(lvl)){if(item.Kind!=KitchenItemKind.BurntPatty)game.Emit("burn:"+s.InstanceId);item.Kind=KitchenItemKind.BurntPatty;item.Quality=0;}else if(s.Progress>=StationUpgrades.CookSeconds(s.CatalogId,lvl))item.Kind=KitchenItemKind.CookedPatty;}
+   foreach(var s in Stations){var item=At(s.InstanceId);if((s.CatalogId!="grill"&&s.CatalogId!="oven")||item==null)continue;if(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.CookedPatty){int lvl=game.Restaurant.LevelOf(s.InstanceId);s.Progress+=seconds;item.Age+=seconds;
+     bool sides=s.CatalogId=="grill";float g=SideGolden(s.CatalogId,lvl);
+     if(sides){item.FlipLock=Math.Max(0,item.FlipLock-seconds);float before=DownSide(item);if(item.Flips%2==0)item.SideA+=seconds;else item.SideB+=seconds;if(before<g&&DownSide(item)>=g&&UpSide(item)<g)game.Emit("flipready:"+s.InstanceId);}
+     if(s.Progress>=StationUpgrades.BurnSeconds(lvl)||sides&&DownSide(item)>=StationUpgrades.BurnSeconds(lvl)*SideBurnShare){if(item.Kind!=KitchenItemKind.BurntPatty)game.Emit("burn:"+s.InstanceId);item.Kind=KitchenItemKind.BurntPatty;item.Quality=0;}
+     else if(s.Progress>=StationUpgrades.CookSeconds(s.CatalogId,lvl)){bool was=item.Kind==KitchenItemKind.CookedPatty;item.Kind=KitchenItemKind.CookedPatty;
+      if(sides){float q=PattyQuality(item,g);if(!was||q>=.99f&&item.Quality<.99f)game.Emit("pattydone:"+s.InstanceId+":"+PattyVerdict(q));item.Quality=q;}}}
     // Comet Dog sausages: hot as a comet. They cook in 60% of a patty's time and burn in half the time.
     else if(item.Kind==KitchenItemKind.RawSausage||item.Kind==KitchenItemKind.CookedSausage){int lvl=game.Restaurant.LevelOf(s.InstanceId);s.Progress+=seconds;item.Age+=seconds;if(s.Progress>=StationUpgrades.BurnSeconds(lvl)*SausageBurn){if(item.Kind!=KitchenItemKind.BurntSausage)game.Emit("burn:"+s.InstanceId);item.Kind=KitchenItemKind.BurntSausage;item.Quality=0;}else if(s.Progress>=StationUpgrades.CookSeconds(s.CatalogId,lvl)*SausageCook)item.Kind=KitchenItemKind.CookedSausage;}
     // The Cyclops egg: fries in under half a patty's time; take it off before the yolk goes hard and black.

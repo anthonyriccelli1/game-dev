@@ -55,6 +55,7 @@ namespace RestaurantCity {
                 RunStationFeedbackChecks(grill, Station("sink"));
                 RunChoppingChecks(prep);
                 RunScrubChecks(Station("sink"));
+                RunPattyChecks(grill);
                 yield return null; // Rebuild cleanup is deferred until the end of the frame.
                 Physics.SyncTransforms();
                 var table = R.Data.Layout.First(x => RestaurantCatalog.Find(x.CatalogId).Seats > 0).InstanceId;
@@ -356,6 +357,27 @@ namespace RestaurantCity {
             for (int pass = 0; pass < 5; pass++) for (float y = .06f; y < .95f; y += .03f) { bool odd = Mathf.RoundToInt(y / .03f) % 2 == 1; path.Add(new Vector2(odd ? .05f : .95f, y)); path.Add(new Vector2(odd ? .95f : .05f, y)); }
             scrub.ScrubPath(path.ToArray()); scrub.Tick(null, null, null, .02f);
             Check(!scrub.Active && K.At(sink) == null && K.CleanPlates == clean0 + 1 && !PlateScrub.HeldAt(sink), "scrubbing it clean returns exactly one clean plate (" + scrub.CleanRatio + ")");
+        }
+        // Two-sided patties: flip at golden for a perfect patty; never flipping still cooks (pale top); flips can't double up.
+        void RunPattyChecks(int grill) {
+            float g = KitchenState.SideGolden("grill", R.Data.LevelOf(grill)); var st = K.Stations.First(s => s.InstanceId == grill);
+            KitchenItem Fresh() { foreach (var it in K.Items.Where(i => i.Holder == "station:" + grill).ToList()) K.Items.Remove(it); st.Progress = 0; var p = new KitchenItem { Id = K.NextItemId++, Kind = KitchenItemKind.RawProtein, Holder = "station:" + grill }; K.Items.Add(p); return p; }
+            var patty = Fresh(); Game.State.Events.Clear();
+            K.Tick(Game.State, g * 1.1f);
+            Check(Game.State.Events.Exists(e => e == "flipready:" + grill), "the grill calls for a flip once the underside is golden");
+            Check(K.FlipPatty(Game.State, grill, out var grade) && grade == "perfect", "flipping a golden underside is a perfect flip (" + grade + ")");
+            Check(!K.FlipPatty(Game.State, grill, out _), "a second flip can't land on top of the first");
+            K.Tick(Game.State, g * 1.1f);
+            Check(patty.Kind == KitchenItemKind.CookedPatty && patty.Quality >= .99f, "golden on both sides makes a perfect patty (" + patty.Quality + ")");
+            K.Tick(Game.State, g * 1.2f);
+            Check(patty.Kind == KitchenItemKind.CookedPatty && patty.Quality > .8f && patty.Quality < .99f, "leaving it past golden drops to good, not ruined (" + patty.Quality + ")");
+            patty = Fresh(); K.Tick(Game.State, g * 2.05f);
+            Check(patty.Kind == KitchenItemKind.CookedPatty && patty.Quality < .8f, "never flipping still cooks, but pale on top (" + patty.Quality + ")");
+            K.Tick(Game.State, StationUpgrades.BurnSeconds(R.Data.LevelOf(grill)) * KitchenState.SideBurnShare);
+            Check(patty.Kind == KitchenItemKind.BurntPatty, "forgetting it on one side burns it");
+            Fresh(); K.Tick(Game.State, g * .3f);
+            Check(K.FlipPatty(Game.State, grill, out grade) && grade == "early", "flipping a raw underside is graded early");
+            foreach (var it in K.Items.Where(i => i.Holder == "station:" + grill).ToList()) K.Items.Remove(it); st.Progress = 0;
         }
         int Station(string id) => R.Data.Layout.First(x => x.CatalogId == id).InstanceId;
         static int TargetId(RaycastHit hit) { var t = hit.collider ? hit.collider.GetComponentInParent<RestaurantTarget>() : null; return t ? t.InstanceId : -1; }

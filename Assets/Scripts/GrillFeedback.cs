@@ -3,7 +3,8 @@ using UnityEngine;
 namespace RestaurantCity {
     // Furnishing-bound presentation. Cooking progress, item identity and quality are read-only inputs.
     public sealed class GrillFeedback : MonoBehaviour {
-        Transform root, patty, spatula;
+        Transform root, patty, spatula, sear;
+        Renderer searBody; readonly GameObject[] marks = new GameObject[3]; MaterialPropertyBlock smoke;
         readonly GameObject[] looks = new GameObject[3];
         readonly Transform[] steam = new Transform[3];
         Renderer[] bodies;
@@ -19,7 +20,13 @@ namespace RestaurantCity {
         public int FlipCount { get; private set; }
         public float HeatRatio { get; private set; }
 
+        // Where food sits on this grill, in the station's local space. The art-pack grill (PolygonShops) is half open
+        // grate (-X, bar tops at y 1.02-1.04, x -0.76..0, z -0.51..0.45) and half flat griddle (+X, y 1.05): food goes
+        // in the middle of the grate. The hidden code-built grill under it is only the fallback.
+        static readonly Vector3 PackGrateCentre = new Vector3(-.38f, 1.045f, -.03f);
         public static Vector3 GrillTop(Transform station) {
+            foreach (var t in station.GetComponentsInChildren<Transform>(true))
+                if (t.name == "SM_Prop_Kitchen_Grill_01") return station.InverseTransformPoint(t.TransformPoint(PackGrateCentre));
             var grate = station.Find("IronGrate");
             return grate ? new Vector3(0, grate.localPosition.y + grate.localScale.y * .5f + .006f, 0) : new Vector3(0,1.02f,0);
         }
@@ -47,10 +54,33 @@ namespace RestaurantCity {
             Shape("Spatula grip",spatula,blockMesh,new Vector3(0,.014f,.39f),new Vector3(.055f,.045f,.19f),handle);
             for(int n=0;n<3;n++)steam[n]=Shape("Heat wisp",root,puffMesh,Vector3.zero,Vector3.one*.015f,vapor).transform;
             Rest();
+            // The top face shows the side that has already been on the grate (golden with grill marks after a flip).
+            // Measured from the mesh through the transforms (works even while the station is inactive, e.g. the parked truck).
+            var mb=bodies[0].GetComponent<MeshFilter>().sharedMesh.bounds; var toRoot=root.worldToLocalMatrix*bodies[0].transform.localToWorldMatrix;
+            float top=toRoot.MultiplyPoint3x4(mb.center+Vector3.up*mb.extents.y).y;
+            // The visible top is the highest point of any part of the patty model (crust details sit above the body).
+            foreach(var mf in looks[1].GetComponentsInChildren<MeshFilter>(true)){var bb=mf.sharedMesh.bounds;var m2=root.worldToLocalMatrix*mf.transform.localToWorldMatrix;
+                for(int c=0;c<8;c++){var corner=bb.center+Vector3.Scale(bb.extents,new Vector3((c&1)==0?-1:1,(c&2)==0?-1:1,(c&4)==0?-1:1));top=Mathf.Max(top,m2.MultiplyPoint3x4(corner).y);}}
+            top-=.004f;   // sink the sear into the crust so it reads as the patty surface, not a lid
+            var toWorld=bodies[0].transform.localToWorldMatrix;
+            float rx=toWorld.MultiplyVector(Vector3.right*mb.extents.x).magnitude,rz=toWorld.MultiplyVector(Vector3.forward*mb.extents.z).magnitude;
+            if(rx<.01f||rz<.01f){rx=rz=.06f;}
+            sear=FeedbackArt.Group("Top sear",root); sear.localPosition=new Vector3(0,top,0);
+            var ls=root.lossyScale; sear.localScale=new Vector3(1/Mathf.Max(.01f,ls.x),1/Mathf.Max(.01f,ls.y),1/Mathf.Max(.01f,ls.z));   // children in metres
+            searBody=FeedbackArt.Disc("Seared face",sear,Vector3.zero,new Vector3(rx*1.62f,.006f,rz*1.62f),"B3703D").GetComponent<Renderer>();
+            for(int n=0;n<3;n++)marks[n]=FeedbackArt.Box("Grill mark",sear,new Vector3((n-1)*rx*.42f,.0062f,0),new Vector3(rx*.1f,.0012f,rz*1.15f),"3A2418");
+            smoke=new MaterialPropertyBlock();
+            sear.gameObject.SetActive(false);
             foreach(var look in looks)look.SetActive(false);
             foreach(var puff in steam)puff.gameObject.SetActive(false);
         }
-        public void Present(KitchenStation station, KitchenItem item, bool isPaused, float dt) {
+        static Color Doneness(float r) {
+            Color raw=new Color(.788f,.424f,.392f),gold=new Color(.70f,.44f,.24f),dark=new Color(.42f,.25f,.15f),burnt=new Color(.16f,.13f,.12f);
+            return r<1?Color.Lerp(raw,gold,r):r<=KitchenState.PerfectSide?gold:r<=KitchenState.GoodHigh?Color.Lerp(gold,dark,(r-KitchenState.PerfectSide)/(KitchenState.GoodHigh-KitchenState.PerfectSide)):Color.Lerp(dark,burnt,Mathf.Clamp01((r-KitchenState.GoodHigh)/.8f));
+        }
+        public float UpRatio { get; private set; }
+        public float DownRatio { get; private set; }
+        public void Present(KitchenStation station, KitchenItem item, bool isPaused, float dt, float golden = 4) {
             paused=isPaused;
             OwnsFood=station!=null&&station.CatalogId=="grill"&&item!=null&&(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.CookedPatty||item.Kind==KitchenItemKind.BurntPatty);
             if(!OwnsFood||item.Id!=itemId) { Active=false; flipTime=0; turns=0; Rest(); }
@@ -61,7 +91,12 @@ namespace RestaurantCity {
             if(OwnsFood) {
                 Color raw=new Color(.788f,.424f,.392f), cooked=new Color(.537f,.318f,.231f), burnt=new Color(.188f,.157f,.141f);
                 Color color=state==0?Color.Lerp(raw,cooked,HeatRatio*.85f):state==2?burnt:Color.Lerp(cooked,burnt,Mathf.Clamp01((station.Progress-8)/16)*.7f);
+                // Two-sided patties: the body mixes both faces, the top face shows the up side.
+                UpRatio=KitchenState.UpSide(item)/Mathf.Max(.1f,golden); DownRatio=KitchenState.DownSide(item)/Mathf.Max(.1f,golden);
+                if(state!=2&&item.SideA+item.SideB>0)color=Color.Lerp(Doneness(UpRatio),Doneness(DownRatio),.5f);
                 tint.SetColor("_BaseColor",color);tint.SetColor("_Color",color);bodies[state].SetPropertyBlock(tint);
+                var top=state==2?burnt:Doneness(UpRatio);tint.SetColor("_BaseColor",top);tint.SetColor("_Color",top);searBody.SetPropertyBlock(tint);
+                foreach(var m in marks)m.SetActive(UpRatio>=.6f||state==2);
             }
             if(isPaused) { Active=false;flipTime=0;Rest(); }
             if(Active) {
@@ -69,27 +104,33 @@ namespace RestaurantCity {
                 float t=Mathf.Clamp01(flipTime/FlipDuration), lift=Mathf.Sin(t*Mathf.PI);
                 patty.localPosition=new Vector3(0,.03f+lift*.26f,0);
                 patty.localRotation=Quaternion.Euler(Mathf.Lerp((turns-1)*180,turns*180,Mathf.SmoothStep(0,1,t)),0,0);
-                spatula.localPosition=Vector3.Lerp(new Vector3(.48f,.026f,.08f),new Vector3(0,.025f,0),Mathf.Sin(t*Mathf.PI));
+                spatula.localPosition=Vector3.Lerp(new Vector3(.4f,.03f,.08f),new Vector3(0,.025f,0),Mathf.Sin(t*Mathf.PI));
                 spatula.localPosition+=Vector3.up*(lift*.21f);
                 spatula.localRotation=Quaternion.Euler(-lift*28,0,0);
                 if(t>=1) { Active=false;Rest(); }
             }
+            sear.gameObject.SetActive(OwnsFood&&!Active&&(state==2||item.SideA+item.SideB>0));
             bool heating=OwnsFood&&state!=2&&!isPaused;
+            // Smoke says when to flip: thin while browning, big puffs once the underside is golden, dark when it's overdone.
+            float puff=!OwnsFood?1:DownRatio>=1?1.9f:1; Color smokeColor=OwnsFood&&DownRatio>KitchenState.GoodHigh?new Color(.33f,.31f,.3f):new Color(.82f,.83f,.77f);
+            smoke.SetColor("_BaseColor",smokeColor);smoke.SetColor("_Color",smokeColor);
             if(heating)steamTime+=Mathf.Max(0,dt);
             for(int n=0;n<3;n++) {
                 steam[n].gameObject.SetActive(heating);
-                float cycle=Mathf.Repeat(steamTime*.7f+n/3f,1), size=Mathf.Sin(cycle*Mathf.PI)*.022f;
+                float cycle=Mathf.Repeat(steamTime*.7f+n/3f,1), size=Mathf.Sin(cycle*Mathf.PI)*.022f*puff;
+                steam[n].GetComponent<Renderer>().SetPropertyBlock(smoke);
                 steam[n].localPosition=new Vector3((n-1)*.065f+Mathf.Sin(steamTime+n)*.016f,.1f+cycle*.28f,.025f);
                 steam[n].localScale=new Vector3(size*.6f,size*1.9f,size*.6f);
             }
         }
+        public bool CanFlip=>OwnsFood&&!paused&&!Active;
         public bool TryFlip() {
             if(!OwnsFood||paused||Active)return false;
             Active=true;flipTime=0;turns++;FlipCount++;return true;
         }
         void Rest() {
             patty.localPosition=Vector3.up*.03f;patty.localRotation=Quaternion.Euler(turns*180,0,0);
-            spatula.localPosition=new Vector3(.48f,.026f,.08f);spatula.localRotation=Quaternion.Euler(0,-18,0);
+            spatula.localPosition=new Vector3(.4f,.03f,.08f);spatula.localRotation=Quaternion.Euler(0,-18,0);
         }
         static Transform Group(string name,Transform parent) {var obj=new GameObject(name);obj.transform.SetParent(parent,false);return obj.transform;}
         static GameObject Shape(string name,Transform parent,Mesh mesh,Vector3 position,Vector3 scale,Material material) {
@@ -121,7 +162,17 @@ namespace RestaurantCity {
             var obj=StationObject(station.InstanceId);if(!obj||!obj.activeInHierarchy)return false;
             var view=obj.GetComponent<GrillFeedback>();if(!view)view=obj.AddComponent<GrillFeedback>();
             view.Present(station,Game.State.Kitchen.At(station.InstanceId),false,0);
+            if(!view.CanFlip||!Game.State.Kitchen.FlipPatty(Game.State,station.InstanceId,out _))return false;
             return view.TryFlip();
+        }
+        // Flick the mouse up while looking at a patty whose underside has started to brown: the same flip as a click.
+        public bool TryFlickFlip(FirstPersonPlayer player) {
+            if(!player||!player.TryResolveInteractionHit(out var hit)||!hit.collider)return false;
+            var target=hit.collider.GetComponentInParent<RestaurantTarget>();if(!target)return false;
+            var station=Game.State.Kitchen.Stations.Find(s=>s.InstanceId==target.InstanceId);var item=station==null?null:Game.State.Kitchen.At(station.InstanceId);
+            if(station==null||station.CatalogId!="grill"||!KitchenState.Flippable(item))return false;
+            if(KitchenState.DownSide(item)<KitchenState.SideGolden("grill",Data.LevelOf(station.InstanceId))*KitchenState.GoodLow)return false;
+            return TryFlipStation(player);
         }
         public void TickGrillFeedback(float dt) {
             if(!Game||Game.State==null)return;
@@ -130,7 +181,7 @@ namespace RestaurantCity {
                 var obj=StationObject(station.InstanceId);if(!obj||!obj.activeInHierarchy)continue;
                 var view=obj.GetComponent<GrillFeedback>();if(!view)view=obj.AddComponent<GrillFeedback>();
                 var item=Game.State.Kitchen.At(station.InstanceId);
-                view.Present(station,item,paused,dt);
+                view.Present(station,item,paused,dt,KitchenState.SideGolden("grill",Data.LevelOf(station.InstanceId)));
                 if(view.OwnsFood&&physicalItems.TryGetValue(item.Id,out var food)&&food)food.SetActive(false);
             }
         }

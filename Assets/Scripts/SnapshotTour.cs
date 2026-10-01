@@ -85,6 +85,7 @@ namespace RestaurantCity {
             ("108_cart_shop", new Vector3(-10.5f, 0, -65.6f), 0, 6, 60),
             ("109_tripo_cast_back_a", new Vector3(-1.45f, 0, -71.4f), 180, 7, 60),
             ("109_tripo_cast_back_b", new Vector3(-1.45f, 0, -71.4f), 180, 7, 60),
+            ("115_grill_flip", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
             ("114_scrub_plate", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
             ("110_truck_ui_hud", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
             ("111_truck_ui_stars", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
@@ -415,6 +416,21 @@ namespace RestaurantCity {
                     for (int i = 0; i < 10; i++) { p.transform.position = shot.pos; rc.Advance(.02f); yield return null; }
                 }
                 if (rc && shot.name.Contains("gus_truck")) { for (int i = 0; i < 150; i++) { rc.Advance(.2f); p.transform.position = pos; yield return null; } }
+                if (rc && shot.name.Contains("grill_flip")) {
+                    // A patty flipped at golden: seared top with grill marks, underside nearly there, prompt says what to do.
+                    var gs = Game.State; gs.StandBuilt = true; var k = gs.Kitchen;
+                    var grill = k.Stations.Find(s => s.CatalogId == "grill" && KitchenState.IsStandStation(s.InstanceId));
+                    if (grill != null) {
+                        foreach (var it in k.Items.FindAll(i => i.Holder == "station:" + grill.InstanceId)) k.Items.Remove(it);
+                        float g = KitchenState.SideGolden("grill", 1);
+                        k.Items.Add(new KitchenItem { Id = k.NextItemId++, Kind = KitchenItemKind.RawProtein, Holder = "station:" + grill.InstanceId, SideA = g * 1.15f, SideB = g * .75f, Flips = 1 });
+                        grill.Progress = g * 1.9f;
+                        var obj = rc.StationObject(grill.InstanceId).transform; var top = obj.TransformPoint(GrillFeedback.GrillTop(obj));
+                        p.Teleport(new Vector3(top.x, .82f, top.z) + Vector3.ProjectOnPlane(obj.forward, Vector3.up).normalized * .9f); p.LookAt(top);
+                        pos = p.transform.position;
+                        for (int i = 0; i < 25; i++) { p.transform.position = pos; yield return null; }
+                    }
+                }
                 if (rc && shot.name.Contains("scrub_plate")) {
                     // Lift a dirty plate out of the truck sink and scrub a few strokes: half grimy, half clean, suds on.
                     var gs = Game.State; gs.StandBuilt = true; var k = gs.Kitchen;

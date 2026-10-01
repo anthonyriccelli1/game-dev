@@ -98,6 +98,7 @@ namespace RestaurantCity {
                 if (Player.Game.Restaurant && Player.Game.Restaurant.TryFlipStation(Player)) { }   // left click still flips patties at the grill
                 else if (!handsBusy && !Blocking && cooldown <= 0) { charging = true; chargeStart = Time.time; }
             }
+            else if (mouse != null && mouse.delta.ReadValue().y > 28 && Player.Game.Restaurant) Player.Game.Restaurant.TryFlickFlip(Player);
             if (charging && (!held || Time.time - chargeStart > HeavyTime + .25f)) {
                 float t = Time.time - chargeStart; charging = false;
                 Attack(t >= TapTime, Mathf.Clamp01((t - TapTime) / (HeavyTime - TapTime)));

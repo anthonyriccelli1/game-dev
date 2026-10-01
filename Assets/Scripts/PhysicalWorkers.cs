@@ -47,7 +47,7 @@ namespace RestaurantCity {
     view.Path.Clear();view.Motion.Working=true;bool done=false;
     if(task.Action=="work"){k.Work(Game.State,actor,stationData.InstanceId,dt*WorkerSpeed(worker,task.Station,Game.State.IsNight),out _);var item=k.At(stationData.InstanceId);done=item==null||!(item.Kind==KitchenItemKind.RawProtein||item.Kind==KitchenItemKind.RawGreens||item.Kind==KitchenItemKind.RawSauce||item.Kind==KitchenItemKind.DirtyPlate||item.Kind==KitchenItemKind.FloatCup);}
     else if(task.Action=="simmer"){var pot=k.At(stationData.InstanceId);if(pot!=null&&pot.Kind==KitchenItemKind.SoupPot&&pot.Stir>=KitchenState.StirWarning)k.StirPot(stationData.InstanceId);done=pot==null||pot.Kind==KitchenItemKind.Soup||pot.Kind==KitchenItemKind.ScorchedSoup;}
-    else if(task.Action=="wait"){var item=k.At(stationData.InstanceId);done=item!=null&&(KitchenState.GrillDone(item.Kind)||KitchenState.GrillBurnt(item.Kind));}
+    else if(task.Action=="wait"){var item=k.At(stationData.InstanceId);if(stationData.CatalogId=="grill"&&KitchenState.Flippable(item)&&KitchenState.UpSide(item)<1e-3f&&KitchenState.DownSide(item)>=KitchenState.SideGolden("grill",Data.LevelOf(stationData.InstanceId))*1.2f)k.FlipPatty(Game.State,stationData.InstanceId,out _);done=item!=null&&(KitchenState.GrillDone(item.Kind)||KitchenState.GrillBurnt(item.Kind));}
     else if(task.Action=="serve"){done=k.Serve(Game.State,actor,task.Target,out _);if(!Data.Orders.Any(o=>o.Id==task.Target&&o.Stage==RestaurantOrderStage.Waiting))done=true;}
     else if(task.Action=="clear")done=k.ClearTable(Game.State,actor,task.Target,out _);
     else done=k.Act(Game.State,actor,stationData.InstanceId,task.Action,out _);
