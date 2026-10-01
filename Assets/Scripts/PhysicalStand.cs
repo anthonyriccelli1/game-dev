@@ -233,6 +233,7 @@ namespace RestaurantCity {
             var s = Game.State;
             TickPantryDisplays();
             TickNightStash();
+            TickGusCrew(seconds);
             TickInspectors(seconds);
             TickGameFeel(seconds);
             s.Players = Game.CoOp ? Mathf.Max(1, Game.CoOp.PlayerCount) : 1;

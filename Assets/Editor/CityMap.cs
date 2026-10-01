@@ -394,7 +394,7 @@ public static class CityMap {
         for (float x = 10; x < 24.99f; x += 5) Put("Environments/SM_Env_Fence_01", new Vector3(x, 0, -25.4f), 0, p);
         for (float z = -35; z < -25.01f; z += 5) { Put("Environments/SM_Env_Fence_01", new Vector3(10.4f, 0, z + 5), 90, p); Put("Environments/SM_Env_Fence_01", new Vector3(24.6f, 0, z + 5), 90, p); }
         GusTruck(new Vector3(17.5f, 0, -31.5f), p);
-        Put("Props/SM_Prop_PicnicTable_01", new Vector3(13.5f, WalkY, -35.5f), 0, p);
+        // Gus's two customer tables are placed at runtime (GusCrew.cs), where his regulars eat his special.
         Put("Props/SM_Prop_Trashbin_02", new Vector3(21.8f, WalkY, -36.5f), 0, p);
         Put("Props/SM_Prop_Skip_02", new Vector3(21.5f, 0, -27.3f), 0, p);
         foreach (var (x, z) in new[] { (12.2f, -27.2f), (13.1f, -28.1f) }) FitPack("PolygonGeneric", "Props/SM_Gen_Prop_Crate_02", new Vector3(x, WalkY, z), x * 30, .8f, p);

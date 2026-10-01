@@ -78,6 +78,7 @@ namespace RestaurantCity {
             ("102_truck_night", new Vector3(9, 0, -72), -50, 4, 190),
             ("103_gus_truck_lot", new Vector3(11.5f, 0, -38.5f), 40, 6, 60),
             ("104_gus_truck_street", new Vector3(23.5f, 0, -40.5f), 330, 6, 60),
+            ("105_gus_truck_window", new Vector3(12.6f, 0, -30.4f), 90, -6, 60),
             ("81_raid_planner", new Vector3(17.5f, 0, -40), 0, 4, 190),
             ("82_raid_fight", new Vector3(17.5f, 0, -45.5f), 0, 6, 190),
             ("83_raid_ko", new Vector3(17.5f, 0, -45.5f), 0, 8, 190),
@@ -360,6 +361,7 @@ namespace RestaurantCity {
                     if (d.Orders.Count > 0) d.Orders[0].Wait = d.PatienceOf(d.Orders[0]) * .8f;
                     for (int i = 0; i < 10; i++) { p.transform.position = shot.pos; rc.Advance(.02f); yield return null; }
                 }
+                if (rc && shot.name.Contains("gus_truck")) { for (int i = 0; i < 150; i++) { rc.Advance(.2f); p.transform.position = pos; yield return null; } }
                 if (rc && shot.name.Contains("milo_shop")) { Game.State.Cash = 95; rc.ShowPanel("Supplies"); }
                 if (rc && shot.name.Contains("stand_tables")) {
                     // Two seated stand guests (one served and eating) and a dirty plate: walk them in, then shoot.
