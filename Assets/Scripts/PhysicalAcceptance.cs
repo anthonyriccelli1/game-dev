@@ -69,13 +69,14 @@ namespace RestaurantCity {
      foreach(var id in crewIds)rc.ToggleRaidCrew(id);Check(rc.RaidCrew.Count==2,"pick a crew of two");
      Check(rc.StartRaid(out var rm)&&rc.ActiveRaid!=null,"the raid starts: "+rm);
      var b=rc.ActiveRaid;b.BossPassive=true;b.enabled=false;
-     Check(b.Fighters.Count(f=>f.Ours)==2&&b.Fighters.Count(f=>!f.Ours&&!f.Boss)==2&&b.BossFighter!=null,"two crew bring out exactly two imps, plus Gus");
+     Check(b.Fighters.Count(f=>f.Ours)==2&&b.Fighters.Count(f=>!f.Ours&&!f.Boss)==3&&b.Fighters.Count(f=>!f.Ours&&!f.Boss&&f.Opponent==null)==1&&b.BossFighter!=null,"two crew bring out two paired imps, Gus, and an unpaired bodyguard imp that goes for you");
      Check(b.Fighters.Where(f=>!f.Ours&&!f.Boss).All(f=>f.GetComponentInChildren<Animator>()!=null&&f.Name.Contains("Imp")),"both rival workers use the imp model");
      Check(b.Fighters.Where(f=>f.Ours).All(f=>f.Opponent!=null&&f.Opponent.Opponent==f),"each crew member is paired with one imp");
-     for(int i=0;i<1200&&b.Fighters.Any(f=>!f.Ours&&!f.Boss&&!f.Down);i++)b.Step(.05f);
+     var away=Game.Player.transform.position;Game.Player.Teleport(b.Center+new Vector3(40,0,0));   // out of the bodyguard's reach while the crew fight
+     for(int i=0;i<1200&&b.Fighters.Any(f=>!f.Ours&&!f.Boss&&!f.Down);i++)b.Step(.05f);Game.Player.Teleport(away);
      Check(b.Fighters.Where(f=>!f.Ours&&!f.Boss).All(f=>f.Down),"a strong crew wins their one-on-ones");
      int blows=0;while(!b.BossFighter.Down&&blows<40){b.PlayerHit(b.BossFighter,Game.Player,Weapons.Fists.Damage*2,Vector3.zero,true);blows++;}b.Step(.05f);
-     Check(blows>=10&&blows<=13,"Gus soaks about a dozen heavy punches ("+blows+")");
+     Check(blows>=15&&blows<=19,"Gus soaks about sixteen heavy punches ("+blows+")");
      Check(RaidRules.Duel(StaffStats.For("204_TripoReaper"),gus.Roster[0].Stats)>=1.15f&&RaidRules.Duel(StaffStats.For("003_Jimmy"),gus.Roster[0].Stats)<1,"Grim (Brawn 5) is favoured against Gus's first imp; Jimmy is not");
      Check(b.Over&&b.Won&&g.Cash>=cash0+gus.CashMin&&g.Flux==flux0+gus.Flux,"beating Gus pays cash and Flux");
      Check(!RaidRules.CanRaid(g,gus,false,out _),"one raid per rival per day");
@@ -85,7 +86,7 @@ namespace RestaurantCity {
      // Going down in a raid: lose 20% of your cash (capped) and your crew's energy, and wake up away from the lot.
      g.Raids.Clear();foreach(var w in rc.Data.Workers.Where(w=>crewIds.Contains(w.Id)))w.Energy=100;g.Cash=300;
      rc.RaidCrew.Clear();rc.ToggleRaidCrew(crewIds[0]);Check(rc.StartRaid(out _),"a second raid starts");var b2=rc.ActiveRaid;b2.enabled=false;
-     Check(b2.Fighters.Count(f=>!f.Ours&&!f.Boss)==1,"one crew member brings out one imp");
+     Check(b2.Fighters.Count(f=>!f.Ours&&!f.Boss)==2,"one crew member brings out one paired imp plus the bodyguard");
      Game.Player.Teleport(b2.Center);Game.HurtPlayer(Game.Player,500,null);
      Check(b2.Over&&!b2.Won&&b2.CashLost==60&&RaidRules.CashLoss(301)==61&&g.Cash<=240&&rc.Data.Workers.Find(w=>w.Id==crewIds[0]).Energy==0,"knocked out: lose $60 of $300 and the crew's energy (over "+b2.Over+" won "+b2.Won+" cash "+g.Cash+" energy "+rc.Data.Workers.Find(w=>w.Id==crewIds[0]).Energy+" hp "+Game.Player.Health+")");
      Check(Vector3.Distance(Game.Player.transform.position,b2.Center)>10&&Game.Player.Health>0,"you wake up away from the lot");
@@ -111,7 +112,7 @@ namespace RestaurantCity {
      Check(!Game.Restaurant.BuyWeapon("pan",out _),"you only need one frying pan");g.Cash=cashP;
      for(int i=0;i<inv.Slots.Count;i++){inv.Slots[i].Item=saved[i].Item;inv.Slots[i].KitchenItemId=saved[i].KitchenItemId;}inv.Selected=sel0;}
     {var standShelves=KitchenState.ShelvesOf(st.Restaurant,KitchenState.StandBase+1,"pantry");
-     Check(standShelves.Contains("protein")&&standShelves.Contains("bun")&&standShelves.Contains("greens")&&!standShelves.Contains("egg")&&!standShelves.Contains("soup")&&!standShelves.Contains("sausage"),"the stand only stocks starter food (patties, buns, greens, sauce)");}
+     Check(standShelves.Contains("protein")&&standShelves.Contains("bun")&&standShelves.Contains("greens")&&!standShelves.Contains("egg")&&!standShelves.Contains("soup")&&!standShelves.Contains("sausage")&&!standShelves.Contains("sauce"),"the truck only stocks starter food (patties, buns, greens)");}
     // One restaurant per district: Old Market is the dressed 160 m block only (no greybox, no second site).
     Check(RestaurantSites.All.Length==1&&GameObject.Find("Saffron Bay (greybox districts)")==null&&GameObject.Find("Property for lease / The Bayside")==null,"Old Market has one restaurant and no greybox around it");
     Check(CityDistricts.At(0,0)?.Id=="market"&&CityDistricts.At(-190,-15)==null&&System.Array.TrueForAll(NightStashes.Spots,sp=>System.Math.Abs(sp.X)<78&&sp.Z<78&&sp.Z>-119),"every stash spot and place is inside the block");

@@ -183,7 +183,18 @@ namespace RestaurantCity {
                     if (State.Cash < price) return "Save $" + price + "\n$" + State.Cash + " / $" + price + " for The Odd Table on Main Street.\nThe truck's star is earned: your next star needs your own restaurant.";
                     return "Buy The Odd Table\nIt's on Main Street. Press E on its sign ($" + price + ").\nYour next star needs a restaurant you can decorate.";
                 }
-                if (r.Layout.Count < 5) return "Furnish your kitchen\nInside, press B: a pantry, grill, plate rack, assembly station, sink and a table.";
+                // The Odd Table starts empty and the lease takes your savings: say plainly that the truck pays for the kitchen.
+                {
+                    string[] kit = { "pantry", "plate_rack", "prep_bench", "assembly", "grill", "sink" };
+                    var missing = new System.Collections.Generic.List<CatalogItem>(); int total = 0;
+                    foreach (var id in kit) if (!r.HasEquipment(id)) { var item = RestaurantCatalog.Find(id); missing.Add(item); total += item.Price; }
+                    if (!r.Layout.Exists(p => RestaurantCatalog.Find(p.CatalogId)?.Seats > 0)) { var t = RestaurantCatalog.Find("cafe_table"); missing.Add(t); total += t.Price; }
+                    if (missing.Count > 0) {
+                        var next = missing[0]; var names = new System.Collections.Generic.List<string>(); foreach (var m in missing) names.Add(m.Name.ToLower());
+                        if (State.Cash < next.Price) return "Earn money for your kitchen\nThe Odd Table starts empty. Keep running Little Flame: you need $" + (next.Price - State.Cash) + " more for a " + next.Name.ToLower() + ".\nWhole starter kitchen: $" + total + " (" + missing.Count + " pieces).";
+                        return "Furnish your kitchen\nInside The Odd Table, press B and buy a " + next.Name.ToLower() + " ($" + next.Price + ").\nStill needed: " + string.Join(", ", names) + " ($" + total + "). Short on cash? Run the truck.";
+                    }
+                }
                 if (r.Workers.Count == 0) return "Hire your first worker\nPress P > Crew. Feed a resident once and they join your People book; recruit them to cook, serve or wash.";
                 if (!State.Knows("midnight")) return State.IsNight ? "Find the midnight recipe\nA rival hides a recipe stash in Rival Alley (purple on the map, M). Grab it. You can retreat." : "Find the midnight recipe\nA rival hides a recipe stash in Rival Alley (purple on the map, M). It opens after dark.";
                 if (State.ZeebOrders == 0 && r.Stock("midnight_sauce") == 0) return "Call Zeeb\nPress P: Zeeb sells midnight sauce. Then put the Midnight Burger on your menu.";

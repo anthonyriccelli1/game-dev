@@ -5,7 +5,7 @@ namespace RestaurantCity {
     // One fighter in a raid: your crew, the rival's fry cooks, or the boss. Players hit them with PlayerCombat.
     public class RaidFighter : MonoBehaviour {
         public RaidBattle Battle; public bool Ours, Boss; public string Name; public WorkerState Worker; public RaidFighter Opponent;
-        public float Hp, MaxHp, Damage, Interval, Speed, Armor = 1, Cool, Stagger, Windup, PoiseReady, Dash, DashCool = 3; public bool Enraged, ComboNext;
+        public float Hp, MaxHp, Damage, Interval, Speed, Armor = 1, Cool, Stagger, Windup, PoiseReady, Dash, DashCool = 3; public bool Enraged, ComboNext; public int ComboHits;
         public Vector3 Knock; public CharacterMotion Motion; public TextMesh Caption; public Transform Bar, BarFill;
         public List<(Material m, Color c)> Tints = new List<(Material, Color)>(); public float Flash;
         public bool Down => Hp <= 0;
@@ -20,7 +20,7 @@ namespace RestaurantCity {
         public bool BossPassive;   // tests and screenshots: the boss and freed fry cooks leave the players alone
         public readonly List<RaidFighter> Fighters = new List<RaidFighter>();
         public Vector3 Center; float endTimer = -1; Transform root;
-        public const float LeaveRadius = 26, GoonWindup = .45f, BossWindup = .7f;
+        public const float LeaveRadius = 26, GoonWindup = .42f, BossWindup = .5f;
         static readonly Color CrewColor = new Color(.45f, .95f, .7f), GoonColor = new Color(1f, .75f, .35f), BossColor = new Color(1f, .4f, .25f);
 
         public RaidFighter BossFighter => Fighters.FirstOrDefault(f => f.Boss);
@@ -32,7 +32,7 @@ namespace RestaurantCity {
             lamp.transform.position = Center + Vector3.up * 7; lamp.type = LightType.Point; lamp.range = 22; lamp.intensity = 5f; lamp.color = new Color(1f, .86f, .62f); lamp.shadows = LightShadows.None;
             // Gus steps out beside his serving hatch.
             var boss = Spawn(rival.BossModel, rival.Boss, ResidentCast.CustomResidentHeight, new Vector3(rival.X - 2.6f, 0, rival.Z - 1.5f), 180, false, true);
-            boss.Hp = boss.MaxHp = rival.BossHealth; boss.Damage = rival.BossDamage; boss.Interval = 1.15f; boss.Speed = 2.9f;
+            boss.Hp = boss.MaxHp = rival.BossHealth; boss.Damage = rival.BossDamage; boss.Interval = .85f; boss.Speed = 3.2f;
             bool rally = crew.Any(w => StaffStats.For(w.Id).Perk == Perk.Rally);
             for (int i = 0; i < crew.Count; i++) {
                 float x = rival.X + (i - (crew.Count - 1) / 2f) * 3f;
@@ -44,8 +44,10 @@ namespace RestaurantCity {
                 f.Worker = w; Stats(f, s); if (rally) f.Damage *= 1.15f; if (s.Perk == Perk.Tough) f.Armor = .7f;
                 f.Opponent = g; g.Opponent = f;
             }
-            owner.Feedback(crew.Count == 0 ? "RAID! Just you and " + rival.Boss + ". Hold click for a heavy hit, right click to block." :
-                "RAID! " + crew.Count + " vs " + crew.Count + ": your crew take his imps, you take " + rival.Boss + ". Hold click to wind up, right click to block.");
+            // His bodyguard imp has no partner: it goes straight for you, so you never get Gus one-on-one.
+            { var rf = rival.Roster[crew.Count % rival.Roster.Length]; var guard = Spawn(rf.Model, rf.Name + " (bodyguard)", ResidentCast.CustomResidentHeight, new Vector3(rival.X + 2.4f, 0, rival.Z - 2.5f), 180, false, false); Stats(guard, rf.Stats); }
+            owner.Feedback(crew.Count == 0 ? "RAID! You against " + rival.Boss + " and his bodyguard imp. Hold click for a heavy hit, right click to block." :
+                "RAID! " + crew.Count + " vs " + crew.Count + ": your crew take his imps, you take " + rival.Boss + " and his bodyguard. Hold click to wind up, right click to block.");
         }
         static void Stats(RaidFighter f, ResidentStats s) {
             f.Hp = f.MaxHp = StaffStats.RaidHealth(s); f.Damage = StaffStats.RaidDamage(s); f.Interval = StaffStats.RaidInterval(s); f.Speed = 2.2f * (.7f + .1f * s.Speed);
@@ -122,7 +124,7 @@ namespace RestaurantCity {
             if (!f.Ours && (!f.Opponent || f.Opponent.Down)) { foe = null; if (!BossPassive) victim = players.Where(p => Flat(p.transform.position - Center).magnitude < 18).OrderBy(p => (p.transform.position - f.transform.position).sqrMagnitude).FirstOrDefault(); }
             Transform target = foe ? foe.transform : victim ? victim.transform : null;
             if (!target) { Idle(f); return; }
-            if (victim) { Telegraphed(f, victim, dt, GoonWindup, f.Damage * .6f, 1.5f); return; }
+            if (victim) { Telegraphed(f, victim, dt, GoonWindup, f.Damage * .75f, 1.5f); return; }
             Engage(f, target, dt, () => { if (f.Motion) f.Motion.Punch(); Hit(foe, f.Damage); });
         }
         // Gus: shrugs off light hits (only a heavy hit staggers him, and then not again for a few seconds), charges you
@@ -142,9 +144,10 @@ namespace RestaurantCity {
             if (b.Motion) b.Motion.Running = false;
             if (b.Windup <= 0 && b.Stagger <= 0 && b.DashCool <= 0 && to.magnitude > 4 && to.magnitude < 13) { b.Dash = .6f; b.DashCool = b.Enraged ? 3.5f : 5.5f; Owner.Game.Notify(Rival.Boss + " charges!", 1.2f); return; }
             bool quick = b.ComboNext;
-            if (Telegraphed(b, victim, dt, quick ? .3f : b.Enraged ? .45f : BossWindup, quick ? b.Damage * .55f : b.Damage, 1.9f)) {
-                if (quick) b.ComboNext = false;
-                else if (Random.value < (b.Enraged ? .6f : .4f)) { b.ComboNext = true; b.Cool = .25f; }
+            if (Telegraphed(b, victim, dt, quick ? .22f : b.Enraged ? .38f : BossWindup, quick ? b.Damage * .6f : b.Damage, 1.9f)) {
+                // Headbutt, then usually a quick jab; enraged he can chain a third.
+                if (quick) { b.ComboNext = b.Enraged && b.ComboHits++ < 1 && Random.value < .5f; if (b.ComboNext) b.Cool = .2f; else b.ComboHits = 0; }
+                else if (Random.value < (b.Enraged ? .85f : .6f)) { b.ComboNext = true; b.Cool = .2f; b.ComboHits = 0; }
             }
         }
         // Anyone attacking a player winds up first (they glow yellow): step back, block, or hit them to interrupt.

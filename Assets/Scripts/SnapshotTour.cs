@@ -85,6 +85,8 @@ namespace RestaurantCity {
             ("108_cart_shop", new Vector3(-10.5f, 0, -65.6f), 0, 6, 60),
             ("109_tripo_cast_back_a", new Vector3(-1.45f, 0, -71.4f), 180, 7, 60),
             ("109_tripo_cast_back_b", new Vector3(-1.45f, 0, -71.4f), 180, 7, 60),
+            ("118_flux_vial_night", new Vector3(9, 0, -72), -50, 4, 195),
+            ("118_flux_vial_day", new Vector3(9, 0, -72), -50, 4, 60),
             ("116_chop_lettuce", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
             ("115_grill_flip", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
             ("114_scrub_plate", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
@@ -134,7 +136,7 @@ namespace RestaurantCity {
         };
 
         static bool dressed;
-        bool truckOwned0;
+        bool truckOwned0; readonly System.Collections.Generic.List<GameObject> fluxShots = new System.Collections.Generic.List<GameObject>();
         IEnumerator Start() {
             var dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "..", "Snapshots"));
             if (Application.isEditor) dir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Snapshots"));
@@ -432,6 +434,14 @@ namespace RestaurantCity {
                         for (int i = 0; i < 25; i++) { p.transform.position = pos; yield return null; }
                     }
                 }
+                if (shot.name.Contains("flux_vial")) {
+                    // A Flux vial at eye level a step in front of you, and one on the ground further off.
+                    for (int i = 0; i < 6; i++) { p.transform.position = pos; yield return null; }
+                    var cam = p.View.transform; var fwd = Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized;
+                    fluxShots.Add(FluxVial.Create(null, cam.position + fwd * .75f + Vector3.down * .32f + cam.right * .08f, .32f));
+                    fluxShots.Add(FluxVial.Create(null, new Vector3(cam.position.x, 0.02f, cam.position.z) + fwd * 3.2f - cam.right * 1.1f, .32f));
+                    for (int i = 0; i < 30; i++) { p.transform.position = pos; yield return null; }
+                }
                 if (rc && shot.name.Contains("chop_lettuce")) {
                     // Lettuce up close, two slices chopped, knife lined up over the next.
                     var gs = Game.State; gs.StandBuilt = true; var k = gs.Kitchen;
@@ -487,6 +497,7 @@ namespace RestaurantCity {
                 if (shot.name.Contains("truck_ui_phone")) Game.State.Restaurant.Owned = truckOwned0;
                 if (shot.name.Contains("scrub_plate")) PlateScrub.Of(p).End();
                 if (shot.name.Contains("chop_lettuce")) PrepChop.Of(p).End();
+                foreach (var v in fluxShots) if (v) Destroy(v); fluxShots.Clear();
             }
             yield return new WaitForSeconds(1);
             Application.Quit();

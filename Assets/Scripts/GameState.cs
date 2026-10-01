@@ -306,7 +306,7 @@ namespace RestaurantCity {
                 if (NextCustomer <= 0) {
                     int id = NextStandOrder++;
                     float patience = StandQueue.Count == 0 && Served == 0 ? StandFirstPatience : StandPatience;
-                    StandQueue.Add(new StandOrder { Id = id, Type = (id * 3) % 10, ResidentId = PickVisitor(id * 7 + Day * 131), Dish = Restaurant != null && Restaurant.Owned && Knows("midnight") && id % 4 == 0 ? "midnight" : id % 3 == 1 ? "salad" : "burger", Patience = patience, MaxPatience = patience });
+                    StandQueue.Add(new StandOrder { Id = id, Type = (id * 3) % 10, ResidentId = PickVisitor(id * 7 + Day * 131), Dish = id % 3 == 1 ? "salad" : "burger", Patience = patience, MaxPatience = patience });
                     NextCustomer = StandArrivalSeconds + (id % 3) * 1.5f;
                 }
             }

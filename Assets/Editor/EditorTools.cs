@@ -109,6 +109,49 @@ public static class EditorTools {
         }
         File.WriteAllText("EditorOutput/top-areas.txt", sb.ToString()); return "top areas written";
     }
+    // Flux vial: the Tripo model plus our own glass shell and glowing liquid. Creates Resources/Flux/FluxGlass.mat
+    // (URP Lit, transparent) and FluxLiquid.mat (emissive green) as assets so their shader variants ship in the build,
+    // and FluxVialRaw.prefab (the model with its texture) for previews. Reports the mesh layout.
+    public static string SetupFlux() {
+        const string dir = "Assets/Resources/Flux";
+        var lit = Shader.Find("Universal Render Pipeline/Lit"); var sb = new StringBuilder();
+        Material Make(string name, System.Action<Material> setup) {
+            string path = dir + "/" + name + ".mat"; var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (!m) { m = new Material(lit); AssetDatabase.CreateAsset(m, path); }
+            m.shader = lit; setup(m); EditorUtility.SetDirty(m); return m;
+        }
+        Make("FluxGlass", m => {
+            m.SetFloat("_Surface", 1); m.SetFloat("_Blend", 0); m.SetFloat("_ZWrite", 0); m.SetFloat("_AlphaClip", 0);
+            m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha); m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT"); m.DisableKeyword("_ALPHATEST_ON"); m.renderQueue = 3000; m.SetOverrideTag("RenderType", "Transparent");
+            m.SetColor("_BaseColor", new Color(.85f, 1f, .9f, .1f)); m.SetFloat("_Smoothness", .96f); m.SetFloat("_Metallic", 0);
+        });
+        Make("FluxLiquid", m => {
+            m.SetColor("_BaseColor", new Color(.12f, .95f, .3f)); m.SetFloat("_Smoothness", .85f);
+            m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", new Color(.12f, .95f, .3f) * 1.35f); m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+        });
+        var body = Make("FluxVialBody", m => { m.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/FluxVial.png")); m.SetColor("_BaseColor", Color.white); m.SetFloat("_Smoothness", .5f); m.SetFloat("_Metallic", .4f); });
+        AssetDatabase.SaveAssets();
+        var model = AssetDatabase.LoadAssetAtPath<GameObject>(dir + "/FluxVial.fbx"); if (!model) return "no model";
+        var go = (GameObject)Object.Instantiate(model); go.name = "FluxVialRaw";
+        foreach (var r in go.GetComponentsInChildren<Renderer>()) { var mats = new Material[r.sharedMaterials.Length]; for (int i = 0; i < mats.Length; i++) mats[i] = body; r.sharedMaterials = mats; }
+        foreach (var mf in go.GetComponentsInChildren<MeshFilter>()) { var b = mf.sharedMesh.bounds; sb.Append(mf.name + " verts=" + mf.sharedMesh.vertexCount + " subs=" + mf.sharedMesh.subMeshCount + " bounds=" + b.size.ToString("F3") + " centre=" + b.center.ToString("F3") + " scale=" + mf.transform.lossyScale.ToString("F3") + "; "); }
+        var rs = go.GetComponentsInChildren<Renderer>(); var all = rs[0].bounds; foreach (var r in rs) all.Encapsulate(r.bounds);
+        sb.Append("world size=" + all.size.ToString("F3") + " min=" + all.min.ToString("F3"));
+        PrefabUtility.SaveAsPrefabAsset(go, dir + "/FluxVialRaw.prefab");
+        // The finished vial: a glowing liquid column over the model's dull green block, inside a clear glass tube, all
+        // within the model's metal cage. Runtime (FluxVial) adds the light, the pulse and rising bubbles.
+        go.name = "FluxVial";
+        GameObject Cyl(string name, Vector3 pos, Vector3 scale, Material m) {
+            var c = GameObject.CreatePrimitive(PrimitiveType.Cylinder); c.name = name; Object.DestroyImmediate(c.GetComponent<Collider>());
+            c.transform.SetParent(go.transform, false); c.transform.localPosition = pos; c.transform.localScale = scale; c.GetComponent<Renderer>().sharedMaterial = m;
+            c.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; return c;
+        }
+        Cyl("Flux liquid", new Vector3(0, .49f, 0), new Vector3(.3f, .225f, .3f), AssetDatabase.LoadAssetAtPath<Material>(dir + "/FluxLiquid.mat"));
+        Cyl("Glass tube", new Vector3(0, .505f, 0), new Vector3(.335f, .262f, .335f), AssetDatabase.LoadAssetAtPath<Material>(dir + "/FluxGlass.mat"));
+        PrefabUtility.SaveAsPrefabAsset(go, dir + "/FluxVial.prefab"); Object.DestroyImmediate(go);
+        return sb.ToString();
+    }
     public static string DumpPrefabSizes() {
         var sb = new StringBuilder();
         foreach (var line in File.ReadAllLines("EditorOutput/render-list.txt").Select(l => l.Trim().Split(' ')[0]).Where(l => l.Length > 0)) {

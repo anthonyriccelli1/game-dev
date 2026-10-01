@@ -265,7 +265,7 @@ namespace RestaurantCity {
                 Label(card, "$" + entry.Price, 441, 11, 101, 30, 23, teal, true, TextAnchor.MiddleRight);
                 Label(card, "Uses " + string.Join(" + ", Ingredients.For(entry.Id).Select(Ingredients.Name)) + (string.IsNullOrEmpty(entry.Equipment) ? "" : "  /  " + EquipmentName(entry.Equipment)), 142, 44, 400, 25, 14, muted);
                 bool starLocked = cook != null && cook.StarGated && Owner.Data.Stars < cook.Stars;
-                bool onTruck = entry.Id == "burger" || entry.Id == "salad" || entry.Id == "midnight";
+                bool onTruck = entry.Id == "burger" || entry.Id == "salad";
                 string help = truck ? (!known ? "Unlocks after you own a restaurant." : onTruck ? "On the truck. Customers order it at the window." : "Restaurant only.") : !known ? RecipeBook.HowToGet(entry.Id) : !hasGear ? "Now buy a " + EquipmentName(entry.Equipment) + " in the Shop." : starLocked ? "Needs " + StarText.Words(cook.Stars) + " to serve." : active ? "Guests can order this dish." : "Add it so guests can order it.";
                 Label(card, help, 142, 76, 220, 56, 14, known && !starLocked ? ink : coral);
                 if (truck) Label(card, !known ? "Locked" : onTruck ? "On the truck" : "Restaurant", 372, 87, 171, 35, 15, known && onTruck ? teal : muted, true, TextAnchor.MiddleCenter);
