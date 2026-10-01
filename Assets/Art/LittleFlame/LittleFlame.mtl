@@ -1,3 +1,6 @@
+newmtl LF_Pin
+Kd 0.949 0.761 0.188
+
 newmtl LF_Under
 Kd 0.141 0.157 0.173
 

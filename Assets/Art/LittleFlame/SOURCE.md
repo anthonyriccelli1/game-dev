@@ -7,3 +7,9 @@
   (teal body, cream upper band and roof, coral stripe, coral/cream awning, chrome bumpers and steps, dark mirrors, dark wheel wells and underside, tyres, floor, interior). A triangle is only painted tyre or chrome when all three corners sit inside that part, so colours do not bleed onto the body in jagged wedges.
 - The Tripo texture was not used (that export came out an almost uniform teal).
 - Colliders are simple boxes and a door ramp built in `CityMap.LittleFlame()`; the mesh has none.
+- The mesh is shared: Greasy Gus's truck is the same model with a different region-to-colour map
+  (`CityMap.FlamePaint` / `CityMap.GusPaint`). Region names in the OBJ: LF_Teal (lower body), LF_Cream (upper body
+  and roof), LF_Coral (band), LF_Pin (pinstripe under the band), awning stripes alternate Coral/Cream, LF_Chrome,
+  LF_Trim (mirrors), LF_Under (wheel wells, underside), LF_Tyre, LF_Floor, LF_Inner / LF_InnerLow (interior).
+- Inside vs outside is decided by the face normal (interior faces point back toward the middle of the truck), so
+  the cab's outer skin is painted like the body.

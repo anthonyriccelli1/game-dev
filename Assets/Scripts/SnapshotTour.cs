@@ -76,6 +76,8 @@ namespace RestaurantCity {
             ("100_truck_plaza", new Vector3(9, 0, -72), -50, 4, 60),
             ("101_truck_inside", new Vector3(1.2f, .82f, -62.3f), 270, 12, 60),
             ("102_truck_night", new Vector3(9, 0, -72), -50, 4, 190),
+            ("103_gus_truck_lot", new Vector3(11.5f, 0, -38.5f), 40, 6, 60),
+            ("104_gus_truck_street", new Vector3(23.5f, 0, -40.5f), 330, 6, 60),
             ("81_raid_planner", new Vector3(17.5f, 0, -40), 0, 4, 190),
             ("82_raid_fight", new Vector3(17.5f, 0, -45.5f), 0, 6, 190),
             ("83_raid_ko", new Vector3(17.5f, 0, -45.5f), 0, 8, 190),
