@@ -94,6 +94,7 @@ namespace RestaurantCity {
                     break;
                 }
                 case "upgrade": Fx(SoundFx.Tip, 1f); Fx(SoundFx.Register, .6f); break;
+                case "starflux": { Fx(SoundFx.Tip, 1f); Fx(SoundFx.Register, .6f); Game.Notify("NEW STAR! +" + A(2) + " Flux. Recruit a worker in the Staff tab (P > Crew). Your crew can be your stars + 1.", 8); break; }
                 case "stand_lastcall": Fx(SoundFx.Horn, .8f); Game.Notify((s.StandNightShift ? "Midnight! The night shift is over." : "Dusk! The day shift is over.") + " No new customers: finish the ones still here.", 6); break;
                 case "stand_report": { Fx(SoundFx.Register, .8f); Fx(SoundFx.Tip, .6f); var r = s.LastStandShift; if (r != null) Game.Notify(r.Name + " done: served " + r.Served + ", earned $" + r.Earned + (r.Walked > 0 ? ", " + r.Walked + " walked out" : "") + ". Report on your ticket card.", 7); break; }
                 case "queue_walkout": case "stand_walkout": Fx(SoundFx.Huff, .8f); break;

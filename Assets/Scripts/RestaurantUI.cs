@@ -118,7 +118,7 @@ namespace RestaurantCity {
             foreach (var order in s.Orders) key.Append('|').Append(order.Id).Append(':').Append(order.Stage);
             // Worker assignments and purchases are infrequent, but must immediately update controls.
             foreach (var worker in s.Workers) key.Append(worker.Id).Append(worker.Job);
-            key.Append("|raid:").Append(string.Join(",", Owner.RaidCrew)).Append(Owner.Game.State.IsNight);
+            key.Append("|flux:").Append(Owner.Game.State.Flux); key.Append("|raid:").Append(string.Join(",", Owner.RaidCrew)).Append(Owner.Game.State.IsNight);
             key.Append("|inv:").Append(string.Join(",", Hotbar.For(Owner.Game.State, Owner.PawnBuyer).Slots.Select(x => x.Item)));
             return key.ToString();
         }
@@ -457,7 +457,7 @@ namespace RestaurantCity {
 
         void BuildStaff(RectTransform sheet) {
             var gs = Owner.Game.State; bool people = People.UseResidents;
-            Label(sheet, "Your Flux: " + gs.Flux + ".  Feed a resident once and they join your People book; then recruit them with Flux. Anyone can do any job." + (gs.StandWorker != null ? "   Stand: " + gs.StandWorkerStatus + "  Earned $" + gs.StandWorkerEarned : ""), 30, 140, 1144, 35, 15, ink);
+            Label(sheet, "Flux " + gs.Flux + "   /   Crew " + Owner.Data.Workers.Count + " of " + Owner.Data.CrewCap + " (your stars + 1).   Feed a resident once to meet them, then recruit with Flux. New stars pay Flux.\n" + (gs.StandWorker != null ? "   Stand: " + gs.StandWorkerStatus + "  Earned $" + gs.StandWorkerEarned : ""), 30, 140, 1144, 35, 15, ink);
             string[] rivals = { "Maestro Vey|Head chef. Gold toque, glowing eyes. Runs a kitchen like an orchestra.", "Nyx|Sommelier with a crystal halo. Guests tip double when she pours.", "K-9|Chrome line cook with four arms and a neon visor. Never tires.", "Aurora|Maitre d'. Her monocle sees every empty seat before you do.", "Seraphine|Winged pastry chef. Desserts so good customers float out.", "Obsidian Titan|Doorman. Nobody makes a scene with him at the door.", "Lumen|Mixologist with a neon crest. Every drink glows." };
             if (!Owner.Data.Owned) rivals = new string[0];   // rival crews show up once you own a restaurant
             // Crew cards: cash hires, plus anyone already recruited. Legacy special recruits only show once hired.
@@ -496,7 +496,8 @@ namespace RestaurantCity {
                     if (known) {
                         var stats = StaffStats.For(r.Id); StatPips(card, stats, 12, 210, 62);
                         Label(card, StaffStats.PerkName(stats.Perk) + ": " + StaffStats.PerkText(stats.Perk), 6, 238, 258, 18, 11, gold, true, TextAnchor.MiddleCenter);
-                        Button(card, "Recruit  /  " + r.FluxCost + " Flux", 15, 262, 240, 46, () => Owner.Hire(id), teal, white, gs.Flux >= r.FluxCost);
+                        bool full = Owner.Data.Workers.Count >= Owner.Data.CrewCap;
+                        Button(card, full ? "Crew full" : "Recruit  /  " + r.FluxCost + " Flux", 15, 262, 240, 46, () => Owner.Hire(id), teal, white, !full && gs.Flux >= r.FluxCost);
                     } else Label(card, "Serve them a meal to meet them.\nStats unknown.", 10, 225, 250, 60, 14, muted, false, TextAnchor.MiddleCenter);
                 }
             }
@@ -543,7 +544,7 @@ namespace RestaurantCity {
             bool known = st.Knows(rival.RecipeId); var dish = RestaurantCatalog.Dish(rival.RecipeId);
             var prize = Block(sheet, "Raid prize", 835, 138, 355, 150, ink);
             Label(prize, "WIN", 18, 12, 300, 22, 14, gold, true);
-            Label(prize, "Always: $" + rival.CashMin + "-" + rival.CashMax + " and " + rival.Flux + " Flux", 18, 36, 330, 24, 16, paper, true);
+            Label(prize, "Always $" + rival.CashMin + "-" + rival.CashMax + (RaidRules.Record(Owner.Game.State, rival.Id).Wins == 0 ? "; first win +" + rival.Flux + " Flux" : ""), 18, 36, 330, 24, 16, paper, true);
             Label(prize, known ? "Recipe: " + dish.Name + " (already yours)" : "Chance: the " + dish.Name + " recipe (" + Mathf.RoundToInt(rival.DropChance * 100) + "%, guaranteed by win " + rival.Pity + ")", 18, 64, 330, 44, 15, known ? paper : gold, true);
             Label(prize, "Wins " + rec.Wins + "  /  raids " + rec.Attempts, 18, 116, 330, 22, 13, paper);
             Label(sheet, "THE FIGHT", 35, 232, 600, 22, 14, muted, true);
@@ -604,6 +605,9 @@ namespace RestaurantCity {
             var current = WorkerJob(hired);
             Text workStatus = Label(card, "", 25, 207, 508, 24, 14, muted);
             tickLabels.Add(() => { if (workStatus) workStatus.text = "Energy " + hired.Energy.ToString("0") + "/100 / " + hired.TasksCompleted + " tasks completed"; });
+            // Flux: wake a tired worker right up.
+            bool tired = hired.Energy < 90;
+            Button(card, "Energy boost  /  " + RestaurantState.BoostFlux + " Flux", 330, 203, 210, 26, () => Owner.BoostEnergy(workerId), tired ? teal : pale, tired ? white : muted, tired && Owner.Game.State.Flux >= RestaurantState.BoostFlux);
             StaffJob[] jobs = { StaffJob.Cook, StaffJob.Serve, StaffJob.Clean, StaffJob.Stand, StaffJob.Off };
             for (int i = 0; i < jobs.Length; i++) {
                 var job = jobs[i]; bool active = current == job;

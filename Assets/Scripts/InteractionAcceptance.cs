@@ -58,6 +58,7 @@ namespace RestaurantCity {
                 RunPattyChecks(grill);
                 RunPantryAimChecks(pantry);
                 RunChopChecks(prep);
+                RunFluxChecks();
                 yield return null; // Rebuild cleanup is deferred until the end of the frame.
                 Physics.SyncTransforms();
                 var table = R.Data.Layout.First(x => RestaurantCatalog.Find(x.CatalogId).Seats > 0).InstanceId;
@@ -411,6 +412,19 @@ namespace RestaurantCity {
             chop.ChopAt(-.1f, -.06f, -.02f, .02f, .06f, .1f); chop.Tick(null, null, null, .02f);
             Check(!chop.Active && K.At(prep)?.Kind == KitchenItemKind.ChoppedGreens, "six cuts make chopped greens");
             foreach (var it in K.Items.Where(i => i.Holder == "station:" + prep).ToList()) K.Items.Remove(it); st.Progress = 0;
+        }
+        // Flux is scarce: each star pays once (3 / 5 / 10), losing and regaining a star pays nothing, crew = stars + 1.
+        void RunFluxChecks() {
+            var g = new GameState(); int f0 = g.Flux;
+            g.Restaurant.Rank = 1; g.Tick(.1f);
+            Check(g.Flux == f0 + 3, "the first star pays 3 Flux (" + (g.Flux - f0) + ")");
+            Check(g.Restaurant.CrewCap == 2, "one star allows a crew of two");
+            g.Restaurant.Rank = 0; g.Tick(.1f); g.Restaurant.Rank = 1; g.Tick(.1f);
+            Check(g.Flux == f0 + 3, "losing and regaining a star pays nothing");
+            g.Restaurant.Rank = 2; g.Tick(.1f);
+            Check(g.Flux == f0 + 8 && g.Restaurant.CrewCap == 3, "the second star pays 5 more and makes room for a third worker");
+            var w = new WorkerState { Id = "x", Energy = 20 }; g.Restaurant.Workers.Add(w); g.Flux = 1;
+            Check(g.Restaurant.BoostEnergy(g, "x", out _) && w.Energy == 100 && g.Flux == 0, "1 Flux wakes a tired worker right up");
         }
         int Station(string id) => R.Data.Layout.First(x => x.CatalogId == id).InstanceId;
         static int TargetId(RaycastHit hit) { var t = hit.collider ? hit.collider.GetComponentInParent<RestaurantTarget>() : null; return t ? t.InstanceId : -1; }

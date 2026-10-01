@@ -108,7 +108,7 @@ namespace RestaurantCity {
                 case InteractionKind.Recipe:
                     bool firstRecipe = !State.RecipeUnlocked;
                     success = State.ClaimRecipe(Guard.Defeated);
-                    Notify(success ? (firstRecipe ? "MIDNIGHT RECIPE + 3 FLUX! Use Flux in the Staff tab to recruit customers you've won over." : "+2 FLUX from the rival's stash. Recruit special customers in the Staff tab.") : !State.IsNight ? "Come back after dusk. Watch for the rival." : State.LastStashDay == State.Day ? "Already raided tonight. The rival restocks tomorrow night." : "The rival is guarding the stash. Three spatula hits will stagger them.", 8); break;
+                    Notify(success ? (firstRecipe ? "MIDNIGHT RECIPE! Plus 3 bottles of midnight sauce. Put the Midnight Burger on your menu." : "+3 bottles of midnight sauce from the rival's stash.") : !State.IsNight ? "Come back after dusk. Watch for the rival." : State.LastStashDay == State.Day ? "Already raided tonight. The rival restocks tomorrow night." : "The rival is guarding the stash. Three spatula hits will stagger them.", 8); break;
                 case InteractionKind.FutureRestaurant:
                     return Restaurant.BuyRestaurant();
             }

@@ -53,13 +53,13 @@ namespace RestaurantCity {
         public static RaidLoot Win(GameState g, RivalDef rival, int seed) {
             var r = Record(g, rival.Id); r.Wins++;
             uint h = (uint)(seed * 2654435761u ^ (uint)(g.Day * 40503) ^ (uint)r.Wins); h ^= h >> 15; h *= 2246822519u; h ^= h >> 13;
-            var loot = new RaidLoot { Cash = rival.CashMin + (int)(h % (uint)(rival.CashMax - rival.CashMin + 1)), Flux = rival.Flux };
+            var loot = new RaidLoot { Cash = rival.CashMin + (int)(h % (uint)(rival.CashMax - rival.CashMin + 1)), Flux = r.Wins == 1 ? rival.Flux : 0 };   // Flux only for the first defeat
             float roll = (h >> 8) % 1000 / 1000f;
             if (!g.Knows(rival.RecipeId) && (roll < rival.DropChance || r.Wins >= rival.Pity)) { loot.Recipe = rival.RecipeId; g.Learn(rival.RecipeId); }
             g.Cash += loot.Cash; g.Flux += loot.Flux; g.FluxIntroduced = true;
             g.GainReputation(r.Wins == 1 ? Reputation.BeatRival : Reputation.RematchRival, "Beating rivals");
             string dish = loot.Recipe != null ? RestaurantCatalog.Dish(loot.Recipe).Name : null;
-            loot.Message = "RAID WON!  +$" + loot.Cash + "  +" + loot.Flux + " Flux" + (dish != null ? "  +RECIPE: " + dish.ToUpper() + " (check the Cookbook and Menu)" :
+            loot.Message = "RAID WON!  +$" + loot.Cash + (loot.Flux > 0 ? "  +" + loot.Flux + " Flux" : "") + (dish != null ? "  +RECIPE: " + dish.ToUpper() + " (check the Cookbook and Menu)" :
                 g.Knows(rival.RecipeId) ? "" : "  No recipe this time (" + Math.Max(0, rival.Pity - r.Wins) + " more win" + (rival.Pity - r.Wins == 1 ? "" : "s") + " guarantees it).");
             return loot;
         }

@@ -29,6 +29,13 @@ namespace RestaurantCity {
             if (Restaurant.Stock("greens") == 0) missing.Add("greens");
             return missing.Count == 0 ? "" : missing.Count == 1 ? missing[0] : string.Join(", ", missing.GetRange(0, missing.Count - 1)) + " and " + missing[missing.Count - 1];
         }
+        // Each star pays Flux once (never again if lost and won back): enough for one worker of that tier.
+        public int StarFluxPaid;
+        public static int StarFlux(int star) => star == 1 ? 3 : star == 2 ? 5 : star == 3 ? 10 : 0;
+        void PayStarFlux() {
+            if (Restaurant == null) return;
+            while (StarFluxPaid < Restaurant.Rank && StarFluxPaid < 3) { StarFluxPaid++; int f = StarFlux(StarFluxPaid); Flux += f; FluxIntroduced = true; Emit("starflux:" + StarFluxPaid + ":" + f); }
+        }
         public void OpenStand() { StandOpen = true; StandLastCall = false; StandNightShift = IsNight; ShiftServed0 = Served; ShiftMissed0 = Missed; ShiftEarned = 0; LastStandShift = null; if (!HasOrder) NextCustomer = Math.Min(NextCustomer, 3); Emit("stand_open"); }
         public void CloseStand(bool auto) { if (!StandOpen) return; StandOpen = false; StandLastCall = true; Emit(auto ? "stand_lastcall" : "stand_closing"); }
         void FinishStandShift() {
@@ -221,10 +228,11 @@ namespace RestaurantCity {
             Cash += SalePrice; Served++; Food = FoodStage.Empty; HasOrder = false; NextCustomer = 6; return true;
         }
         public bool ClaimRecipe(bool guardDefeated) {
-            // The rival guards his stash every night. First win: the midnight recipe + 3 Flux. After that: +2 Flux per night.
+            // The rival guards his stash every night. First win: the midnight recipe. After that: 3 bottles of sauce a night.
+            // Flux is scarce on purpose: it comes from new stars, a rival's first defeat and hidden crystals, never a nightly loop.
             if (!IsNight || !guardDefeated || LastStashDay == Day) return false;
             GainReputation(RecipeUnlocked ? Reputation.NightlyStash : Reputation.HiddenRecipe, RecipeUnlocked ? "Rival stash raids" : "Midnight recipe");
-            LastStashDay = Day; Flux += RecipeUnlocked ? 2 : 3; RecipeUnlocked = true; FluxIntroduced = true; Learn("midnight");
+            LastStashDay = Day; RecipeUnlocked = true; Learn("midnight");
             Restaurant?.AddStock("midnight_sauce", 3);   // the stash holds the sauce, not just the recipe
             return true;
         }
@@ -279,6 +287,7 @@ namespace RestaurantCity {
             if (Restaurant != null && Restaurant.PendingRep != null && Restaurant.PendingRep.Count > 0) { foreach (var g in Restaurant.PendingRep) GainReputation(g.Amount, g.Source); Restaurant.PendingRep.Clear(); }
             else CheckRankUp();
             while (Clock >= 240) { Clock -= 240; Day++; }
+            PayStarFlux();
             if (StandOpen && !StandNightShift && clock0 < 150 && Clock >= 150) CloseStand(true);   // dusk ends the day shift
             if (StandOpen && StandNightShift && Day != day0) CloseStand(true);                      // midnight ends the night shift
             if (Food == FoodStage.Cooking) CookSeconds += seconds;

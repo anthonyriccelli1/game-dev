@@ -431,14 +431,26 @@ namespace RestaurantCity {
         public bool Hire(GameState wallet,string id,out string message) {
             var d=RestaurantCatalog.Worker(id);if((!Owned&&!wallet.StandBuilt)||d==null)return Fail("Fire up your food truck first.",out message);
             if(Workers.Exists(w=>w.Id==id))return Fail("This worker already works here.",out message);
+            if(Workers.Count>=CrewCap)return Fail($"Your crew is full ({Workers.Count}/{CrewCap}). Crew size is your stars + 1: earn another star to make room.",out message);
             if(d.Special){
                 var resident=ResidentCast.Get(id);
                 if(resident!=null&&!wallet.HasMet(id))return Fail($"Feed {resident.Name} once and they'll join your People book. Then you can recruit them.",out message);
-                if(wallet.Flux<d.FluxCost)return Fail($"Recruiting {d.Name} costs {d.FluxCost} Flux. Earn Flux from the rival's stash at night.",out message);
+                if(wallet.Flux<d.FluxCost)return Fail($"Recruiting {d.Name} costs {d.FluxCost} Flux. Each new star pays Flux; so does beating a rival the first time.",out message);
                 wallet.Flux-=d.FluxCost;Workers.Add(new WorkerState{Id=id,Job=d.Role});wallet.GainReputation(Reputation.Recruit,"Recruits");message=$"{d.Name} joined your crew for {d.FluxCost} Flux! Specialty: {d.Role}. Assign any job in the Staff tab.";return true;
             }
             if(wallet.Cash<d.Cost)return Fail($"Hiring {d.Name} costs ${d.Cost}.",out message);
             wallet.Cash-=d.Cost;Workers.Add(new WorkerState{Id=id,Job=d.Role});wallet.GainReputation(Reputation.Recruit,"Recruits");message=$"Hired {d.Name}. Assigned {d.Role}. $1 per served order while assigned.";return true;
+        }
+        // Crew size is stars + 1, so every recruit is a real choice (and raids scale: Gus at 1 star, The Tin at 2...).
+        // Recruits are yours for good (no firing): later districts need them to run the earlier restaurants.
+        public int CrewCap=>Math.Max(0,Stars)+1;
+        // Spend 1 Flux to wake a tired worker right up (before a raid or a rush).
+        public const int BoostFlux=1;
+        public bool BoostEnergy(GameState wallet,string id,out string message){
+            var w=Workers.Find(x=>x.Id==id);if(w==null)return Fail("Recruit them first.",out message);
+            if(w.Energy>=90)return Fail("They're already rested.",out message);
+            if(wallet.Flux<BoostFlux)return Fail("An energy boost costs "+BoostFlux+" Flux.",out message);
+            wallet.Flux-=BoostFlux;w.Energy=100;message=$"{RestaurantCatalog.Worker(id)?.Name??"Your worker"} is wide awake! (-{BoostFlux} Flux)";return true;
         }
         public bool Assign(string id,StaffJob job,out string message) {
             var w=Workers.Find(x=>x.Id==id);if(w==null)return Fail("Hire this worker first.",out message);
