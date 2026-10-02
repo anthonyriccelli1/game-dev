@@ -6,7 +6,7 @@ namespace RestaurantCity {
     // and a gentle bob and turn so it catches the eye at night.
     public sealed class FluxVial : MonoBehaviour {
         public const float ModelHeight = .977f;
-        static readonly Color Green = new Color(.12f, .95f, .3f);
+        static readonly Color Green = new Color(.22f, 1f, .42f);
         Light glow; Material liquid; Transform[] bubbles; float[] bubbleSpeed; Vector3 rest; float phase;
         public bool Bob = true;
 
@@ -22,8 +22,8 @@ namespace RestaurantCity {
             var l = transform.Find("Flux liquid");
             if (l) liquid = l.GetComponent<Renderer>().material;   // own instance so each vial pulses on its own
             glow = new GameObject("Flux glow").AddComponent<Light>(); glow.transform.SetParent(transform, false);
-            glow.transform.localPosition = new Vector3(0, 1.7f, 0); glow.type = LightType.Point; glow.color = Green;   // above the cap: inside, it blew the glass out to white
-            glow.range = 3f; glow.intensity = 1.1f; glow.shadows = LightShadows.None;
+            glow.transform.localPosition = new Vector3(0, .5f, 0); glow.type = LightType.Point; glow.color = Green;
+            glow.range = 2.4f; glow.intensity = 1.4f; glow.shadows = LightShadows.None;
             var bubbleMat = FoodLooks.Mat(new Color(.75f, 1f, .8f), 2.2f);
             bubbles = new Transform[7]; bubbleSpeed = new float[bubbles.Length];
             for (int i = 0; i < bubbles.Length; i++) {
@@ -38,8 +38,8 @@ namespace RestaurantCity {
 
         void Update() {
             float t = Time.time + phase, k = 1 + .28f * Mathf.Sin(t * 2.1f);
-            if (liquid) liquid.SetColor("_EmissionColor", Green * 1.35f * k);
-            if (glow) glow.intensity = 1.1f * k;
+            if (liquid) liquid.SetColor("_EmissionColor", Green * 2.6f * k);
+            if (glow) glow.intensity = 1.4f * k;
             if (Bob) {
                 transform.localPosition = rest + Vector3.up * Mathf.Sin(t * 1.3f) * .02f;
                 transform.Rotate(0, 25 * Time.deltaTime, 0, Space.Self);

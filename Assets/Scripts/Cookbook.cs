@@ -27,7 +27,7 @@ namespace RestaurantCity {
             E("float", "Moonberry Float", RecipeSource.Cookbook, 2, 110, "Buy it here at 2 stars. Needs the drink machine.", "Soft serve drowned in fizzing moonberry soda. Serve it before it melts.", true),
             E("cyclops", "Cyclops Stack", RecipeSource.Raid, 0, 0, "Won by raiding Greasy Gus's food truck (the vacant lot, after dark).", "A burger crowned with one huge fried egg staring up at you, bacon for eyelashes. The patty and the egg share the grill.", true),
             E("twinmoons", "Twin Moons", RecipeSource.Raid, 0, 0, "Won by raiding The Tin Diner. Cook it on a chrome grill.", "Two patties, each under a slice of cheese glowing like a moon. Both cook at once.", false),
-            E("hoard", "Dragon's Hoard", RecipeSource.Raid, 0, 0, "Won by raiding The Gilded Orbit.", "The Gilded Orbit's showpiece: a mini burger, salad and soup piled on a gold tray with cheese coins.", false),
+            E("hoard", "Dragon's Hoard", RecipeSource.Raid, 0, 0, "Won from a rival kitchen.", "A rival showpiece: a mini burger, salad and soup piled on a gold tray with cheese coins.", false),
             E("midnight", "Midnight Burger", RecipeSource.Found, 0, 0, "Found in the city after dark. Zeeb sells the sauce.", "A burger with Zeeb's glowing Midnight Sauce. Contraband.", true),
             E("glowshroom", "Glowshroom Melt", RecipeSource.Found, 0, 0, "Something glows in the alley after midnight...", "Chopped glowing mushrooms melted over a patty. Contraband.", false),
         };

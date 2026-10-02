@@ -459,7 +459,7 @@ namespace RestaurantCity {
             var gs = Owner.Game.State; bool people = People.UseResidents;
             Label(sheet, "Flux " + gs.Flux + "   /   Crew " + Owner.Data.Workers.Count + " of " + Owner.Data.CrewCap + " (your stars + 1).   Feed a resident once to meet them, then recruit with Flux. New stars pay Flux.\n" + (gs.StandWorker != null ? "   Stand: " + gs.StandWorkerStatus + "  Earned $" + gs.StandWorkerEarned : ""), 30, 140, 1144, 35, 15, ink);
             string[] rivals = { "Maestro Vey|Head chef. Gold toque, glowing eyes. Runs a kitchen like an orchestra.", "Nyx|Sommelier with a crystal halo. Guests tip double when she pours.", "K-9|Chrome line cook with four arms and a neon visor. Never tires.", "Aurora|Maitre d'. Her monocle sees every empty seat before you do.", "Seraphine|Winged pastry chef. Desserts so good customers float out.", "Obsidian Titan|Doorman. Nobody makes a scene with him at the door.", "Lumen|Mixologist with a neon crest. Every drink glows." };
-            if (!Owner.Data.Owned) rivals = new string[0];   // rival crews show up once you own a restaurant
+            rivals = new string[0];   // the old Gilded Orbit crew is retired; The Alchemist's stitched crew comes with its raid
             // Crew cards: cash hires, plus anyone already recruited. Legacy special recruits only show once hired.
             var crew = new List<StaffDefinition>();
             foreach (var w in RestaurantCatalog.Staff) if (!w.Special || !people || Owner.Data.Workers.Exists(x => x.Id == w.Id)) crew.Add(w);
@@ -501,8 +501,8 @@ namespace RestaurantCity {
                     } else Label(card, "Serve them a meal to meet them.\nStats unknown.", 10, 225, 250, 60, 14, muted, false, TextAnchor.MiddleCenter);
                 }
             }
-            // The Gilded Orbit's elite crew: visible, desirable, and not available yet.
-            if (rivals.Length > 0) Label(content, "THE GILDED ORBIT'S CREW  /  Rival exclusives", 22, rivalTop + 10, 1110, 40, 24, ink, true);
+            // Rival exclusives (none right now).
+            if (rivals.Length > 0) Label(content, "RIVAL EXCLUSIVES", 22, rivalTop + 10, 1110, 40, 24, ink, true);
             for (int i = 0; i < rivals.Length; i++) {
                 var parts = rivals[i].Split('|');
                 var card = Block(content, parts[0], (i % 2) * 580, rivalTop + 60 + (i / 2) * 320, 562, 303, ink);

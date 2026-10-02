@@ -51,7 +51,7 @@ public static class PrototypeBuilder {
         }
         }
         if (!city) { Building("Milo's Supply", -13, 17, 12, 10, teal, world); Building("Apartments", -1, 19, 10, 14, coral, world); }
-        RivalRestaurantShell(world);
+        if (CityMap.Available) AlchemistBuilder.Build(world);   // the two-star rival on Main Street
         if (!city) Building("Corner cafe", -20, -15, 7, 9, Mat("Sage", "8DAB91"), world);
         if (!city) Building("Future Restaurant", -10, -15, 10, 11, Mat("Brick", "BC896D"), world);
         if (!city) { Building("Records", 2, -16, 10, 14, teal, world); Building("Bodega", 16, -15, 13, 10, Mat("Mustard", "CEAE70"), world); }
@@ -130,22 +130,15 @@ public static class PrototypeBuilder {
         future.AddComponent<Interactable>().Kind = InteractionKind.FutureRestaurant;
         var futureText = Label("THE ODD TABLE\n\nFOR LEASE  /  $" + RestaurantSites.StarterPrice + "\nE: LEASE IT", new Vector3(-6.2f, 1.35f, -8.58f), .15f, cream.color, world);
         futureText.transform.rotation = Quaternion.Euler(0, 180, 0);
-        Sign("RIVAL ALLEY", new Vector3(11.6f, 3.8f, 14), 5, dark, world, .21f);
-        Label("NIGHTS ONLY  /  ENTER AT YOUR OWN RISK", new Vector3(11.6f, 3.2f, 13.98f), .10f, coral.color, world);
-        Cube("Alley left post", new Vector3(8.9f, 1.9f, 14), new Vector3(.15f, 3.8f, .15f), dark, world);
-        Cube("Alley right post", new Vector3(14.3f, 1.9f, 14), new Vector3(.15f, 3.8f, .15f), dark, world);
-        var stash = Cube("Midnight recipe stash", new Vector3(11.6f, .7f, 26), new Vector3(1.3f, 1.4f, 1), gold, world);
-        stash.AddComponent<Interactable>().Kind = InteractionKind.Recipe;
-        if (city && CityMap.FitGeneric("Props/SM_Gen_Prop_Chest_01", new Vector3(11.6f, 0, 26), 180, 1.4f, world)) stash.GetComponent<MeshRenderer>().enabled = false;
-        Label("MIDNIGHT RECIPE", new Vector3(11.6f, 1.85f, 25.5f), .14f, cream.color, world);
-        game.RecipeGlow = Sphere("Recipe beacon", new Vector3(11.6f, 2.4f, 26), Vector3.one * .45f, gold, world);
+        // The rival alley and its midnight stash are gone (The Alchemist took the lot); the recipe gets a new home later.
+        game.RecipeGlow = new GameObject("Recipe beacon (parked)"); game.RecipeGlow.transform.SetParent(world, false);
         var guardObject = new GameObject("Alley rival"); guardObject.transform.SetParent(world); guardObject.transform.position = new Vector3(11.6f, 0, 21);
         game.Guard = guardObject.AddComponent<StreetGuard>(); game.Guard.Game = game;
         var guardBody = Person("Rival body", guardObject.transform.position, Mat("Rival coat", "483055"), guardObject.transform);
         game.Guard.Body = guardBody.transform; game.Guard.Coat = guardBody.transform.Find("Torso").GetComponent<Renderer>();
+        guardObject.SetActive(false);   // parked with the stash
 
         for (int i = -2; i <= 2; i++) { if (!(city && i == -1)) StreetLamp(new Vector3(i * 10, 0, -6), world); if (i != 0) StreetLamp(new Vector3(i * 10, 0, 6), world); }
-        StreetLamp(new Vector3(city ? 12.6f : 13.5f, 0, city ? 30.5f : 25), world);
         ArtPackDressing.Dress(world);
         Tree(new Vector3(-20, 0, 7), world); Tree(new Vector3(20, 0, 7), world);
         Tree(new Vector3(6, 0, -8), world); Tree(new Vector3(-3, 0, -8), world);
@@ -191,7 +184,7 @@ public static class PrototypeBuilder {
         var kinds = new HashSet<InteractionKind>();
         foreach (var item in UnityEngine.Object.FindObjectsByType<Interactable>(FindObjectsInactive.Include, FindObjectsSortMode.None)) kinds.Add(item.Kind);
         // Milo's supply crates, the stand sign and the sidewalk-table targets are created at runtime by PhysicalStand.
-        foreach (InteractionKind kind in Enum.GetValues(typeof(InteractionKind))) if (kind != InteractionKind.SupplyProtein && kind != InteractionKind.SupplyProduce && kind != InteractionKind.StandSign && kind != InteractionKind.StandTable && kind != InteractionKind.NightStash && !kinds.Contains(kind)) throw new Exception("Missing interaction: " + kind);
+        foreach (InteractionKind kind in Enum.GetValues(typeof(InteractionKind))) if (kind != InteractionKind.SupplyProtein && kind != InteractionKind.SupplyProduce && kind != InteractionKind.StandSign && kind != InteractionKind.StandTable && kind != InteractionKind.NightStash && kind != InteractionKind.Recipe && !kinds.Contains(kind)) throw new Exception("Missing interaction: " + kind);
         foreach (var renderer in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None)) {
             if (!renderer.sharedMaterial || !renderer.sharedMaterial.shader) throw new Exception("Missing material: " + renderer.name);
         }
@@ -238,51 +231,6 @@ public static class PrototypeBuilder {
     static void Awning(Vector3 p, float width, Material mat, Transform parent) {
         int count = Mathf.CeilToInt(width / .45f);
         for (int i = 0; i < count; i++) Cube("Striped awning", p + new Vector3(-width / 2 + (i + .5f) * width / count, 0, 0), new Vector3(width / count, .18f, 2.8f), i % 2 == 0 ? mat : cream, parent);
-    }
-    // Walk-in shell of the rival three-star restaurant (x 14..24, z 16.5..23.5). Interior is furnished at runtime.
-    static void RivalRestaurantShell(Transform parent) {
-        var root = new GameObject("Rival restaurant / The Gilded Orbit").transform; root.parent = parent;
-        var obsidian = Mat("Obsidian", "1C1B2B"); var gold = Mat("Rival gold", "D9A441"); var plum = Mat("Plum velvet", "4A2548");
-        var marble = Mat("Marble floor", "E9E1D3"); var glassDark = Mat("Smoked glass", "3E5B73");
-        // In the city build the frontage uses the city pack's own window glass, so you can see the dining room inside.
-        var packGlass = AssetDatabase.LoadAssetAtPath<Material>("Assets/Synty/PolygonCity/Materials/Misc/Glass_01.mat");
-        if (CityMap.Available && packGlass) glassDark = packGlass;
-        float x0 = 14, x1 = 24.3f, zf = 16.5f, zb = 29.4f, h = 4.6f; float cx0 = (x0 + x1) / 2, cz = (zf + zb) / 2, depth = zb - zf, width = x1 - x0;
-        Cube("Marble floor", new Vector3(cx0, .04f, cz), new Vector3(width, .08f, depth), marble, root);
-        Cube("Back wall", new Vector3(cx0, h / 2, zb - .1f), new Vector3(width, h, .2f), plum, root);
-        Cube("Left wall", new Vector3(x0 + .1f, h / 2, cz), new Vector3(.2f, h, depth), plum, root);
-        Cube("Right wall", new Vector3(x1 - .1f, h / 2, cz), new Vector3(.2f, h, depth), plum, root);
-        if (CityMap.Available) {
-            // Upper floors come from the city pack (CityMap.GildedTower); here only the ceiling slab and a gold band.
-            Cube("Ceiling", new Vector3(cx0, h + .15f, cz), new Vector3(width, .3f, depth), obsidian, root);
-            Cube("Gold band", new Vector3(cx0, h + .02f, zf - .02f), new Vector3(width + .2f, .16f, .2f), gold, root, false);
-        } else {
-            Cube("Upper floors", new Vector3(cx0, h + 3.8f, cz), new Vector3(width + .2f, 7.6f, depth + .2f), obsidian, root);
-            Cube("Roof cornice", new Vector3(cx0, h + 7.7f, cz), new Vector3(width + .6f, .4f, depth + .6f), gold, root);
-            for (float wx = 15.2f; wx < 23.5f; wx += 2.1f) for (float y = 6.4f; y < 11.8f; y += 2.6f) {
-                Cube("Gold window frame", new Vector3(wx, y, zf - .02f), new Vector3(1.4f, 1.9f, .16f), gold, root, false);
-                Cube("Lit window", new Vector3(wx, y, zf - .08f), new Vector3(1.15f, 1.62f, .08f), Mat("Warm window", "F2C27A"), root, false);
-            }
-        }
-        // Glass frontage with a centered doorway.
-        foreach (var seg in new[] { new Vector2(x0, 18.1f), new Vector2(19.9f, x1) }) {
-            float cx = (seg.x + seg.y) / 2, w = seg.y - seg.x;
-            Cube("Front base", new Vector3(cx, .3f, zf), new Vector3(w, .6f, .3f), obsidian, root);
-            Cube("Front glass", new Vector3(cx, 2.25f, zf), new Vector3(w, 3.3f, .08f), glassDark, root);
-            for (float px = seg.x; px <= seg.y + .01f; px += w / 2) Cube("Gold mullion", new Vector3(px, 2.25f, zf - .05f), new Vector3(.1f, 3.3f, .14f), gold, root, false);
-        }
-        Cube("Front header", new Vector3(cx0, 4.2f, zf), new Vector3(width, .8f, .3f), obsidian, root);
-        Cube("Door frame left", new Vector3(18.05f, 2, zf - .05f), new Vector3(.12f, 4, .2f), gold, root);
-        Cube("Door frame right", new Vector3(19.95f, 2, zf - .05f), new Vector3(.12f, 4, .2f), gold, root);
-        Cube("Red carpet", new Vector3(19, .03f, zf - 1.2f), new Vector3(1.6f, .04f, 2.4f), Mat("Carpet", "A3243B"), root, false);
-        for (int s = -1; s <= 1; s += 2) {
-            Cube("Rope post", new Vector3(19 + s * 1.1f, .5f, zf - 1.9f), new Vector3(.12f, 1, .12f), gold, root);
-            Cube("Velvet rope", new Vector3(19 + s * 1.1f, .85f, zf - 1.2f), new Vector3(.05f, .05f, 1.4f), plum, root, false);
-        }
-        Cube("Marquee", new Vector3(19, 5.1f, zf - .45f), new Vector3(9.2f, 1.1f, .6f), obsidian, root);
-        Cube("Marquee trim", new Vector3(19, 4.52f, zf - .76f), new Vector3(9.4f, .08f, .1f), gold, root, false);
-        var name = Label("THE GILDED ORBIT", new Vector3(19, 5.22f, zf - .78f), .3f, new Color(.98f, .78f, .35f), root);
-        var stars = Label("THREE STARS  *  *  *   RESERVATIONS ONLY", new Vector3(19, 4.78f, zf - .78f), .11f, new Color(1, .93f, .8f), root);
     }
     static void Building(string name, float x, float z, float width, float height, Material mat, Transform parent) {
         var root = new GameObject(name).transform; root.parent = parent;

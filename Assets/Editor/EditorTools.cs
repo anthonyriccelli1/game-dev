@@ -152,6 +152,19 @@ public static class EditorTools {
         PrefabUtility.SaveAsPrefabAsset(go, dir + "/FluxVial.prefab"); Object.DestroyImmediate(go);
         return sb.ToString();
     }
+    // One floor tile per Shops building material, saved as prefabs and listed for RenderPrefabs (to pick surfaces).
+    public static string MaterialSwatches() {
+        const string dir = "Assets/Generated/Swatches"; if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder("Assets/Generated", "Swatches");
+        var tile = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Synty/PolygonShops/Prefabs/Buildings/SM_Bld_Base_Wall_01.prefab");
+        var list = new StringBuilder();
+        foreach (var guid in AssetDatabase.FindAssets("t:Material", new[] { "Assets/Synty/PolygonShops/Materials/Building_Mats" })) {
+            var path = AssetDatabase.GUIDToAssetPath(guid); var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            var go = (GameObject)Object.Instantiate(tile); foreach (var r in go.GetComponentsInChildren<Renderer>()) { var ms = r.sharedMaterials; for (int i = 0; i < ms.Length; i++) ms[i] = m; r.sharedMaterials = ms; }
+            string name = Path.GetFileNameWithoutExtension(path).Replace("PolygonShops_Mat_", "");
+            PrefabUtility.SaveAsPrefabAsset(go, dir + "/" + name + ".prefab"); Object.DestroyImmediate(go); list.AppendLine(dir + "/" + name);
+        }
+        File.WriteAllText("EditorOutput/render-list.txt", list.ToString()); return "swatches written";
+    }
     public static string DumpPrefabSizes() {
         var sb = new StringBuilder();
         foreach (var line in File.ReadAllLines("EditorOutput/render-list.txt").Select(l => l.Trim().Split(' ')[0]).Where(l => l.Length > 0)) {

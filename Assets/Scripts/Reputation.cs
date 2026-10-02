@@ -8,7 +8,7 @@ namespace RestaurantCity {
     public static class Reputation {
         public static readonly string[] Titles = { "Street Cook", "Line Cook", "Sous Chef", "Head Chef", "Restaurateur", "Mogul" };
         public static readonly int[] Thresholds = { 0, 400, 1200, 2500, 5000, 9000 };
-        public static readonly string[] Keystones = { "", "The Odd Table reaches 2 stars", "Beat Captain Krill at the Docks", "Win the Neon Row cook-off", "Any restaurant reaches 4 stars", "Beat the Gilded Orbit flagship" };
+        public static readonly string[] Keystones = { "", "The Odd Table reaches 2 stars", "Beat Captain Krill at the Docks", "Win the Neon Row cook-off", "Any restaurant reaches 4 stars", "Beat the city's flagship rival" };
         public static readonly string[] KeystoneGoal = { "", "", "beat_krill", "win_cookoff", "", "beat_flagship" };
         // Reputation awards.
         // The street stand pays cash, not reputation: a fast sale earns a token +1, a slow one nothing.
@@ -50,7 +50,7 @@ namespace RestaurantCity {
         public static readonly (float x0, float z0, float x1, float z1)[] Roads = { (-80, -5, 80, 5), (-80, 45, 80, 55), (-80, -55, 80, -45), (-80, -110, 80, -100), (-45, -110, -35, 80), (35, -110, 45, 80) };
         public static readonly CityPlace[] Places = {
             new CityPlace("Little Flame", "you", 0, -62.5f), new CityPlace("Milo's", "supply", -12, 10), new CityPlace("The Odd Table", "restaurant", -10, -15),
-            new CityPlace("Gilded Orbit", "rival", 19, 22), new CityPlace("Rival Alley", "recipe", 11.6f, 24),
+            new CityPlace("The Alchemist", "rival", 15, 22),
             new CityPlace("The Tin Diner", "rival", -22, 38), new CityPlace("Market stalls", "supply", 0, 64),
             new CityPlace("Greasy Gus's truck", "rival", 17, -31), new CityPlace("Graffiti alley", "recipe", -22.5f, -33),
             new CityPlace("The park", "service", 65, -25), new CityPlace("City Hall", "service", -67, 25), new CityPlace("Bus stop", "service", -30, -7),

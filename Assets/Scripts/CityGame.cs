@@ -152,7 +152,7 @@ namespace RestaurantCity {
             foreach (var lamp in Lamps) lamp.intensity = Mathf.Lerp(.2f, 4, dusk);
         }
         // The goal ladder. Truck phase: fire up, stock, open, first customer, first star, save $350, buy The Odd Table.
-        // Restaurant phase: furnish, hire, then the city opens up (midnight recipe stash > Zeeb's sauce > raid Gus).
+        // Restaurant phase: furnish, hire, then the city opens up (raid Gus > earn two stars > raid The Alchemist).
         // Nothing about raids or map secrets shows until you own a restaurant.
         public string Objective {
             get {
@@ -196,9 +196,9 @@ namespace RestaurantCity {
                     }
                 }
                 if (r.Workers.Count == 0) return "Hire your first worker\nPress P > Crew. Feed a resident once and they join your People book; recruit them to cook, serve or wash.";
-                if (!State.Knows("midnight")) return State.IsNight ? "Find the midnight recipe\nA rival hides a recipe stash in Rival Alley (purple on the map, M). Grab it. You can retreat." : "Find the midnight recipe\nA rival hides a recipe stash in Rival Alley (purple on the map, M). It opens after dark.";
-                if (State.ZeebOrders == 0 && r.Stock("midnight_sauce") == 0) return "Call Zeeb\nPress P: Zeeb sells midnight sauce. Then put the Midnight Burger on your menu.";
+                if (State.Knows("midnight") && State.ZeebOrders == 0 && r.Stock("midnight_sauce") == 0) return "Call Zeeb\nPress P: Zeeb sells midnight sauce. Then put the Midnight Burger on your menu.";
                 if (State.Raids == null || !State.Raids.Exists(x => x.RivalId == "gus" && x.Wins > 0)) return State.IsNight ? "Raid Greasy Gus\nHis truck is in the vacant lot tonight. Press E on it, pick a rested crew and win his Cyclops Stack." : "Raid Greasy Gus\nGus guards his Cyclops Stack recipe. Rest your crew and visit his truck after dark.";
+                if (r.Stars >= 2 && (State.Raids == null || !State.Raids.Exists(x => x.RivalId == "alchemist" && x.Wins > 0))) return State.IsNight ? "Raid The Alchemist\nThe lab diner on Main Street. Its stitched crew hits hard: bring your best, rested workers." : "Raid The Alchemist\nThe two-star lab diner on Main Street guards its signature dish. Walk in by day to scout; raid it after dark.";
                 if (r.Stars + 1 < RestaurantState.StarGoals.Length) { var g = r.NextStarGoal; return "Earn " + StarText.Words(r.Stars + 1) + "\nServed " + Math.Min(r.Served, g.served) + "/" + g.served + "   Satisfaction " + r.Satisfaction.ToString("0") + "/" + g.satisfaction + (g.ambience > 0 ? "   Ambience " + r.Ambience + "/" + g.ambience : ""); }
                 return "Your restaurant, your rules\nB to decorate. Tab to manage service, menu and staff.";
             }
