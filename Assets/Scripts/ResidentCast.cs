@@ -3,13 +3,15 @@ namespace RestaurantCity {
     public enum Gait { Standard, Light, Zombie }
     // One resident of Saffron Bay. Adding a resident = one line here plus its FBX/PNG in Resources/Residents.
     public class ResidentDef {
-        public string Id, Name, Blurb, Model; public float Height; public int Tier, MinAmbience; public bool NightOnly; public Gait Gait; public StaffJob Job;
+        public string Id, Name, Blurb, Model, UnlockedBy; public float Height; public int Tier, MinAmbience; public bool NightOnly; public Gait Gait; public StaffJob Job;
         public ResidentDef(string id, string name, float height, int tier, StaffJob job, string blurb, Gait gait = Gait.Standard, bool night = false) {
             Id = id; Model = id; Name = name; Height = height; Tier = tier; Job = job; Blurb = blurb; Gait = gait; NightOnly = night;
             MinAmbience = tier == 0 ? 0 : tier == 1 ? 6 : 14;
         }
         // Pickier residents only visit restaurants with at least this much ambience (decor, finishes, lighting).
         public ResidentDef Picky(int ambience) { MinAmbience = ambience; return this; }
+        // Only shows up (and so can only be met and recruited) once you've beaten this rival.
+        public ResidentDef Locked(string rivalId) { UnlockedBy = rivalId; return this; }
         // A new look for an existing resident: the id (saves, People book, stats) stays, the model file changes.
         public ResidentDef Uses(string model, float height) { Model = model; Height = height; return this; }
         // Recruiting price in Flux by rarity. Rares are a real goal: several nights of raids and stashes.
@@ -46,6 +48,7 @@ namespace RestaurantCity {
             new ResidentDef("146_CoolTrash", "Trash Can", 1.4f, 2, StaffJob.Clean, "One man's trash is this can's whole personality.").Picky(0),
             new ResidentDef("201_TripoAlien", "Zilo", CustomResidentHeight, 2, StaffJob.Serve, "A sharp-eyed visitor who gets hot plates to the right table fast."),
             new ResidentDef("044_Zombie", "Zombie", 1.76f, 1, StaffJob.Cook, "Only comes out at night. Doesn't mind the heat.", Gait.Zombie, true).Picky(0),
+            new ResidentDef("212_TripoFrank", "Frank", CustomResidentHeight, 2, StaffJob.Cook, "The Alchemist's stitched lab hand. Huge, slow, never tires. Beat The Alchemist and he comes looking for honest work.").Locked("alchemist"),
             new ResidentDef("211_TripoPumpkin", "Jack", CustomResidentHeight, 2, StaffJob.Cook, "Carved grin, glowing eyes, never tired. Works the grill from dusk till the candle burns out.", Gait.Standard, true),
             new ResidentDef("205_TripoVampire", "Dracula", CustomResidentHeight, 2, StaffJob.Serve, "Charming night-shift host. Hates garlic orders.", Gait.Standard, true).Picky(18),
             new ResidentDef("204_TripoReaper", "Grim", CustomResidentHeight, 2, StaffJob.Clean, "Never late, never rushed. Clears every table, eventually all of them. Comes out at night.", Gait.Standard, true).Picky(16),
@@ -71,7 +74,10 @@ namespace RestaurantCity {
             if (byId.Count == 0) { byId[Milo.Id] = Milo; foreach (var r in OldMarket) byId[r.Id] = r; }
             return byId.TryGetValue(Current(id), out var d) ? d : null;
         }
-        public static bool IsRecruitable(string id) { var d = Get(id); return d != null && d != Milo; }
+        public static bool IsRecruitable(string id) { var d = Get(id); return d != null && d != Milo && Available(d); }
+        // Set by the game: has the player beaten this rival? Residents locked behind a rival stay away until then.
+        public static System.Func<string, bool> RivalBeaten;
+        public static bool Available(ResidentDef d) => d.UnlockedBy == null || (RivalBeaten != null && RivalBeaten(d.UnlockedBy));
 
         // Who walks in next. Only residents whose taste your place meets (ambience) can come. Commons are most likely; uncommons and rares get likelier as your stars rise; night brings
         // out the night crowd. People you haven't fed yet get a small boost so the book fills steadily.
@@ -80,6 +86,7 @@ namespace RestaurantCity {
         public static ResidentDef Visitor(int seed, bool night, int stars, ICollection<string> met, int ambience = 40) {
             var pool = new List<ResidentDef>();
             foreach (var r in OldMarket) {
+                if (!Available(r)) continue;
                 if (r.NightOnly && !night) continue;
                 if (ambience < r.MinAmbience) continue;   // too fancy for this place: decorate to attract them
                 int weight = r.Tier == 0 ? 6 : r.Tier == 1 ? 2 + stars : stars >= 2 ? 2 : 1;
@@ -94,7 +101,7 @@ namespace RestaurantCity {
         public static ResidentDef ForWorker(string workerId) {
             var direct = Get(workerId); if (direct != null) return direct;
             int h = 17; foreach (char c in workerId ?? "") h = h * 31 + c;
-            var day = System.Array.FindAll(OldMarket, r => !r.NightOnly);
+            var day = System.Array.FindAll(OldMarket, r => !r.NightOnly && r.UnlockedBy == null);
             return day[(h & 0x7fffffff) % day.Length];
         }
         static readonly Dictionary<string, StaffDefinition> staff = new Dictionary<string, StaffDefinition>();

@@ -21,7 +21,7 @@ public static class AlchemistBuilder {
         shell = Group("Shell"); inside = Group("Dining room"); loft = Group("Lab balcony"); yard = Group("Courtyard"); colliders = Group("Colliders");
         brickOut = Mat("Base_Brick_Red_01"); brickIn = brickOut; floorMat = Mat("Base_Tile_01"); roofMat = Mat("Concrete_01"); ceilingMat = Mat("Concrete_01");
         Shell(); Balcony(); Sign(); Dining(); Kitchen(); Lab(); Atmosphere(); Courtyard();
-        Anchor("Door", new Vector3(DoorX, 0, Z0 - .6f)); Anchor("Pass", new Vector3(14.5f, 0, 25.6f)); Anchor("Head cook", new Vector3(14.5f, 0, 28.6f));
+        Anchor("Door", new Vector3(DoorX, 0, Z0 - .6f)); Anchor("Pass", AlchemistLayout.Waiting[0]); Anchor("Head cook", AlchemistLayout.HeadCook);
         Anchor("Raid centre", new Vector3(15, 0, 20));
     }
 
@@ -75,8 +75,9 @@ public static class AlchemistBuilder {
         for (int i = 0; i < 8; i++) for (int j = 5; j < 7; j++) S("Buildings/SM_Bld_Balcony_Floor_01", new Vector3(X0 + 2.5f * (i + 1), Storey, Z0 + 2.5f * j), 0, loft);
         for (int k = 0; k < 7; k++) S("Buildings/SM_Bld_Balcony_Railing_01", new Vector3(X0 + 2.5f * (k + 1), Storey, Loft), 0, loft);
         // Two flights up the east wall (x 22.5..25), z 21.5 -> 26.5.
-        S("Buildings/SM_Bld_Base_Stairs_01", new Vector3(X1, 0, 24), 0, loft);
-        S("Buildings/SM_Bld_Base_Stairs_01", new Vector3(X1, 1.5f, 26.5f), 0, loft);
+        // The flight piece spans local x[-2.5,0] z[-2.5,0] and climbs toward -z, so turn it round to climb toward the loft.
+        S("Buildings/SM_Bld_Base_Stairs_01", new Vector3(X1 - 2.5f, 0, 21.5f), 180, loft);
+        S("Buildings/SM_Bld_Base_Stairs_01", new Vector3(X1 - 2.5f, 1.5f, 24), 180, loft);
         Box("Balcony floor", new Vector3((X0 + X1) / 2, Storey - .1f, (Loft + Z1) / 2), new Vector3(X1 - X0, .2f, Z1 - Loft));
         Box("Balcony rail", new Vector3((X0 + 22.5f) / 2, Storey + .55f, Loft), new Vector3(22.5f - X0, 1.1f, .12f));
         var ramp = Box("Stairs ramp", new Vector3(23.75f, Storey / 2, 24), new Vector3(2.5f, .2f, Mathf.Sqrt(25 + Storey * Storey)));
@@ -97,10 +98,10 @@ public static class AlchemistBuilder {
 
     // ---------- dining room ----------
     static void Dining() {
-        // Booths down the west wall, a second row east of the door, small tables between.
-        foreach (float z in new[] { 16.4f, 19.6f, 22.8f }) { Solid(S("Props/SM_Prop_Cafe_Booth_Wall_Seat_Double_01", new Vector3(6.05f, 0, z), 90, inside)); }
-        foreach (float z in new[] { 16.4f, 19.6f }) { Solid(S("Props/SM_Prop_Cafe_Booth_Wall_Seat_Double_01", new Vector3(23.95f, 0, z), 270, inside)); }
-        foreach (var (x, z) in new[] { (10.5f, 17.2f), (10.5f, 21.2f), (20.2f, 17.4f), (20.2f, 21.4f) }) {
+        // Diner booths running out from the side walls: a table in each bay, a bench either side facing it
+        // (single benches at the ends, back-to-back doubles between bays). Positions shared with the runtime crew.
+        Booths(AlchemistLayout.WestBooths, X0 + .15f + 1.01f); Booths(AlchemistLayout.EastBooths, X1 - .15f - 1.01f);
+        foreach (var t in AlchemistLayout.FloorTables) { float x = t.x, z = t.y;
             Solid(S("Props/SM_Prop_Cafe_Table_Small_01", new Vector3(x, 0, z), 0, inside));
             S("Props/SM_Prop_Cafe_Chair_01", new Vector3(x - .8f, 0, z), 90, inside); S("Props/SM_Prop_Cafe_Chair_01", new Vector3(x + .8f, 0, z), 270, inside);
         }
@@ -110,7 +111,16 @@ public static class AlchemistBuilder {
         for (float x = 7.6f; x < 21.6f; x += 1.2f) if (Mathf.Abs(x - 14.5f) > .9f) S("Props/SM_Prop_Bar_Stool_01", new Vector3(x, 0, 24.4f), 0, inside);
         // Specimen tanks: the Flux canister grown to 2.4 m, glowing in the front corners (seen from the street) and
         // flanking the kitchen.
-        foreach (var t in new[] { new Vector3(6.2f, 0, 15.2f), new Vector3(23.8f, 0, 15.2f), new Vector3(6.4f, 0, 25.6f), new Vector3(22, 0, 27.6f) }) Tank(t, 2.4f, inside);
+        foreach (var t in new[] { new Vector3(12.6f, 0, 14.65f), new Vector3(19.9f, 0, 14.65f), new Vector3(6.4f, 0, 25.6f), new Vector3(22, 0, 27.6f) }) Tank(t, 2.4f, inside);
+    }
+    static void Booths(Vector2[] tables, float benchX) {
+        for (int i = 0; i < tables.Length; i++) {
+            var t = tables[i];
+            Solid(S("Props/SM_Prop_Cafe_Table_Small_01", new Vector3(t.x, 0, t.y), 0, inside));
+            if (i == 0) Solid(S("Props/SM_Prop_Cafe_Booth_Wall_Seat_01", new Vector3(benchX, 0, t.y - 1.07f), 0, inside));
+            else Solid(S("Props/SM_Prop_Cafe_Booth_Wall_Seat_Double_01", new Vector3(benchX, 0, (tables[i - 1].y + t.y) / 2), 0, inside));
+            if (i == tables.Length - 1) Solid(S("Props/SM_Prop_Cafe_Booth_Wall_Seat_01", new Vector3(benchX, 0, t.y + 1.07f), 180, inside));
+        }
     }
 
     // ---------- open kitchen under the balcony ----------
@@ -145,11 +155,16 @@ public static class AlchemistBuilder {
     static void Atmosphere() {
         var a = Group("Pipes and lights");
         for (int k = 0; k < 7; k++) foreach (float x in new[] { 7.2f, 22.8f }) S("Props/SM_Prop_BigPipe_02", new Vector3(x, 5.45f, Z0 + .2f + 2.5f * k), 0, a);
-        foreach (var (x, z) in new[] { (9f, 17f), (15f, 17f), (21f, 17f), (9f, 21.5f), (15f, 21.5f), (21f, 21.5f) }) S("Props/SM_Prop_Lighting_Ceiling_Cage_01", new Vector3(x, 2 * Storey - .02f, z), 0, a);
+        // Cage pendants, each with a glowing bulb and a warm light under it.
+        var bulbGlow = Glow("Assets/Generated/Alchemist_BulbGlow.mat", new Color(1f, .78f, .45f), 2.4f);
+        foreach (var (x, z) in new[] { (9f, 17f), (15f, 17f), (21f, 17f), (9f, 21.5f), (15f, 21.5f), (21f, 21.5f) }) {
+            S("Props/SM_Prop_Lighting_Ceiling_Cage_01", new Vector3(x, 2 * Storey - .02f, z), 0, a);
+            Skin(S("Props/SM_Prop_Lighting_Cable_Bulb_01", new Vector3(x, 2 * Storey - .02f, z), 0, a), bulbGlow, true);
+            Lamp(new Vector3(x, 2 * Storey - .9f, z), new Color(1f, .76f, .48f), .9f, 6.5f, a);
+        }
         foreach (var (x, z) in new[] { (7.5f, 26.1f), (10.5f, 26.3f), (18.5f, 26.3f), (21.5f, 26.1f) }) P(Gen + "Props/SM_Gen_Prop_Chain_01", new Vector3(x, 2 * Storey - .02f, z), x * 30, a);
         for (float x = 8; x < 21.5f; x += 1.5f) S("Props/SM_Prop_Lighting_Cable_Bulb_01", new Vector3(x, Storey - .5f, 26.2f), 0, a);
         // Light: warm pools over the tables, green from the tanks and the lab.
-        foreach (var (x, z) in new[] { (9f, 19f), (15f, 19f), (21f, 19f) }) Lamp(new Vector3(x, 4.6f, z), new Color(1f, .74f, .45f), 1f, 7, a);
         foreach (var p in new[] { new Vector3(6.5f, 2.2f, 16), new Vector3(23.5f, 2.2f, 16), new Vector3(14.5f, 2.2f, 28.5f), new Vector3(14.5f, 4.8f, 29.5f) }) Lamp(p, new Color(.3f, 1f, .45f), 1.4f, 7, a);
     }
 
@@ -185,11 +200,11 @@ public static class AlchemistBuilder {
     }
     static bool Surface(Material m) => m && AssetDatabase.GetAssetPath(m).Contains("/Building_Mats/");
     // Re-skin every Shops building surface (brick, tile, ceiling...) on a piece with one material.
-    static GameObject Skin(GameObject go, Material m) {
+    static GameObject Skin(GameObject go, Material m, bool all = false) {
         if (!go || !m) return go;
         foreach (var r in go.GetComponentsInChildren<Renderer>()) {
             var mats = r.sharedMaterials;
-            for (int i = 0; i < mats.Length; i++) if (Surface(mats[i])) mats[i] = m;
+            for (int i = 0; i < mats.Length; i++) if (all || Surface(mats[i])) mats[i] = m;
             r.sharedMaterials = mats;
         }
         return go;
@@ -203,6 +218,11 @@ public static class AlchemistBuilder {
             r.sharedMaterials = mats;
         }
         return go;
+    }
+    static Material Glow(string path, Color c, float strength) {
+        var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (!m) { m = new Material(Shader.Find("Universal Render Pipeline/Lit")); AssetDatabase.CreateAsset(m, path); }
+        m.SetColor("_BaseColor", c); m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", c * strength); EditorUtility.SetDirty(m); return m;
     }
     static GameObject Box(string name, Vector3 centre, Vector3 size) {
         var go = new GameObject(name); go.transform.SetParent(colliders, false); go.transform.position = centre;

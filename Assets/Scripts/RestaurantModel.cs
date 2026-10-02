@@ -68,6 +68,11 @@ namespace RestaurantCity {
                 "Put a patty AND an egg on the grill. The egg fries fast: pull it before the yolk burns.",
                 "Plate the patty and a bun, then crown it with the fried egg.",
                 "Carry the Cyclops Stack to the matching guest."}),
+            new RecipeDefinition("philosopher",new[]{"bun","cooked_patty","chopped_greens","fried_egg"},new[]{
+                "Won by raiding The Alchemist. Uses eggs and greens from Milo.",
+                "Patty AND an egg on the grill; chop greens on the board while they cook.",
+                "Plate a bun, the greens and the patty, then crown it with the fried egg: the golden stone.",
+                "Carry the Philosopher's Stack to the matching guest."}),
             new RecipeDefinition("float",new[]{"float"},new[]{
                 "Needs the Swirl & Fizz machine and moonberries from Milo.",
                 "Press E at the machine to set a cup under the nozzle.",
@@ -158,6 +163,7 @@ namespace RestaurantCity {
             new DishDefinition("soup","Planet Soup",18,1,1,12,"stove",1,false,"Comfort food for mushroom folk. Needs a stove."),
             new DishDefinition("cometdog","Comet Dog",16,1,1,6,"grill",1,false,"A sausage trailing a glowing comet tail of orange sauce. Cooks fast, burns fast."),
             new DishDefinition("cyclops","Cyclops Stack",24,1,1,10,"grill",0,false,"A burger crowned with one huge fried egg staring up at you, bacon for eyelashes. Patty and egg share the grill."),
+            new DishDefinition("philosopher","Philosopher's Stack",32,1,2,12,"grill",0,false,"The Alchemist's signature: patty, greens and a golden-yolk egg that glows like the stone itself."),
             new DishDefinition("float","Moonberry Float",20,0,1,3,"drink_machine",2,false,"Soft serve in fizzing moonberry soda. Serve it before it melts."),
             new DishDefinition("midnight","Midnight Burger",25,2,1,11,"grill",0,true,"Rare city recipe. Aliens and night owls seek it out."),
             new DishDefinition("dessert","Moonberry tart",24,0,2,13,"oven",2,false,"Two-star showpiece. Needs the Starlight oven.")
@@ -345,7 +351,7 @@ namespace RestaurantCity {
         // Can this ingredient be bought at Milo's right now? (Secret ones never are; recipe ones need the recipe.)
         public string IngredientLock(GameState wallet,IngredientDef d){
             if(d.Source!=Ingredients.Milo)return "Only from Zeeb (phone)";
-            if(!string.IsNullOrEmpty(d.Recipe)&&!wallet.Knows(d.Recipe))return "Learn "+RestaurantCatalog.Dish(d.Recipe).Name+" first";
+            if(!d.Unlocked(wallet))return "Learn "+RestaurantCatalog.Dish(d.Recipe.Split(',')[0]).Name+" first";
             if(ShopStars<d.RequiredStars)return "Needs "+StarText.Words(d.RequiredStars);
             return null;
         }

@@ -29,7 +29,7 @@ namespace RestaurantCity {
             foreach (var spot in catalogId == "fridge" ? FridgeSpots : PantrySpots) {
                 if (System.Array.IndexOf(holds, spot.shelf) < 0) continue;
                 var ingDef = Ingredients.Get(spot.ingredient);
-                if (ingDef != null && !string.IsNullOrEmpty(ingDef.Recipe) && !Game.State.Knows(ingDef.Recipe) && Data.Stock(spot.ingredient) == 0) continue;
+                if (ingDef != null && !ingDef.Unlocked(Game.State) && Data.Stock(spot.ingredient) == 0) continue;
                 var centre = obj.transform.TransformPoint(new Vector3(spot.x, spot.y + .06f, 0));
                 var v = centre - ray.origin; float along = Vector3.Dot(v, ray.direction); if (along < .05f) continue;
                 float score = Vector3.Cross(ray.direction, v).magnitude / along;   // angle off the crosshair
@@ -81,7 +81,7 @@ namespace RestaurantCity {
                         continue;
                     }
                     var ingDef = Ingredients.Get(spot.ingredient);
-                    if (ingDef != null && !string.IsNullOrEmpty(ingDef.Recipe) && !Game.State.Knows(ingDef.Recipe) && Data.Stock(spot.ingredient) == 0) continue;
+                    if (ingDef != null && !ingDef.Unlocked(Game.State) && Data.Stock(spot.ingredient) == 0) continue;
                     if (!views.TryGetValue(spot.shelf, out var v)) views[spot.shelf] = v = new ShelfView();
                     int count = Data.Stock(spot.ingredient);
                     // Items are spaced to the shelf's width (2 across on a narrow shelf, 3 on a wide one), two rows deep.

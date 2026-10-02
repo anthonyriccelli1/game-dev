@@ -94,7 +94,7 @@ namespace RestaurantCity {
    if(ing!=null&&!shelves.Contains(choice))return Blocked(ing.Name+(ing.Cold?" are kept in the fridge.":" are kept in the pantry."));
    if(ing==null)return Blocked("Look at a shelf: patties, greens, buns, sauce or soup veg.");
    if(choice=="sauce"&&!game.Knows("midnight"))return Blocked("Needs the midnight recipe.");
-   if(!string.IsNullOrEmpty(ing.Recipe)&&choice!="sauce"&&!game.Knows(ing.Recipe))return Blocked(DistrictCookbook.Find(ing.Recipe)?.Source==RecipeSource.Cookbook||DistrictCookbook.Find(ing.Recipe)==null?"Buy the "+RestaurantCatalog.Dish(ing.Recipe).Name+" recipe in the Cookbook first.":"You don't know the "+RestaurantCatalog.Dish(ing.Recipe).Name+" yet. "+DistrictCookbook.Find(ing.Recipe).Hint);
+   if(!ing.Unlocked(game)&&choice!="sauce"){string need=ing.Recipe.Split(',')[0];return Blocked(DistrictCookbook.Find(need)?.Source==RecipeSource.Cookbook||DistrictCookbook.Find(need)==null?"Buy the "+RestaurantCatalog.Dish(need).Name+" recipe in the Cookbook first.":"You don't know the "+RestaurantCatalog.Dish(need).Name+" yet. "+DistrictCookbook.Find(need).Hint);}
    if(hand!=null&&hand.Kind==KitchenItemKind.Plate&&choice=="bun"){
     // Fewer-press shortcut: a bun needs no prep, so it can go straight onto a plate you are already carrying.
     if(!CanAddComponent(hand,"bun",out string reason))return Blocked(reason);

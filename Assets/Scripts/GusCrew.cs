@@ -31,7 +31,7 @@ namespace RestaurantCity {
             gusBoss = GusCharacter(Rivals.GreasyGus.BossModel, Rivals.GreasyGus.Boss, 5, GusAt(-1.4f, TruckFloorY, -.25f), 270);
             foreach (var (x, i) in new[] { (-2.45f, 0), (-.55f, 1) }) {
                 var rf = Rivals.GreasyGus.Roster[i];
-                gusImps.Add(GusCharacter(rf.Model, rf.Name, 3, GusAt(x, TruckFloorY, .5f), 90));
+                gusImps.Add(GusCharacter(rf.ModelNow, rf.Name, 3, GusAt(x, TruckFloorY, .5f), 90));
             }
             for (int t = 0; t < GusTableSpots.Length; t++) {
                 var table = CreateFurnishing("patio_table", gusRoot); table.name = "Gus's table " + t;

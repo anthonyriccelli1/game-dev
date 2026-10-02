@@ -61,7 +61,7 @@ public static class PrototypeBuilder {
             foreach (var rival in Rivals.All) {
                 var spot = GameObject.Find(rival.Name) ?? new GameObject(rival.Name);
                 if (!spot.transform.parent) spot.transform.SetParent(world, false);
-                var box = spot.AddComponent<BoxCollider>(); box.center = new Vector3(rival.X, 1.2f, rival.Z) - spot.transform.position; box.size = new Vector3(2.6f, 2.4f, 5.4f);
+                var box = spot.AddComponent<BoxCollider>(); box.center = new Vector3(rival.X, rival.Box.y / 2, rival.Z) - spot.transform.position; box.size = rival.Box;
                 var it = spot.AddComponent<Interactable>(); it.Kind = InteractionKind.Raid; it.Site = rival.Id;
             }
             // The pawn shop counter on East Street sells weapons (RaidFight.cs / RestaurantUI.BuildPawn).

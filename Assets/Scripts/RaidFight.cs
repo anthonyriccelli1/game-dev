@@ -25,29 +25,29 @@ namespace RestaurantCity {
 
         public RaidFighter BossFighter => Fighters.FirstOrDefault(f => f.Boss);
         public void Begin(RestaurantController owner, RivalDef rival, List<WorkerState> crew) {
-            Owner = owner; Rival = rival; Center = new Vector3(rival.X, 0, rival.Z - 5f);
+            Owner = owner; Rival = rival; Center = rival.Arena != Vector3.zero ? rival.Arena : new Vector3(rival.X, 0, rival.Z - 5f);
             root = new GameObject("Raid / " + rival.Name).transform;
             RaidRules.Begin(owner.Game.State, rival);
             var lamp = new GameObject("Raid work light").AddComponent<Light>(); lamp.transform.SetParent(root, false);
             lamp.transform.position = Center + Vector3.up * 7; lamp.type = LightType.Point; lamp.range = 22; lamp.intensity = 5f; lamp.color = new Color(1f, .86f, .62f); lamp.shadows = LightShadows.None;
             // Gus steps out beside his serving hatch.
-            var boss = Spawn(rival.BossModel, rival.Boss, ResidentCast.CustomResidentHeight, new Vector3(rival.X - 2.6f, 0, rival.Z - 1.5f), 180, false, true);
-            boss.Hp = boss.MaxHp = rival.BossHealth; boss.Damage = rival.BossDamage; boss.Interval = .85f; boss.Speed = 3.2f;
+            var boss = Spawn(rival.BossModel, rival.Boss, ResidentCast.CustomResidentHeight, Center + new Vector3(-2.6f, 0, 3.5f), 180, false, true);
+            boss.Hp = boss.MaxHp = rival.BossHealth; boss.Damage = rival.BossDamage; boss.Interval = rival.BossInterval; boss.Speed = 3.2f;
             bool rally = crew.Any(w => StaffStats.For(w.Id).Perk == Perk.Rally);
             for (int i = 0; i < crew.Count; i++) {
-                float x = rival.X + (i - (crew.Count - 1) / 2f) * 3f;
+                float x = Center.x + (i - (crew.Count - 1) / 2f) * 3f;
                 var rf = rival.Roster[i % rival.Roster.Length];
-                var g = Spawn(rf.Model, rf.Name, ResidentCast.CustomResidentHeight, new Vector3(x, 0, rival.Z - 5.5f), 180, false, false);
+                var g = Spawn(rf.ModelNow, rf.Name, ResidentCast.CustomResidentHeight, new Vector3(x, 0, Center.z - .5f), 180, false, false);
                 Stats(g, rf.Stats);
                 var w = crew[i]; var s = StaffStats.For(w.Id); var def = ResidentCast.ForWorker(w.Id);
-                var f = Spawn(def.Model ?? def.Id, RestaurantCatalog.Worker(w.Id)?.Name ?? def.Name, def.Height, new Vector3(x, 0, rival.Z - 11f), 0, true, false);
+                var f = Spawn(def.Model ?? def.Id, RestaurantCatalog.Worker(w.Id)?.Name ?? def.Name, def.Height, new Vector3(x, 0, Center.z - 6f), 0, true, false);
                 f.Worker = w; Stats(f, s); if (rally) f.Damage *= 1.15f; if (s.Perk == Perk.Tough) f.Armor = .7f;
                 f.Opponent = g; g.Opponent = f;
             }
             // His bodyguard imp has no partner: it goes straight for you, so you never get Gus one-on-one.
-            { var rf = rival.Roster[crew.Count % rival.Roster.Length]; var guard = Spawn(rf.Model, rf.Name + " (bodyguard)", ResidentCast.CustomResidentHeight, new Vector3(rival.X + 2.4f, 0, rival.Z - 2.5f), 180, false, false); Stats(guard, rf.Stats); }
-            owner.Feedback(crew.Count == 0 ? "RAID! You against " + rival.Boss + " and his bodyguard imp. Hold click for a heavy hit, right click to block." :
-                "RAID! " + crew.Count + " vs " + crew.Count + ": your crew take his imps, you take " + rival.Boss + " and his bodyguard. Hold click to wind up, right click to block.");
+            { var rf = rival.Roster[crew.Count % rival.Roster.Length]; var guard = Spawn(rf.ModelNow, rf.Name + " (bodyguard)", ResidentCast.CustomResidentHeight, Center + new Vector3(2.4f, 0, 2.5f), 180, false, false); Stats(guard, rf.Stats); }
+            owner.Feedback(crew.Count == 0 ? "RAID! You against " + rival.Boss + " and his bodyguard " + rival.GoonOne + ". Hold click for a heavy hit, right click to block." :
+                "RAID! " + crew.Count + " vs " + crew.Count + ": your crew take his " + rival.Goons + ", you take " + rival.Boss + " and his bodyguard. Hold click to wind up, right click to block.");
         }
         static void Stats(RaidFighter f, ResidentStats s) {
             f.Hp = f.MaxHp = StaffStats.RaidHealth(s); f.Damage = StaffStats.RaidDamage(s); f.Interval = StaffStats.RaidInterval(s); f.Speed = 2.2f * (.7f + .1f * s.Speed);
@@ -294,7 +294,7 @@ namespace RestaurantCity {
             }
             foreach (var rival in Rivals.All) {
                 var spot = GameObject.Find(rival.Name); if (!spot || spot.GetComponent<Interactable>()) continue;
-                var box = spot.AddComponent<BoxCollider>(); box.center = new Vector3(rival.X, 1.2f, rival.Z) - spot.transform.position; box.size = new Vector3(2.6f, 2.4f, 5.4f);
+                var box = spot.AddComponent<BoxCollider>(); box.center = new Vector3(rival.X, rival.Box.y / 2, rival.Z) - spot.transform.position; box.size = rival.Box;
                 var it = spot.AddComponent<Interactable>(); it.Kind = InteractionKind.Raid; it.Site = rival.Id;
             }
         }

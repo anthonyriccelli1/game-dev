@@ -90,6 +90,9 @@ namespace RestaurantCity {
             ("123_alchemist_balcony", new Vector3(14.5f, 3.02f, 30.4f), 180, 22, 60),
             ("124_alchemist_kitchen", new Vector3(13.5f, 0, 21.5f), 15, 4, 195),
             ("125_alchemist_yard", new Vector3(15f, 0, 44f), 180, -6, 60),
+            ("126_alchemist_booths", new Vector3(12.5f, 0, 19.4f), 250, 8, 62),
+            ("127_alchemist_boss", new Vector3(16.6f, 0, 23.4f), 335, 4, 62),
+            ("128_alchemist_stairs", new Vector3(19.5f, 0, 19.5f), 40, -12, 62),
             ("118_flux_vial_night", new Vector3(9, 0, -72), -50, 4, 195),
             ("118_flux_vial_day", new Vector3(9, 0, -72), -50, 4, 60),
             ("116_chop_lettuce", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
@@ -188,6 +191,10 @@ namespace RestaurantCity {
                     Debug.LogWarning("ZILO_STAFF " + (zilo ? "spawned" : "missing") + " cost=" + ResidentCast.Staff("201_TripoAlien")?.FluxCost);
                 }
                 if (rc && shot.name.Contains("phone_map")) rc.ShowPanel("Map");
+                // The Alchemist's dining room comes alive as you walk in: let the crew and the first guests settle.
+                if (rc && shot.name.Contains("alchemist") && !shot.name.Contains("front") && !shot.name.Contains("yard")) {
+                    var alchP = Game.Player; for (int i = 0; i < 90; i++) { Game.State.Clock = shot.clock; alchP.transform.position = shot.pos; rc.Advance(.1f); yield return null; }
+                }
                 if (rc && (shot.name.Contains("stand_pantry") || shot.name.Contains("pantry_from_street"))) { foreach (var i in new[] { "patty", "bun" }) rc.Data.AddStock(i, 14); rc.Advance(.05f); }
                 if (rc && (shot.name.Contains("menu_tab") || shot.name.Contains("cookbook_tab"))) { rc.Data.Owned = true; Game.State.Cash = 120; rc.ShowPanel(shot.name.Contains("menu") ? "Menu" : "Cookbook"); }
                 if (rc && shot.name.Contains("stash_")) {

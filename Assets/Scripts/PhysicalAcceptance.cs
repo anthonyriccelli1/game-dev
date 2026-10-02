@@ -51,6 +51,8 @@ namespace RestaurantCity {
      Check(statsOk,"every Old Market resident has 1-5 stats, no perk, and the rarity's point total");
      {var old=new GameState();old.MetResidents.Add("043_Dracula");old.MetResidents.Add("205_TripoVampire");old.Restaurant.Workers.Add(new WorkerState{Id="035_Wolfman"});old.SanitizeAfterLoad();
       Check(old.MetResidents.Count(m=>m=="205_TripoVampire")==1&&!old.MetResidents.Contains("043_Dracula")&&old.Restaurant.Workers.Exists(w=>w.Id=="204_TripoReaper")&&ResidentCast.Get("046_Mafiossini")?.Name=="Zilo","a save that knew a placeholder resident gets the custom character in its place");}
+     {bool seen=false;for(int i=0;i<4000&&!seen;i++){seen|=ResidentCast.Visitor(i,i%2==0,5,null,99).Id=="212_TripoFrank";seen|=ResidentCast.ForWorker("w"+i).Id=="212_TripoFrank";}
+      Check(!seen&&!ResidentCast.IsRecruitable("212_TripoFrank"),"Frank stays away until The Alchemist is beaten");}
      var lydia=new WorkerState{Id="054_Lydia",Energy=100};var jimmy=new WorkerState{Id="003_Jimmy",Energy=100};
      Check(RestaurantController.WorkerSpeed(lydia,"grill")>RestaurantController.WorkerSpeed(jimmy,"grill")*1.5f,"a Cooking-5 chef works the grill much faster than a Cooking-1 server");
      Check(StaffStats.WalkMultiplier(StaffStats.For("003_Jimmy"),false)>StaffStats.WalkMultiplier(StaffStats.For("211_TripoPumpkin"),false),"Speed 4 Jimmy walks faster than Speed 2 Jack");
@@ -93,6 +95,33 @@ namespace RestaurantCity {
      Check(RaidRules.CashLoss(5000)==100,"the raid cash loss is capped at $100");
      b2.Cleanup();PlayerCombat.Of(Game.Player).Health=100;
      rc.Data.Workers.RemoveAll(w=>crewIds.Contains(w.Id));g.Clock=clock0;g.Cash=cash0;g.Flux=flux0;rc.Data.Rank=rank0;g.Raids.Clear();if(!knew)g.KnownRecipes.Remove("cyclops");g.Xp=xp0;g.RepSources.RemoveAll(r=>r.Source=="Beating rivals");}
+    // The Alchemist: the two-star lab diner on Main Street. Raids happen inside the hall; Frank and Frankie fight for him.
+    {var g=st;var rc=Game.Restaurant;var al=Rivals.Alchemist;float clock0=g.Clock;int cash0=g.Cash,flux0=g.Flux,rank0=rc.Data.Rank,xp0=g.Xp;bool knew=g.Knows("philosopher");
+     g.Clock=180;rc.Data.Rank=0;Check(!RaidRules.CanRaid(g,al,false,out _),"a zero-star restaurant can't raid The Alchemist");
+     rc.Data.Rank=1;Check(RaidRules.CanRaid(g,al,false,out var whyA),"one star and up may raid The Alchemist at night: "+whyA);
+     g.Clock=60;Check(!RaidRules.CanRaid(g,al,false,out _),"The Alchemist only takes challengers after dark");g.Clock=180;
+     Check(GameObject.Find("The Alchemist")?.GetComponent<Interactable>()?.Kind==InteractionKind.Raid,"the pass at The Alchemist opens the raid planner");
+     Check(RecipeBook.Match(new System.Collections.Generic.List<string>{"fried_egg","chopped_greens","bun","cooked_patty"})=="philosopher"&&RestaurantCatalog.Dish("philosopher")!=null&&Ingredients.For("philosopher").Length==4,"bun + patty + greens + fried egg is a Philosopher's Stack");
+     string[] ids={"091_BigBro_a","204_TripoReaper","208_TripoConstruction"};
+     foreach(var id in ids)if(!rc.Data.Workers.Exists(w=>w.Id==id))rc.Data.Workers.Add(new WorkerState{Id=id,Job=StaffJob.Cook,Energy=100});
+     rc.RaidCrew.Clear();rc.OpenRaid("alchemist");foreach(var id in ids)rc.ToggleRaidCrew(id);
+     Check(rc.StartRaid(out var am)&&rc.ActiveRaid!=null&&rc.ActiveRaid.Rival==al,"the Alchemist raid starts: "+am);
+     var ab=rc.ActiveRaid;ab.BossPassive=true;ab.enabled=false;
+     bool inside(Vector3 p)=>p.x>5.3f&&p.x<24.7f&&p.z>14.3f&&p.z<31.2f;
+     Check(ab.Fighters.All(f=>inside(f.transform.position)),"every fighter starts inside the hall");
+     Check(ab.Fighters.Count(f=>!f.Ours&&!f.Boss)==4&&ab.BossFighter!=null&&ab.BossFighter.MaxHp==al.BossHealth,"three crew bring out three stitched staff plus a bodyguard, and the Alchemist himself");
+     Check(ab.Fighters.Any(f=>f.Name=="Frank")&&ab.Fighters.Any(f=>f.Name=="Frankie"),"Frank and Frankie fight for him");
+     Check(al.BossHealth>Rivals.GreasyGus.BossHealth&&al.BossDamage>Rivals.GreasyGus.BossDamage&&al.Roster.All(r=>r.Stats.Total>=12),"a real step up from Gus");
+     ab.Cleanup();Check(rc.ActiveRaid==null,"Alchemist raid cleared");
+     for(int i=0;i<3&&!g.Knows("philosopher");i++)RaidRules.Win(g,al,i);Check(g.Knows("philosopher"),"the Philosopher's Stack drops by the third win at the latest");
+     Check(ResidentCast.IsRecruitable("212_TripoFrank"),"beating The Alchemist sends Frank looking for work");
+     rc.Data.Workers.RemoveAll(w=>ids.Contains(w.Id));g.Clock=clock0;g.Cash=cash0;g.Flux=flux0;rc.Data.Rank=rank0;g.Raids.Clear();if(!knew)g.KnownRecipes.Remove("philosopher");g.Xp=xp0;g.RepSources.RemoveAll(r=>r.Source=="Beating rivals");}
+    // The Alchemist's dining room is alive: the Alchemist at his bench, his staff at the pass, guests at the tables.
+    {var keep=Game.Player.transform.position;float clock0=st.Clock;st.Clock=60;Game.Player.Teleport(new Vector3(16.25f,.15f,16));Game.Restaurant.Advance(.1f);Game.Restaurant.Advance(.1f);
+     Check(GameObject.Find("Alchemist crew / The Alchemist")!=null,"the Alchemist works his bench by day");
+     Check(GameObject.Find("Alchemist crew / Frank")!=null,"his stitched staff wait at the pass");
+     Check(GameObject.Find("Alchemist guest 1")!=null&&GameObject.Find("Alchemist plate")!=null,"guests are already eating the Philosopher's Stack when you walk in");
+     Game.Player.Teleport(keep);st.Clock=clock0;}
     // Hotbar: weapons and carried city items live in slots; kitchen food in your hands blocks switching.
     {var g=st;var inv=Hotbar.For(g,0);var saved=inv.Slots.Select(x=>new InvSlot{Item=x.Item,KitchenItemId=x.KitchenItemId}).ToList();int sel0=inv.Selected;
      foreach(var sl in inv.Slots){sl.Item="";sl.KitchenItemId=-1;}inv.Selected=0;

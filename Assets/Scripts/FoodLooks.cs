@@ -58,10 +58,26 @@ namespace RestaurantCity {
                 if (bun) { y = Put("Cheese", p, y, 45) - .004f; }
             }
             if (midnight) y = MidnightGlaze(p, y);
+            if (Has("fried_egg") && greens) { PhilosopherStone(p, y, bun); return; }
             if (Has("fried_egg")) { CyclopsEye(p, y); return; }   // the egg IS the lid: no top bun
             if (bun) Put("BunTop", p, y - .005f, 20);
         }
 
+        // Philosopher's Stack (The Alchemist's signature): a fried egg with a glowing golden yolk under the top bun, green
+        // elixir dripping down the sides, and a small golden stone floating over the stack.
+        static void PhilosopherStone(Transform p, float y, bool bun) {
+            float top = Put("Egg", p, y - .004f, 0, null, 1.2f);
+            if (top <= y) { Shape(PrimitiveType.Cylinder, "Egg white", p, new Vector3(0, y + .006f, 0), new Vector3(.27f, .006f, .25f), Mat(C("FBF7EC"))); top = y + .012f; }
+            Shape(PrimitiveType.Sphere, "Golden yolk", p, new Vector3(0, top + .01f, 0), new Vector3(.1f, .045f, .1f), Mat(C("FFC21A"), 1.2f));
+            var elixir = Mat(C("2BE86A"), 1.1f);
+            for (int i = 0; i < 5; i++) {
+                float a = i * 1.25f + .3f; var at = new Vector3(Mathf.Cos(a) * .12f, y - .015f - (i % 2) * .012f, Mathf.Sin(a) * .12f);
+                Shape(PrimitiveType.Capsule, "Elixir drip", p, at, new Vector3(.018f, .026f + (i % 3) * .01f, .018f), elixir);
+            }
+            float lid = bun ? Put("BunTop", p, top + .012f, 20) : top + .04f;
+            var stone = Shape(PrimitiveType.Cube, "Philosopher's stone", p, new Vector3(0, lid + .1f, 0), Vector3.one * .055f, Mat(C("FFB800"), 1.8f), new Vector3(45, 0, 45));
+            stone.AddComponent<FoodFx>().Mode = FoodFx.Kind.Float;
+        }
         // Cyclops Stack: one huge fried egg crowning the burger, its yolk a staring eye (with a pupil), bacon eyelashes.
         static void CyclopsEye(Transform p, float y) {
             float top = Put("Egg", p, y - .004f, 0, null, 1.35f);

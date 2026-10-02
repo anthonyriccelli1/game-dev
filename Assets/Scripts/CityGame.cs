@@ -26,6 +26,8 @@ namespace RestaurantCity {
         public string SavePath => Path.Combine(Application.persistentDataPath, "restaurant-city-v1.json");
 
         void Awake() {
+            // Residents locked behind a rival (Frank, after The Alchemist) appear once that rival has been beaten.
+            ResidentCast.RivalBeaten = id => State != null && State.Raids.Exists(r => r.RivalId == id && r.Wins > 0);
             SmokeMode = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--smoke-test" || arg == "--snapshots" || arg.StartsWith("--physical-") || arg.StartsWith("--interaction-"));
             PreviewMode = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--dev-zilo");
             if (!SmokeMode) Load(); else State = new GameState();

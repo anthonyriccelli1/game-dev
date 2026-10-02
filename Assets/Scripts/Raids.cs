@@ -7,10 +7,18 @@ namespace RestaurantCity {
     public class RivalDef {
         public string Id, Name, Place, Boss, BossModel, RecipeId, Pitch;
         public int Stars, BossHealth, BossDamage, CashMin, CashMax, Flux, Pity;
-        public float X, Z, DropChance; public bool NightOnly;
+        public float X, Z, DropChance, BossInterval = .85f; public bool NightOnly;
+        public string GoonOne = "imp", Goons = "imps";   // what to call the rival's fighters in messages
+        public UnityEngine.Vector3 Box = new UnityEngine.Vector3(2.6f, 2.4f, 5.4f);   // the raid trigger (centred on X, Z)
+        public UnityEngine.Vector3 Arena;   // where the brawl centres; zero = in front of the trigger (X, Z - 5)
         public RivalFighter[] Roster;   // the rival's own crew, sent out in this order against yours
     }
-    public class RivalFighter { public string Name, Model; public ResidentStats Stats; public RivalFighter(string name, string model, ResidentStats stats) { Name = name; Model = model; Stats = stats; } }
+    public class RivalFighter {
+        public string Name, Model, Fallback; public ResidentStats Stats;
+        public RivalFighter(string name, string model, ResidentStats stats, string fallback = null) { Name = name; Model = model; Stats = stats; Fallback = fallback; }
+        // The model to use right now: a character still being rendered stands in with its fallback until its file lands.
+        public string ModelNow => Fallback == null || UnityEngine.Resources.Load<UnityEngine.GameObject>("Residents/" + Model) ? Model : Fallback;
+    }
     [Serializable] public class RaidRecord { public string RivalId; public int LastDay = -1, Wins, Attempts; }
     public class RaidLoot { public int Cash, Flux; public string Recipe; public string Message; }
 
@@ -28,7 +36,23 @@ namespace RestaurantCity {
             CashMin = 45, CashMax = 70, Flux = 2, RecipeId = "cyclops", DropChance = .4f, Pity = 3,
             Pitch = "A one-star food truck that parks in the vacant lot after dark. Gus fights dirty and headbutts hard. He brings one imp for every crew member you bring, plus a bodyguard imp that comes straight for you.",
         };
-        public static readonly RivalDef[] All = { GreasyGus };
+        // The Alchemist: Old Market's two-star lab diner on Main Street. You can walk in by day and watch his stitched
+        // staff serve the Philosopher's Stack; at night, once you have two stars, you can raid it. A real step up from
+        // Gus: tougher boss, and his staff are uncommon-level fighters (14 stat points against the imps' 10).
+        public static readonly RivalDef Alchemist = new RivalDef {
+            Id = "alchemist", Name = "The Alchemist", Place = "Main Street", Boss = "The Alchemist", BossModel = "214_TripoAlchemist",
+            Stars = 2, X = 14.5f, Z = 25.4f, NightOnly = true, BossHealth = 650, BossDamage = 30, BossInterval = .8f,
+            Box = new UnityEngine.Vector3(2.3f, 1.4f, 1.2f), Arena = new UnityEngine.Vector3(15, 0, 20.5f),
+            GoonOne = "stitched brute", Goons = "stitched staff",
+            Roster = new[] {
+                new RivalFighter("Frank", "212_TripoFrank", new ResidentStats(3, 1, 5, 5, Perk.None)),
+                new RivalFighter("Frankie", "215_TripoFrankie", new ResidentStats(3, 4, 4, 3, Perk.None), "212_TripoFrank"),
+                new RivalFighter("Frank's cousin", "212_TripoFrank", new ResidentStats(2, 2, 5, 5, Perk.None)),
+            },
+            CashMin = 90, CashMax = 140, Flux = 4, RecipeId = "philosopher", DropChance = .35f, Pity = 3,
+            Pitch = "A two-star lab diner. The Alchemist hits hard and keeps coming; his stitched staff are bigger and tougher than Gus's imps. One of them for every crew member you bring, plus a bodyguard for you.",
+        };
+        public static readonly RivalDef[] All = { GreasyGus, Alchemist };
         public static RivalDef Get(string id) => Array.Find(All, r => r.Id == id);
     }
 
@@ -41,7 +65,7 @@ namespace RestaurantCity {
         }
         public static bool CanRaid(GameState g, RivalDef rival, bool serviceRunning, out string why) {
             int stars = g.Restaurant != null ? g.Restaurant.Stars : 0;
-            if (rival.NightOnly && !g.IsNight) { why = rival.Boss + " only parks here after dark. Come back at night."; return false; }
+            if (rival.NightOnly && !g.IsNight) { why = rival.Boss + " only takes on challengers after dark. Come back at night."; return false; }
             if (serviceRunning) { why = "Your restaurant is mid-service. Close up and finish the last guest first."; return false; }
             if (rival.Stars > stars + 1) { why = "Too big for you: raid rivals up to one star above your restaurant (" + StarText.Words(stars) + " now)."; return false; }
             if (Record(g, rival.Id).LastDay == g.Day) { why = rival.Boss + " is on guard after tonight's raid. Try again tomorrow night."; return false; }
