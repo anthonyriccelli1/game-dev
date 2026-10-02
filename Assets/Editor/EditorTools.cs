@@ -153,6 +153,23 @@ public static class EditorTools {
         return sb.ToString();
     }
     // One floor tile per Shops building material, saved as prefabs and listed for RenderPrefabs (to pick surfaces).
+    // Pushes the working branch and main to GitHub with this PC's own git login; output goes to EditorOutput/git-push.txt.
+    public static string GitPush() {
+        var psi = new System.Diagnostics.ProcessStartInfo("git", "push origin feature/city-greybox main") {
+            UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true, WorkingDirectory = Directory.GetCurrentDirectory() };
+        psi.EnvironmentVariables["GIT_TERMINAL_PROMPT"] = "0";
+        var p = System.Diagnostics.Process.Start(psi);
+        var output = new StringBuilder();
+        p.OutputDataReceived += (_, e) => { if (e.Data != null) lock (output) output.AppendLine(e.Data); };
+        p.ErrorDataReceived += (_, e) => { if (e.Data != null) lock (output) output.AppendLine(e.Data); };
+        p.BeginOutputReadLine(); p.BeginErrorReadLine();
+        System.Threading.Tasks.Task.Run(() => {
+            p.WaitForExit();
+            Directory.CreateDirectory("EditorOutput");
+            lock (output) File.WriteAllText("EditorOutput/git-push.txt", output + "\nEXIT " + p.ExitCode + "\n");
+        });
+        return "push started";
+    }
     public static string MaterialSwatches() {
         const string dir = "Assets/Generated/Swatches"; if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder("Assets/Generated", "Swatches");
         var tile = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Synty/PolygonShops/Prefabs/Buildings/SM_Bld_Base_Wall_01.prefab");
