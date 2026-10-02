@@ -41,14 +41,19 @@ namespace RestaurantCity {
     public partial class RestaurantController {
         const float AlchemistNear = 45;
         class LabGuest { public GameObject Go; public CharacterMotion Motion; public TextMesh Bubble; public int Stage, Seat = -1; public float Timer; public bool Served, Claimed; public readonly Queue<Vector3> Path = new Queue<Vector3>(); }
-        class LabWaiter { public GameObject Go; public CharacterMotion Motion; public int Home; public LabGuest Guest; public GameObject Plate; public int Stage; public float Timer; public readonly Queue<Vector3> Path = new Queue<Vector3>(); }
+        class LabWaiter { public GameObject Go; public CharacterMotion Motion; public ResidentAnimator Anim; public int Home; public LabGuest Guest; public GameObject Plate; public int Stage; public float Timer; public readonly Queue<Vector3> Path = new Queue<Vector3>(); }
         Transform labRoot; GameObject labBoss; readonly List<LabWaiter> labWaiters = new List<LabWaiter>(); readonly List<LabGuest> labGuests = new List<LabGuest>();
         readonly Dictionary<int, GameObject> labPlates = new Dictionary<int, GameObject>();
         float labNextGuest = 2; int labSeed; bool labWarm;
+        // The Alchemist moves round his kitchen: grill, stove, fryer, prep table, and the bench at the pass, where he
+        // plates every Philosopher's Stack his staff carry out.
+        static readonly (float x, float yaw, string what)[] LabStations = { (10.5f, 0, "grill"), (12.4f, 0, "stove"), (14.5f, 180, "bench"), (16.6f, 0, "fryer"), (18.6f, 0, "prep") };
+        const float KitchenLane = 29.3f;
+        readonly Queue<Vector3> bossPath = new Queue<Vector3>(); int bossAt = 2, bossGoing = -1; float bossTimer = 3;
+        bool BossAtBench => bossGoing < 0 && bossAt == 2;
 
         void BuildRivalInterior() { }   // built on demand, the first time someone walks near (see AnimateRival)
 
-        static string LabModel(string id, string fallback) => Resources.Load<GameObject>("Residents/" + id) ? id : fallback;
         GameObject LabCharacter(string model, string name, Vector3 at, float yaw) {
             var go = People.UseResidents ? ResidentModels.Create(new ResidentDef(model, name, ResidentCast.CustomResidentHeight, 0, StaffJob.Cook, ""), labRoot) : RestaurantArt.CreateCharacter(5, labRoot);
             go.name = "Alchemist crew / " + name; go.transform.SetPositionAndRotation(at, Quaternion.Euler(0, yaw, 0));
@@ -62,8 +67,8 @@ namespace RestaurantCity {
             labBoss = LabCharacter(rival.BossModel, rival.Boss, AlchemistLayout.HeadCook, 180);
             for (int i = 0; i < AlchemistLayout.Waiting.Length; i++) {
                 var rf = rival.Roster[i % rival.Roster.Length];
-                var w = new LabWaiter { Home = i, Go = LabCharacter(rf.Model, rf.Name, AlchemistLayout.Waiting[i], 180) };
-                w.Motion = w.Go.GetComponent<CharacterMotion>(); labWaiters.Add(w);
+                var w = new LabWaiter { Home = i, Go = LabCharacter(rf.ModelNow, rf.Name, AlchemistLayout.Waiting[i], 180) };
+                w.Motion = w.Go.GetComponent<CharacterMotion>(); w.Anim = w.Go.GetComponentInChildren<ResidentAnimator>(); labWaiters.Add(w);
             }
         }
 
@@ -133,11 +138,12 @@ namespace RestaurantCity {
                         else if ((w.Go.transform.position - home).sqrMagnitude > .01f) w.Path.Enqueue(home);
                         break;
                     }
-                    case 1:   // the Alchemist plates it up
-                        busy = true; w.Timer -= seconds; w.Go.transform.rotation = Quaternion.Euler(0, 0, 0);
+                    case 1:   // the Alchemist comes to the bench and plates it up
+                        busy = true; if (BossAtBench) w.Timer -= seconds; w.Go.transform.rotation = Quaternion.Euler(0, 0, 0);
                         if (w.Timer <= 0) {
                             if (w.Guest == null || !w.Guest.Go || w.Guest.Stage != 1) { w.Stage = 0; w.Guest = null; break; }
-                            w.Plate = KitchenArt.CreateItem("Plate", Recipe(Rivals.Alchemist.RecipeId), labRoot); w.Plate.name = "Alchemist plate (carried)";
+                            w.Plate = KitchenArt.CreateItem("Plate", Recipe(Rivals.Alchemist.RecipeId), labRoot); w.Plate.name = "Alchemist plate (carried)"; w.Plate.transform.localScale = Vector3.one * .8f;
+                            if (w.Anim) w.Anim.Carried = w.Plate.transform;   // held on the palms, arms out
                             var s = AlchemistLayout.Seats[w.Guest.Seat];
                             w.Path.Enqueue(new Vector3(s.Lane, 0, AlchemistLayout.CounterLane)); w.Path.Enqueue(new Vector3(s.Lane, 0, s.At.z));
                             w.Path.Enqueue(Vector3.Lerp(new Vector3(s.Lane, 0, s.At.z), s.At, s.Lane == AlchemistLayout.MidLane ? .6f : .55f));
@@ -145,9 +151,9 @@ namespace RestaurantCity {
                         }
                         break;
                     case 2:   // out to the table, plate held in front
-                        if (w.Plate) w.Plate.transform.position = w.Go.transform.position + w.Go.transform.forward * .42f + Vector3.up * 1.05f;
+                        if (w.Plate && !w.Anim) w.Plate.transform.position = w.Go.transform.position + w.Go.transform.forward * .42f + Vector3.up * 1.05f;
                         if (!LabWalk(w.Go, w.Motion, w.Path, seconds, 1.5f)) {
-                            if (w.Plate) Destroy(w.Plate);
+                            if (w.Anim) w.Anim.Carried = null; if (w.Plate) Destroy(w.Plate);
                             if (w.Guest != null && w.Guest.Go && w.Guest.Stage == 1) { LabPlate(w.Guest.Seat, true); w.Guest.Stage = 2; w.Guest.Timer = Random.Range(14f, 20f); }
                             var s = AlchemistLayout.Seats[w.Guest != null ? w.Guest.Seat : 0];
                             w.Path.Enqueue(new Vector3(s.Lane, 0, s.At.z)); w.Path.Enqueue(new Vector3(s.Lane, 0, AlchemistLayout.CounterLane)); w.Path.Enqueue(AlchemistLayout.Waiting[w.Home]);
@@ -157,8 +163,24 @@ namespace RestaurantCity {
                 }
                 if (w.Motion) { w.Motion.Working = w.Stage == 1; w.Motion.SetMood(.8f); }
             }
-            var bm = labBoss ? labBoss.GetComponent<CharacterMotion>() : null;
-            if (bm) { bm.Working = busy || labGuests.Exists(o => o.Stage == 1); bm.Walking = false; bm.SetMood(.95f); }
+            BossRound(seconds, busy);
+        }
+        void BossRound(float seconds, bool plating) {
+            if (!labBoss) return; var bm = labBoss.GetComponent<CharacterMotion>();
+            if (bossGoing >= 0) {
+                if (!LabWalk(labBoss, bm, bossPath, seconds, 1.6f)) { bossAt = bossGoing; bossGoing = -1; bossTimer = plating && bossAt == 2 ? 1.5f : Random.Range(3.5f, 6.5f); }
+                else { if (bm) bm.Working = false; return; }
+            }
+            labBoss.transform.rotation = Quaternion.RotateTowards(labBoss.transform.rotation, Quaternion.Euler(0, LabStations[bossAt].yaw, 0), seconds * 360);
+            if (bm) { bm.Walking = false; bm.Working = true; bm.SetMood(.95f); }
+            bossTimer -= seconds;
+            int next = -1;
+            if (plating && bossAt != 2) next = 2;                          // an order is up: back to the bench
+            else if (bossTimer <= 0 && !plating) { next = Random.Range(0, LabStations.Length); if (next == bossAt) next = (next + 1) % LabStations.Length; }
+            if (next < 0) return;
+            bossGoing = next; bossPath.Clear();
+            bossPath.Enqueue(new Vector3(labBoss.transform.position.x, 0, KitchenLane)); bossPath.Enqueue(new Vector3(LabStations[next].x, 0, KitchenLane));
+            bossPath.Enqueue(new Vector3(LabStations[next].x, 0, next == 2 ? AlchemistLayout.HeadCook.z : 29.75f));
         }
         static List<string> Recipe(string id) { var r = RecipeBook.Find(id); return r != null ? new List<string>(r.Components) : new List<string> { "bun", "cooked_patty" }; }
         LabGuest NewLabGuest() {
@@ -200,8 +222,9 @@ namespace RestaurantCity {
         void ClearLab() {
             foreach (var g in labGuests) if (g.Go) Destroy(g.Go); labGuests.Clear();
             foreach (var p in labPlates.Values) if (p) Destroy(p); labPlates.Clear();
-            foreach (var w in labWaiters) { if (w.Plate) Destroy(w.Plate); w.Path.Clear(); w.Guest = null; w.Stage = 0; if (w.Go) w.Go.transform.SetPositionAndRotation(AlchemistLayout.Waiting[w.Home], Quaternion.Euler(0, 180, 0)); }
-            labWarm = false;
+            foreach (var w in labWaiters) { if (w.Anim) w.Anim.Carried = null; if (w.Plate) Destroy(w.Plate); w.Path.Clear(); w.Guest = null; w.Stage = 0; if (w.Go) w.Go.transform.SetPositionAndRotation(AlchemistLayout.Waiting[w.Home], Quaternion.Euler(0, 180, 0)); }
+            labWarm = false; bossPath.Clear(); bossGoing = -1; bossAt = 2;
+            if (labBoss) labBoss.transform.SetPositionAndRotation(AlchemistLayout.HeadCook, Quaternion.Euler(0, 180, 0));
         }
     }
 }

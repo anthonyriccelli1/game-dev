@@ -75,8 +75,24 @@ namespace RestaurantCity {
             for (int i = 0; i < Loops; i++) mixer.SetInputWeight(i, weights[i] * scale);
             mixer.SetInputWeight(OneShotInput, weights[OneShotInput]);
         }
+        // Something carried in both hands (a plate): the arms are posed to hold it out in front and it rides on the palms.
+        public Transform Carried;
+        void HoldOut() {
+            var fwd = transform.forward; fwd.y = 0; fwd.Normalize(); var right = Vector3.Cross(Vector3.up, fwd);
+            Vector3 mid = Vector3.zero; int n = 0;
+            foreach (var (up, low, hand, s) in new[] { (HumanBodyBones.LeftUpperArm, HumanBodyBones.LeftLowerArm, HumanBodyBones.LeftHand, -1f), (HumanBodyBones.RightUpperArm, HumanBodyBones.RightLowerArm, HumanBodyBones.RightHand, 1f) }) {
+                var a = animator.GetBoneTransform(up); var b = animator.GetBoneTransform(low); var h = animator.GetBoneTransform(hand);
+                if (!a || !b || !h) continue;
+                a.rotation = Quaternion.FromToRotation(b.position - a.position, (Vector3.down + fwd * .45f + right * s * .1f).normalized) * a.rotation;   // upper arm down, elbow tucked
+                b.rotation = Quaternion.FromToRotation(h.position - b.position, (fwd + Vector3.up * .08f - right * s * .3f).normalized) * b.rotation;   // forearm level, hands in under the plate
+                mid += h.position; n++;
+            }
+            if (n == 0) return;
+            mid /= n; Carried.SetPositionAndRotation(mid + fwd * .06f + Vector3.up * .03f, Quaternion.LookRotation(fwd));
+        }
         // Without a sitting clip, fold the legs into a chair pose after the animation has posed the body.
         void LateUpdate() {
+            if (Carried && animator) HoldOut();
             if (hasSit || !animator || (Current != State.Sit && Current != State.Eat)) return;
             var fwd = transform.forward; fwd.y = 0; fwd.Normalize();
             var hips = animator.GetBoneTransform(HumanBodyBones.Hips); var thigh = animator.GetBoneTransform(HumanBodyBones.LeftUpperLeg); var kneeL = animator.GetBoneTransform(HumanBodyBones.LeftLowerLeg);
