@@ -140,8 +140,10 @@ public static class PrototypeBuilder {
 
         for (int i = -2; i <= 2; i++) { if (!(city && i == -1)) StreetLamp(new Vector3(i * 10, 0, -6), world); if (i != 0) StreetLamp(new Vector3(i * 10, 0, 6), world); }
         ArtPackDressing.Dress(world);
-        Tree(new Vector3(-20, 0, 7), world); Tree(new Vector3(20, 0, 7), world);
-        Tree(new Vector3(6, 0, -8), world); Tree(new Vector3(-3, 0, -8), world);
+        if (!city) {   // in the city build Main Street's trees stand in curb pits (CityMainStreet.cs)
+            Tree(new Vector3(-20, 0, 7), world); Tree(new Vector3(20, 0, 7), world);
+            Tree(new Vector3(6, 0, -8), world); Tree(new Vector3(-3, 0, -8), world);
+        }
         // The stand's two sidewalk tables are the restaurant's own cafe tables, placed at runtime by PhysicalStand.
         var sun = new GameObject("Afternoon sun").AddComponent<Light>(); sun.type = LightType.Directional;
         sun.transform.rotation = Quaternion.Euler(48, -35, 0); sun.intensity = 1.25f; sun.shadows = LightShadows.Soft;

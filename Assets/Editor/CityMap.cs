@@ -8,7 +8,7 @@ using UnityEngine;
 // Gameplay locations (stand, Milo's, your restaurant, The Alchemist) keep their spots on Main Street.
 // This block IS Old Market (one restaurant per district): Market Row to the north, the home street in the middle,
 // The Flats to the south. Street ends are barricaded; the Docks gate waits at the bottom of West Street.
-public static class CityMap {
+public static partial class CityMap {
     const string City = "Assets/Synty/PolygonCity/Prefabs/";
     public static bool Available => AssetDatabase.IsValidFolder("Assets/Synty/PolygonCity");
     const float Cell = 5, RoadY = -.16f, WalkY = -.07f, Half = 80;
@@ -148,12 +148,13 @@ public static class CityMap {
         var parent = new GameObject("Building").transform; parent.SetParent(root, false);
         string ground = groundOverride ?? (shop ? "Buildings/SM_Bld_Shop_0" + ShopGround[s % 5]
             : H(s, 3) % 3 == 0 ? "Buildings/SM_Bld_Apartment_Door_0" + (s % 2 + 1) : "Buildings/SM_Bld_Apartment_0" + family);
+        if (shop && groundOverride == null && IsMainStreetShop(x0, z0, facing)) ground = MainShopGround(x0, z0);   // a glass front (never the roller-shutter unit)
         Module(ground, x0, z0, facing, 0, parent);
         for (int i = 0; i < stacks; i++) Module("Buildings/SM_Bld_Apartment_Stack_0" + family, x0, z0, facing, 3 + 9 * i, parent);
         float roofY = 3 + 9 * stacks;
         Module("Buildings/SM_Bld_Apartment_Roof_0" + family, x0, z0, facing, roofY, parent);
         Recolor(parent, palette >= 0 ? palette : H(s, 1) % 12);
-        if (shop && groundOverride == null) Storefront(parent, x0, z0, facing, s);
+        if (shop && groundOverride == null) { if (IsMainStreetShop(x0, z0, facing)) MainStreetShop(parent, x0, z0, facing); else Storefront(parent, x0, z0, facing, s); }
         if (stacks == 0 && shop) { if (H(s, 19) % 3 == 0) RoofSign(parent, x0, z0, facing, roofY + .5f, s); }
         else RoofClutter(parent, x0, z0, roofY + .5f, s);
         if (stacks > 0 && groundOverride == null && H(s, 23) % 3 == 0) FireEscapes(parent, x0, z0, facing, stacks);
@@ -221,7 +222,7 @@ public static class CityMap {
     static void Clutter(List<(float x, float z, int f)> tiles) {
         var p = new GameObject("Street clutter").transform; p.SetParent(root, false);
         foreach (var (x, z, f) in tiles) {
-            if (x > -25 && x < 30 && z > -14 && z < 12) continue;    // hand-dressed gameplay stretch of Main Street
+            if (x > -36 && x < 36 && z > -14 && z < 12) continue;    // hand-dressed Main Street (CityMainStreet.cs)
             if (z < -99 || (x > -31 && x < 30 && z > -61 && z < -54)) continue;   // the promenade and the front of Truck Park stay clear
             if (IsReserved(new Rect(x, z, 5, 5))) continue;
             int r = H((int)x, (int)z, 5) % 100; float yaw = 90 * f;
@@ -274,6 +275,7 @@ public static class CityMap {
         StripColliders(p);
         Narrow(-21.6f, -15, 0, .68f, 1, true, 2);
         Narrow(-5f, -15, 0, .68f, 1, true, 9);
+        ShutteredUnit(-20f, 3.4f, -9.27f, p); ShutteredUnit(-3.4f, 3.4f, -9.27f, p);
     }
     // A slim building squeezed into a gap: modules scaled along the facade (sx).
     static void Narrow(float x0, float z0, int facing, float sx, int stacks, bool shop, int palette) {
@@ -771,6 +773,7 @@ public static class CityMap {
         Block(-30, 30,   60, 80,  false, true,  true,  true,  true,  1, 3, 20);
         Block( 50, 80,   60, 80,  true,  true,  true,  true,  false, 1, 3, 0);
         Block(-80, -50, -95, -60, true,  true,  true,  false, false, 1, 2, 0);   // Cannery lofts (south of South Avenue)
+        MainStreetSidewalks();
         // Truck Park (-30..30) and the corner courts (50..80) fill the other southern blocks.
         // Landmarks in the outer blocks.
         Put("Buildings/SM_Bld_CityHall_01", new Vector3(-67, 0, 25), 180);

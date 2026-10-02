@@ -314,6 +314,8 @@ public static class ArtPackDressing {
         var cream = SaveMat(ShellDir + "/sign_cream.mat", null, new Color(1f, .87f, .65f), Vector2.one, .3f);
         var coral = SaveMat(ShellDir + "/sign_coral.mat", null, new Color(.96f, .39f, .29f), Vector2.one, .3f);
         var brass = SaveMat(ShellDir + "/sign_brass.mat", null, new Color(.89f, .65f, .34f), Vector2.one, .37f);
+        // The letters glow softly so the name still reads on Main Street at night.
+        foreach (var m in new[] { cream, coral, brass }) { m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", m.color * .55f); m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None; EditorUtility.SetDirty(m); }
         var root = new GameObject("storefront_sign");
         var backing = (GameObject)PrefabUtility.InstantiatePrefab(backingSource, root.transform);
         backing.name = "POLYGON Shops sign backing";
@@ -389,10 +391,12 @@ public static class ArtPackDressing {
             Put(Generic + "Props/SM_Gen_Prop_Barrel_Wood_01.prefab", new Vector3(-15.4f, 0, 10.6f), 0, root);
         }
         // (The sack stack and cardboard box that sat by the sidewalk tables are gone: those tables are now for customers.)
-        Put(Generic + "Props/SM_Gen_Prop_Barrel_Metal_01.prefab", new Vector3(9.4f, 0, 15.2f), 0, root);
-        Put(Starter + "SM_Generic_Tree_01.prefab", new Vector3(-6.6f, 0, 12.2f), 0, root);
-        Put(Starter + "SM_Generic_Tree_02.prefab", new Vector3(7.2f, 0, 12.2f), 90, root);
-        Put(Starter + "SM_Generic_Tree_03.prefab", new Vector3(-18.5f, 0, -7.6f), 0, root);
-        Put(Starter + "SM_Generic_Tree_04.prefab", new Vector3(13.5f, 0, -7.6f), 45, root);
+        if (!CityMap.Available) {   // the city build dresses Main Street itself (CityMainStreet.cs): no trees mid-sidewalk
+            Put(Generic + "Props/SM_Gen_Prop_Barrel_Metal_01.prefab", new Vector3(9.4f, 0, 15.2f), 0, root);
+            Put(Starter + "SM_Generic_Tree_01.prefab", new Vector3(-6.6f, 0, 12.2f), 0, root);
+            Put(Starter + "SM_Generic_Tree_02.prefab", new Vector3(7.2f, 0, 12.2f), 90, root);
+            Put(Starter + "SM_Generic_Tree_03.prefab", new Vector3(-18.5f, 0, -7.6f), 0, root);
+            Put(Starter + "SM_Generic_Tree_04.prefab", new Vector3(13.5f, 0, -7.6f), 45, root);
+        }
     }
 }
