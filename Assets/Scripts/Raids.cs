@@ -46,7 +46,7 @@ namespace RestaurantCity {
             GoonOne = "stitched brute", Goons = "stitched staff",
             Roster = new[] {
                 new RivalFighter("Frank", "212_TripoFrank", new ResidentStats(3, 1, 5, 5, Perk.None)),
-                new RivalFighter("Frankie", "215_TripoFrankie", new ResidentStats(3, 4, 4, 3, Perk.None), "212_TripoFrank"),
+                new RivalFighter("Frankie", "215_TripoFrankie", new ResidentStats(3, 4, 4, 3, Perk.None)),
                 new RivalFighter("Frank's cousin", "212_TripoFrank", new ResidentStats(2, 2, 5, 5, Perk.None)),
             },
             CashMin = 90, CashMax = 140, Flux = 4, RecipeId = "philosopher", DropChance = .35f, Pity = 3,

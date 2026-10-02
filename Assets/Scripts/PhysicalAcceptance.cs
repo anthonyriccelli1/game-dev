@@ -52,7 +52,7 @@ namespace RestaurantCity {
      {var old=new GameState();old.MetResidents.Add("043_Dracula");old.MetResidents.Add("205_TripoVampire");old.Restaurant.Workers.Add(new WorkerState{Id="035_Wolfman"});old.SanitizeAfterLoad();
       Check(old.MetResidents.Count(m=>m=="205_TripoVampire")==1&&!old.MetResidents.Contains("043_Dracula")&&old.Restaurant.Workers.Exists(w=>w.Id=="204_TripoReaper")&&ResidentCast.Get("046_Mafiossini")?.Name=="Zilo","a save that knew a placeholder resident gets the custom character in its place");}
      {bool seen=false;for(int i=0;i<4000&&!seen;i++){seen|=ResidentCast.Visitor(i,i%2==0,5,null,99).Id=="212_TripoFrank";seen|=ResidentCast.ForWorker("w"+i).Id=="212_TripoFrank";}
-      Check(!seen&&!ResidentCast.IsRecruitable("212_TripoFrank"),"Frank stays away until The Alchemist is beaten");}
+      Check(!seen&&!ResidentCast.IsRecruitable("212_TripoFrank")&&!ResidentCast.IsRecruitable("215_TripoFrankie"),"Frank stays away until The Alchemist is beaten");}
      var lydia=new WorkerState{Id="054_Lydia",Energy=100};var jimmy=new WorkerState{Id="003_Jimmy",Energy=100};
      Check(RestaurantController.WorkerSpeed(lydia,"grill")>RestaurantController.WorkerSpeed(jimmy,"grill")*1.5f,"a Cooking-5 chef works the grill much faster than a Cooking-1 server");
      Check(StaffStats.WalkMultiplier(StaffStats.For("003_Jimmy"),false)>StaffStats.WalkMultiplier(StaffStats.For("211_TripoPumpkin"),false),"Speed 4 Jimmy walks faster than Speed 2 Jack");
@@ -114,7 +114,7 @@ namespace RestaurantCity {
      Check(al.BossHealth>Rivals.GreasyGus.BossHealth&&al.BossDamage>Rivals.GreasyGus.BossDamage&&al.Roster.All(r=>r.Stats.Total>=12),"a real step up from Gus");
      ab.Cleanup();Check(rc.ActiveRaid==null,"Alchemist raid cleared");
      for(int i=0;i<3&&!g.Knows("philosopher");i++)RaidRules.Win(g,al,i);Check(g.Knows("philosopher"),"the Philosopher's Stack drops by the third win at the latest");
-     Check(ResidentCast.IsRecruitable("212_TripoFrank"),"beating The Alchemist sends Frank looking for work");
+     Check(ResidentCast.IsRecruitable("212_TripoFrank")&&ResidentCast.IsRecruitable("215_TripoFrankie"),"beating The Alchemist sends Frank and Frankie looking for work");
      rc.Data.Workers.RemoveAll(w=>ids.Contains(w.Id));g.Clock=clock0;g.Cash=cash0;g.Flux=flux0;rc.Data.Rank=rank0;g.Raids.Clear();if(!knew)g.KnownRecipes.Remove("philosopher");g.Xp=xp0;g.RepSources.RemoveAll(r=>r.Source=="Beating rivals");}
     // The Alchemist's dining room is alive: the Alchemist at his bench, his staff at the pass, guests at the tables.
     {var keep=Game.Player.transform.position;float clock0=st.Clock;st.Clock=60;Game.Player.Teleport(new Vector3(16.25f,.15f,16));Game.Restaurant.Advance(.1f);Game.Restaurant.Advance(.1f);

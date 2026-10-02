@@ -41,6 +41,7 @@ namespace RestaurantCity {
             { "204_TripoReaper", new ResidentStats(2, 3, 4, 5, Perk.None) },   // Grim: the best brawler in Old Market
             { "211_TripoPumpkin", new ResidentStats(4, 2, 5, 3, Perk.None) },   // Jack
             { "212_TripoFrank", new ResidentStats(3, 1, 5, 5, Perk.None) },     // Frank: slow, tireless, hits like a truck
+            { "215_TripoFrankie", new ResidentStats(3, 4, 4, 3, Perk.None) },   // Frankie: quick server, holds her own in a brawl
             { "205_TripoVampire", new ResidentStats(3, 5, 3, 3, Perk.None) },
             // legacy special recruits
             { "ember", new ResidentStats(4, 2, 4, 2, Perk.None) },

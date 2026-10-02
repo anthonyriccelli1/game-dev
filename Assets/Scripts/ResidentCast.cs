@@ -49,6 +49,7 @@ namespace RestaurantCity {
             new ResidentDef("201_TripoAlien", "Zilo", CustomResidentHeight, 2, StaffJob.Serve, "A sharp-eyed visitor who gets hot plates to the right table fast."),
             new ResidentDef("044_Zombie", "Zombie", 1.76f, 1, StaffJob.Cook, "Only comes out at night. Doesn't mind the heat.", Gait.Zombie, true).Picky(0),
             new ResidentDef("212_TripoFrank", "Frank", CustomResidentHeight, 2, StaffJob.Cook, "The Alchemist's stitched lab hand. Huge, slow, never tires. Beat The Alchemist and he comes looking for honest work.").Locked("alchemist"),
+            new ResidentDef("215_TripoFrankie", "Frankie", CustomResidentHeight, 2, StaffJob.Serve, "The Alchemist's stitched waitress. Quick on her feet for someone sewn together. Beat The Alchemist and she walks out with you.").Locked("alchemist"),
             new ResidentDef("211_TripoPumpkin", "Jack", CustomResidentHeight, 2, StaffJob.Cook, "Carved grin, glowing eyes, never tired. Works the grill from dusk till the candle burns out.", Gait.Standard, true),
             new ResidentDef("205_TripoVampire", "Dracula", CustomResidentHeight, 2, StaffJob.Serve, "Charming night-shift host. Hates garlic orders.", Gait.Standard, true).Picky(18),
             new ResidentDef("204_TripoReaper", "Grim", CustomResidentHeight, 2, StaffJob.Clean, "Never late, never rushed. Clears every table, eventually all of them. Comes out at night.", Gait.Standard, true).Picky(16),

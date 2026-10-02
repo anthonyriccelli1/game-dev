@@ -93,6 +93,7 @@ namespace RestaurantCity {
             ("126_alchemist_booths", new Vector3(12.5f, 0, 19.4f), 250, 8, 62),
             ("127_alchemist_boss", new Vector3(16.6f, 0, 23.4f), 335, 4, 62),
             ("128_alchemist_stairs", new Vector3(19.5f, 0, 19.5f), 40, -12, 62),
+            ("129_alchemist_staff", new Vector3(14.6f, 0, 21.6f), 0, 6, 62),
             ("118_flux_vial_night", new Vector3(9, 0, -72), -50, 4, 195),
             ("118_flux_vial_day", new Vector3(9, 0, -72), -50, 4, 60),
             ("116_chop_lettuce", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
@@ -209,7 +210,7 @@ namespace RestaurantCity {
                     var old = GameObject.Find("Tripo lineup"); if (old) Destroy(old);
                     var line = new GameObject("Tripo lineup").transform;
                     string[] all = { "206_TripoCheerleader", "207_TripoGothGirl", "208_TripoConstruction", "209_TripoFootball", "210_TripoClown", "201_TripoAlien",
-                                     "205_TripoVampire", "204_TripoReaper", "211_TripoPumpkin", "212_TripoFrank", "202_GreasyGus", "203_GusImp" };
+                                     "205_TripoVampire", "204_TripoReaper", "211_TripoPumpkin", "212_TripoFrank", "214_TripoAlchemist", "215_TripoFrankie", "202_GreasyGus", "203_GusImp" };
                     bool second = shot.name.EndsWith("_b"), back = shot.name.Contains("back");
                     for (int i = 0; i < 6; i++) {
                         string id = all[i + (second ? 6 : 0)];
