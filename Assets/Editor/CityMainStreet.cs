@@ -21,7 +21,7 @@ public static partial class CityMap {
         { "records", "01" }, { "barber", "05" }, { "florist", "05" }, { "gadgets", "01" }, { "arcade", "02" }, { "threads", "01" }, { "gym", "05" } };
     static string MainShopGround(float x0, float z0) => "Buildings/SM_Bld_Shop_" + ThemeGround[MainShops[((int)x0, (int)z0)]];
     class ShopTheme {
-        public string Name, Wall, Floor, Sign; public Color Light;
+        public string Name, Wall, Floor, Sign; public Color Light; public bool Neon;
         public (string prop, float lat, float depth, float y, float yaw)[] Items;
     }
     // lat: across the shop (+ is the shopper's left looking in); depth: metres in from the street edge of the cell;
@@ -32,7 +32,7 @@ public static partial class CityMap {
             ("Barber_Chair_01", 1.2f, 3.2f, 0f, 180f), ("Barber_Chair_01", -1.2f, 3.2f, 0f, 180f),
             ("Barber_Shelf_01", 2.4f, 2.2f, .9f, -90f), ("Barber_Salon_Hair_Dryer_01", -1.9f, 1.4f, 0f, 30f),
             ("Barber_Poles_01", 2.2f, -.46f, 1.5f, 0f) } } },
-        { "records", new ShopTheme { Name = "SPIN RECORDS", Wall = "2E2A3A", Floor = "6B4E3A", Sign = "B07CFF", Light = new Color(1f, .78f, .6f), Items = new[] {
+        { "records", new ShopTheme { Name = "SPIN RECORDS", Neon = true, Wall = "2E2A3A", Floor = "6B4E3A", Sign = "B07CFF", Light = new Color(1f, .78f, .6f), Items = new[] {
             ("Shop_Table_01", 0f, 2.3f, 0f, 0f), ("Music_Turntable_01", .25f, 2.4f, 1.05f, 0f), ("Music_Record_01", -.4f, 2.2f, 1.05f, 25f),
             ("Music_Amplifier_01", -1.7f, 4.4f, 0f, 0f), ("Music_Drums_Kit_01", 1.15f, 4.0f, 0f, 0f),
             ("Music_Framed_Record_01", -1.5f, 4.83f, 1.9f, 0f), ("Music_Framed_Record_01", -.5f, 4.83f, 1.9f, 0f),
@@ -46,7 +46,7 @@ public static partial class CityMap {
             ("Computer_TV_Wall_01", -1.1f, 4.83f, 1.7f, 0f), ("Computer_TV_Wall_01", 1.1f, 4.83f, 1.7f, 0f),
             ("Shop_Table_01", 0f, 2.4f, 0f, 0f), ("Computer_Laptop_01", -.35f, 2.4f, 1.05f, 0f), ("Computer_Monitor_01", .4f, 2.55f, 1.05f, 0f),
             ("Computer_Speaker_Bluetooth_01", .1f, 2.1f, 1.05f, 20f), ("Computer_Gaming_Console_01", -1.9f, 1.3f, 0f, 0f) } } },
-        { "arcade", new ShopTheme { Name = "PIXEL ARCADE", Wall = "1B1530", Floor = "2A2245", Sign = "33E0FF", Light = new Color(.75f, .6f, 1f), Items = new[] {
+        { "arcade", new ShopTheme { Name = "PIXEL ARCADE", Neon = true, Wall = "1B1530", Floor = "2A2245", Sign = "33E0FF", Light = new Color(.75f, .6f, 1f), Items = new[] {
             ("Arcade_Machine_Space_01", -1.65f, 4.3f, 0f, 0f), ("Arcade_Machine_Zombie_01", -.55f, 4.3f, 0f, 0f),
             ("Arcade_Machine_Snow_01", .55f, 4.3f, 0f, 0f), ("Arcade_Machine_Basic_01", 1.65f, 4.3f, 0f, 0f),
             ("Arcade_Claw_01", -1.55f, 1.6f, 0f, 0f), ("Arcade_Claw_01", 1.55f, 1.6f, 0f, 0f) } } },
@@ -82,8 +82,9 @@ public static partial class CityMap {
         if (shade) { var s = (GameObject)PrefabUtility.InstantiatePrefab(shade, room); s.transform.SetPositionAndRotation(At(0, 2.4f, 2.38f), Quaternion.Euler(0, yaw, 0)); StripColliders(s.transform); }
         var lamp = new GameObject("Shop light").AddComponent<Light>(); lamp.transform.SetParent(room, false); lamp.transform.position = At(0, 2.2f, 2.4f);
         lamp.type = LightType.Point; lamp.color = theme.Light; lamp.intensity = 1.5f; lamp.range = 6.5f; lamp.shadows = LightShadows.None;
-        // The shop's name over the window, in the same pack letters as The Odd Table and The Alchemist, glowing a little.
-        var glow = GlowMat("Main_" + theme.Name.Replace(" ", ""), theme.Sign, .9f);
+        // The shop's name over the window, in the same pack letters as The Odd Table and The Alchemist. Only a couple of
+        // shops (the arcade, the record store) run neon; the rest are plain painted letters, so the street isn't a strip.
+        var glow = theme.Neon ? GlowMat("Main_" + theme.Name.Replace(" ", ""), theme.Sign, .9f) : InteriorMat("Letters" + theme.Sign, theme.Sign);
         Letters3D(theme.Name, OnFace(x0, z0, facing, 0, .52f, 2.86f), yaw, .4f, 4.3f, glow, glow, b);
     }
     // The City shop modules paint a shallow fake shop inside the glass; drop those faces so the real room shows through.
