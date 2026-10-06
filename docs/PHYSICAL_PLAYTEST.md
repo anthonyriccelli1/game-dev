@@ -2,7 +2,9 @@
 
 Keyboard/mouse controls: WASD move, mouse look, E take/place/serve, hold E to chop or wash, Q change the pantry choice with empty hands or discard held food, V elevated camera, Tab closed management, B catalog (or edit the furniture you are aiming at), R rotate in placement. Escape pauses.
 
-Connect a controller and press Start to join player two. Left stick moves; right stick looks; A takes/places/serves and can be held to work; X also works at a loaded station; B changes pantry choices or discards; Y changes camera; left shoulder opens closed management; D-pad up edits aimed furniture; right shoulder swings the spatula. Management is shared while closed. Host keyboard/mouse handles furniture placement.
+For two-controller local play, connect both pads. Press Start on the first pad to assign Player 1, then Start on the second pad to join Player 2. Press A on Player 1's pad to start the shift. Left stick moves; right stick looks; A takes/places/serves and can be held to work; X also works at a loaded station; B changes pantry choices or discards; Y changes camera; left shoulder opens closed management; D-pad up edits aimed furniture; RT taps punch (hold and release for a heavy hit), LT blocks, and RB flips a patty while aiming at the grill. Start pauses. Player 1 controls shared menus with the D-pad or left stick, A to select, and B to close. The pause screen offers persistent 220/300/400 degree-per-second look-speed choices; 300 is the default. View/Select opens the phone after the stand is built; the phone has the map. In overhead placement, move the cursor with the D-pad or left stick, press RB to rotate, A to place, and B to return to the catalog. Keyboard and mouse remain available for Player 1.
+
+For kitchen minigames, aim at raw lettuce on the cutting board and press A. Move either stick sideways to line up the knife with each slice, then tap RT or RB six times; B puts the lettuce down without discarding progress. Aim at a dirty plate in the sink and press A, then move either stick across the visible grime until the plate is clean; B puts it down with partial progress saved. At the grill, wait for the underside to turn golden, aim at the grill, and tap RB to flip; press A to pick up the cooked patty when it is ready.
 
 No worker is required to cook. The free starter kit includes pantry, prep bench, grill, clean plate rack, assembly counter and washing sink. Aim at the station for its prompt.
 
@@ -21,4 +23,4 @@ This is local co-op, not online multiplayer. The playable physical menu is burge
 
 ## Verification scope
 
-Runtime acceptance uses an isolated save and scripted game commands. It is not a substitute for a two-person fun/feel playtest. No real gamepad was detected during the automated run. Controller button feel, simultaneous human coordination and a complete 20–30 minute human session remain to be tested on the user's hardware.
+Runtime acceptance uses an isolated save and scripted game commands. `--controller-test` also exercises startup and shared menu input with two virtual gamepads without touching the real save. It is not a substitute for a two-person fun/feel playtest. Controller button feel, simultaneous human coordination and a complete 20–30 minute human session remain to be tested on the user's hardware.

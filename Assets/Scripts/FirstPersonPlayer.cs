@@ -12,6 +12,11 @@ namespace RestaurantCity {
         public bool Elevated;
         public bool InteractHeld { get; private set; }
         public float Health = 100, Sensitivity = .11f;
+        public static readonly float[] ControllerLookSpeeds = { 220f, 300f, 400f };
+        public static int ControllerLookSpeedIndex {
+            get => Mathf.Clamp(PlayerPrefs.GetInt("RestaurantCity.ControllerLookSpeed", 1), 0, ControllerLookSpeeds.Length - 1);
+            set { PlayerPrefs.SetInt("RestaurantCity.ControllerLookSpeed", Mathf.Clamp(value, 0, ControllerLookSpeeds.Length - 1)); PlayerPrefs.Save(); }
+        }
         public Interactable Target { get; private set; }
         public Transform Spatula;
         public Ray InteractionRay => Elevated
@@ -50,11 +55,13 @@ namespace RestaurantCity {
             var pad = AssignedGamepad != null && AssignedGamepad.added ? AssignedGamepad : null;
             bool suppressed = SuppressInputFrame == Time.frameCount;
             InteractHeld = !suppressed && (keys != null && keys.eKey.isPressed || pad != null && (pad.buttonSouth.isPressed || pad.buttonWest.isPressed));
-            if (PlayerId == 0 && Game.Restaurant && (Game.Restaurant.PanelOpen || Game.Restaurant.PlacementActive) && Game.Restaurant.HandleInput(keys, mouse)) { InteractHeld = false; return; }
+            if (PlayerId == 0 && Game.Restaurant && (Game.Restaurant.PanelOpen || Game.Restaurant.PlacementActive) && Game.Restaurant.HandleInput(keys, mouse, pad)) { InteractHeld = false; return; }
+            if (PlayerId != 0 && Game.Restaurant && (Game.Restaurant.PanelOpen || Game.Restaurant.PlacementActive)) { InteractHeld = false; return; }
             if (!suppressed && (keys != null && keys.escapeKey.wasPressedThisFrame || pad != null && pad.startButton.wasPressedThisFrame)) Game.SetPaused(!Game.Paused);
             Target = null;
             if (!Game.Paused) swingTimer = Mathf.Max(0, swingTimer - Time.deltaTime);
-            if (Game.Paused || Game.SmokeMode || suppressed) { InteractHeld = false; return; }
+            if (Game.Paused || Game.SmokeMode && !Game.ControllerTestMode || suppressed) { InteractHeld = false; return; }
+            if (PlayerId == 0 && pad != null && pad.selectButton.wasPressedThisFrame && Game.Restaurant && Game.State.StandBuilt) { Game.Restaurant.ShowPanel("Phone"); InteractHeld = false; return; }
             // Scrubbing a plate at the sink takes over the hands and the look input until it's clean or put down.
             var scrub = GetComponent<PlateScrub>();
             if (scrub && scrub.Active) { InteractHeld = false; scrub.Tick(keys, mouse, pad, Time.deltaTime); return; }
@@ -70,7 +77,7 @@ namespace RestaurantCity {
             if (keys != null) move = new Vector2((keys.dKey.isPressed ? 1 : 0) - (keys.aKey.isPressed ? 1 : 0), (keys.wKey.isPressed ? 1 : 0) - (keys.sKey.isPressed ? 1 : 0));
             if (pad != null) move += pad.leftStick.ReadValue();
             if (mouse != null && Cursor.lockState == CursorLockMode.Locked && !Elevated) ApplyLook(mouse.delta.ReadValue() * Sensitivity);
-            if (pad != null && !Elevated) ApplyLook(pad.rightStick.ReadValue() * (130 * Time.deltaTime));
+            if (pad != null && !Elevated) ApplyLook(pad.rightStick.ReadValue() * (ControllerLookSpeeds[ControllerLookSpeedIndex] * Time.deltaTime));
             ApplyMovement(move, Time.deltaTime, keys != null && keys.leftShiftKey.isPressed || pad != null && pad.leftStickButton.isPressed,
                 keys != null && keys.spaceKey.wasPressedThisFrame || pad != null && pad.rightStickButton.wasPressedThisFrame);
             ResolveAndInteract(interact, InteractHeld);

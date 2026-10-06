@@ -1,6 +1,8 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace RestaurantCity {
+    [DefaultExecutionOrder(-60)]
     public class CityHud : MonoBehaviour {
         public CityGame Game;
         GUIStyle small, body, title, heading, button;
@@ -9,6 +11,40 @@ namespace RestaurantCity {
         readonly Color teal = new Color(.25f, .80f, .66f);
         readonly Color coral = new Color(1, .43f, .31f);
         bool confirmReset;
+        int selectedAction;
+        bool stickNavigationHeld;
+        void Update() {
+            if (!Game || !Game.Paused || !Game.Player) return;
+            var pad = Game.Player.AssignedGamepad;
+            if (pad == null || !pad.added || Game.Player.SuppressInputFrame == Time.frameCount) return;
+            int count = Game.Started ? 4 : 2;
+            float vertical = pad.leftStick.ReadValue().y;
+            bool down = pad.dpad.down.wasPressedThisFrame || vertical < -.6f && !stickNavigationHeld;
+            bool up = pad.dpad.up.wasPressedThisFrame || vertical > .6f && !stickNavigationHeld;
+            stickNavigationHeld = Mathf.Abs(vertical) > .6f;
+            if (down) selectedAction = (selectedAction + 1) % count;
+            if (up) selectedAction = (selectedAction + count - 1) % count;
+            if (pad.buttonEast.wasPressedThisFrame) { confirmReset = false; selectedAction = 0; }
+            if (pad.buttonSouth.wasPressedThisFrame) ActivateSelected();
+        }
+        void ActivateSelected() {
+            if (selectedAction == 0) { confirmReset = false; Game.SetPaused(false); Game.Player.SuppressInputFrame = Time.frameCount; return; }
+            if (selectedAction == 1) {
+                FirstPersonPlayer.ControllerLookSpeedIndex = (FirstPersonPlayer.ControllerLookSpeedIndex + 1) % FirstPersonPlayer.ControllerLookSpeeds.Length;
+                return;
+            }
+            if (selectedAction == 2) {
+                if (confirmReset) { Game.NewGame(); confirmReset = false; selectedAction = 0; }
+                else confirmReset = true;
+                return;
+            }
+            Game.Save();
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
         void Init() {
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             small = new GUIStyle { font = font, fontSize = 13, normal = { textColor = cream }, wordWrap = true };
@@ -19,9 +55,10 @@ namespace RestaurantCity {
         }
         void Box(Rect r, Color c) { GUI.color = c; GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white; }
         void Text(float x, float y, float w, float h, string text, GUIStyle style = null) { GUI.Label(new Rect(x, y, w, h), text, style ?? body); }
-        bool Button(Rect r, string label, Color color) {
+        bool Button(Rect r, string label, Color color, bool selected = false) {
             bool hover = r.Contains(Event.current.mousePosition);
-            Box(r, hover ? Color.Lerp(color, Color.white, .15f) : color);
+            if (selected) Box(new Rect(r.x - 4, r.y - 4, r.width + 8, r.height + 8), cream);
+            Box(r, hover || selected ? Color.Lerp(color, Color.white, .15f) : color);
             return GUI.Button(r, label, button);
         }
         void Panel(Rect r) { Box(r, new Color(ink.r, ink.g, ink.b, .94f)); }
@@ -53,13 +90,15 @@ namespace RestaurantCity {
                 Text(106, 207, 480, 22, "A SMALL STAND. A BIG AMBITION.", small);
                 Text(103, 246, 510, 143, Game.Started ? "Take a\nbreather." : "Your city.\nYour kitchen.", title);
                 Text(106, 407, 480, 86, "Buy ingredients. Fire up the grill. Earn your first customers, then chase a rare recipe after dark.");
-                Text(106, 515, 490, 68, "WASD  Move     MOUSE  Look     SHIFT  Sprint\nE  Interact     LEFT CLICK  Swing spatula\nESC  Pause and release the mouse", small);
-                if (Button(new Rect(106, 603, 490, 56), Game.Started ? "BACK TO THE STREET   >" : "START YOUR FIRST SHIFT   >", teal)) { confirmReset = false; Game.SetPaused(false); }
+                Text(106, 497, 490, 56, "PAD  Left stick move / right stick look / A interact\nRT punch  /  LT block  /  RB flip at grill\nD-pad menu  /  A select  /  B back", small);
+                if (Button(new Rect(106, 560, 490, 34), "LOOK SPEED   " + FirstPersonPlayer.ControllerLookSpeeds[FirstPersonPlayer.ControllerLookSpeedIndex].ToString("0") + " deg/s   (A to change)", cream, selectedAction == 1 && Game.Player.AssignedGamepad != null))
+                    FirstPersonPlayer.ControllerLookSpeedIndex = (FirstPersonPlayer.ControllerLookSpeedIndex + 1) % FirstPersonPlayer.ControllerLookSpeeds.Length;
+                if (Button(new Rect(106, 603, 490, 56), Game.Started ? "BACK TO THE STREET   >" : "START YOUR FIRST SHIFT   >", teal, selectedAction == 0 && Game.Player.AssignedGamepad != null)) { confirmReset = false; Game.SetPaused(false); }
                 if (Game.Started) {
-                    if (Button(new Rect(106, 674, 235, 39), confirmReset ? "CONFIRM NEW GAME" : "NEW GAME", confirmReset ? coral : cream)) {
+                    if (Button(new Rect(106, 674, 235, 39), confirmReset ? "CONFIRM NEW GAME" : "NEW GAME", confirmReset ? coral : cream, selectedAction == 2 && Game.Player.AssignedGamepad != null)) {
                         if (confirmReset) { Game.NewGame(); confirmReset = false; } else confirmReset = true;
                     }
-                    if (Button(new Rect(354, 674, 242, 39), "SAVE & QUIT", cream)) {
+                    if (Button(new Rect(354, 674, 242, 39), "SAVE & QUIT", cream, selectedAction == 3 && Game.Player.AssignedGamepad != null)) {
                         Game.Save();
 #if UNITY_EDITOR
                         UnityEditor.EditorApplication.isPlaying = false;

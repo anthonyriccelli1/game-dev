@@ -63,13 +63,13 @@ namespace RestaurantCity {
                 bool assigned = false;
                 foreach (var p in players) if (p.AssignedGamepad == pad) assigned = true;
                 if (assigned) continue;
-                if (!SecondPlayer) { Join(pad); continue; }
-                if (SecondPlayer.AssignedGamepad == null) {
+                if (game.Player.AssignedGamepad == null) {
+                    game.Player.AssignedGamepad = pad; game.Player.SuppressInputFrame = Time.frameCount;
+                    game.Notify("Player 1 controller connected. Press A to start; press Start on a second controller to join.", 7);
+                } else if (!SecondPlayer) { Join(pad); continue; }
+                else if (SecondPlayer.AssignedGamepad == null) {
                     SecondPlayer.AssignedGamepad = pad; SecondPlayer.SuppressInputFrame = Time.frameCount;
                     game.Notify("Player 2 controller connected.", 4);
-                } else if (game.Player.AssignedGamepad == null) {
-                    game.Player.AssignedGamepad = pad; game.Player.SuppressInputFrame = Time.frameCount;
-                    game.Notify("Second controller assigned to Player 1. Keyboard still works.", 5);
                 }
             }
             foreach (var player in players) {
@@ -84,7 +84,7 @@ namespace RestaurantCity {
         public bool Join(Gamepad pad = null) {
             if (!game || SecondPlayer || pad != null && game.Player.AssignedGamepad == pad) return false;
             var root = new GameObject("Player 2 / Local co-op");
-            var cc = root.AddComponent<CharacterController>(); cc.height = 1.8f; cc.radius = .28f; cc.center = new Vector3(0, .9f, 0); cc.stepOffset = .3f;
+            var cc = root.AddComponent<CharacterController>(); cc.height = 1.8f; cc.radius = .28f; cc.center = new Vector3(0, .9f, 0); cc.stepOffset = .3f; cc.slopeLimit = 58;
             var p = root.AddComponent<FirstPersonPlayer>(); p.Game = game; p.PlayerId = 1; p.AssignedGamepad = pad;
             var cameraObject = new GameObject("Player 2 camera"); cameraObject.transform.SetParent(root.transform, false);
             cameraObject.transform.localPosition = new Vector3(0, 1.55f, 0);
@@ -146,4 +146,3 @@ namespace RestaurantCity {
         }
     }
 }
-

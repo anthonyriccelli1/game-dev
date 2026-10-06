@@ -33,6 +33,8 @@ namespace RestaurantCity {
         public static AudioClip Tip => Make("tip", .45f, t => Sine(t < .1f ? 1047 : t < .2f ? 1319 : 1568, t) * Mathf.Exp(-(t % .1f) * 12) * .25f);
         public static AudioClip Warning => Make("warning", .4f, t => ((t % .2f) < .09f ? Sine(1050, t) : 0) * .22f);
         public static AudioClip Wash => Make("wash", .45f, t => Crackle(.3f) * Mathf.Sin(Mathf.PI * t / .45f));
+        // The Flux case hum: a low, slowly beating drone (frequencies loop cleanly over 2 s).
+        public static AudioClip Hum => Make("hum", 2f, t => (Sine(110, t) * .5f + Sine(165.5f, t) * .22f + Sine(55, t) * .25f) * (.72f + .28f * Sine(1.5f, t)) * .4f, true);
         public static AudioClip Stir => Make("stir", .35f, t => Crackle(.18f) * Mathf.Sin(Mathf.PI * t / .35f) + Sine(260, t) * .05f);
     }
 }

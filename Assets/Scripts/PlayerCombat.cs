@@ -92,11 +92,13 @@ namespace RestaurantCity {
             bool handsBusy = State.Kitchen != null && State.Kitchen.Hold(Player.ActorId) != null;   // food, a plate, or the selected bag
             bool blockHeld = !handsBusy && (mouse != null && mouse.rightButton.isPressed || pad != null && pad.leftTrigger.ReadValue() > .5f);
             if (blockHeld && !Blocking) blockStart = Time.time; Blocking = blockHeld;
-            bool press = mouse != null && mouse.leftButton.wasPressedThisFrame || pad != null && pad.rightShoulder.wasPressedThisFrame;
-            bool held = mouse != null && mouse.leftButton.isPressed || pad != null && pad.rightShoulder.isPressed;
+            bool mousePress = mouse != null && mouse.leftButton.wasPressedThisFrame;
+            bool flipPress = mousePress || pad != null && pad.rightShoulder.wasPressedThisFrame;
+            bool press = mousePress || pad != null && pad.rightTrigger.wasPressedThisFrame;
+            bool held = mouse != null && mouse.leftButton.isPressed || pad != null && pad.rightTrigger.isPressed;
+            bool flipped = flipPress && Player.Game.Restaurant && Player.Game.Restaurant.TryFlipStation(Player);
             if (press) {
-                if (Player.Game.Restaurant && Player.Game.Restaurant.TryFlipStation(Player)) { }   // left click still flips patties at the grill
-                else if (!handsBusy && !Blocking && cooldown <= 0) { charging = true; chargeStart = Time.time; }
+                if (!flipped && !handsBusy && !Blocking && cooldown <= 0) { charging = true; chargeStart = Time.time; }
             }
             else if (mouse != null && mouse.delta.ReadValue().y > 28 && Player.Game.Restaurant) Player.Game.Restaurant.TryFlickFlip(Player);
             if (charging && (!held || Time.time - chargeStart > HeavyTime + .25f)) {

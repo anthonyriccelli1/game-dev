@@ -154,6 +154,22 @@ public static class EditorTools {
     }
     // One floor tile per Shops building material, saved as prefabs and listed for RenderPrefabs (to pick surfaces).
     // Pushes the working branch and main to GitHub with this PC's own git login; output goes to EditorOutput/git-push.txt.
+    // Vertex heights of a few modules (roof surface, fire-escape landing and stair) for placing walkable colliders.
+    public static string DumpHeights() {
+        var sb = new StringBuilder();
+        foreach (var line in File.ReadAllLines("EditorOutput/render-list.txt").Select(l => l.Trim()).Where(l => l.Length > 0)) {
+            var src = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath(line)); if (!src) continue;
+            sb.AppendLine(Path.GetFileName(line));
+            foreach (var mf in src.GetComponentsInChildren<MeshFilter>()) {
+                var m = mf.sharedMesh; if (!m) continue; var mx = mf.transform.localToWorldMatrix * src.transform.worldToLocalMatrix;
+                var ys = m.vertices.Select(v => (Vector3)(mf.transform.localToWorldMatrix.MultiplyPoint3x4(v))).ToArray();
+                var hist = ys.GroupBy(v => Mathf.Round(v.y * 10) / 10).OrderBy(g => g.Key).Select(g => g.Key + ":" + g.Count() + "[x" + g.Min(v => v.x).ToString("F2") + ".." + g.Max(v => v.x).ToString("F2") + " z" + g.Min(v => v.z).ToString("F2") + ".." + g.Max(v => v.z).ToString("F2") + "]");
+                sb.AppendLine("  " + mf.name + " " + string.Join("  ", hist));
+            }
+            foreach (var c in src.GetComponentsInChildren<Collider>()) sb.AppendLine("  collider " + c.GetType().Name + " on " + c.name);
+        }
+        File.WriteAllText("EditorOutput/heights.txt", sb.ToString()); return "heights written";
+    }
     public static string GitPush() {
         var psi = new System.Diagnostics.ProcessStartInfo("git", "push origin feature/city-greybox main") {
             UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true, WorkingDirectory = Directory.GetCurrentDirectory() };

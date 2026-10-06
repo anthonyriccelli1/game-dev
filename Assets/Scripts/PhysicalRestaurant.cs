@@ -74,7 +74,7 @@ namespace RestaurantCity {
     string line=preview.Kind==KitchenActionKind.None?preview.FailReason:glyph+(preview.Allowed?preview.Label:preview.FailReason);
     prompts[actor]=station.CatalogId.Replace('_',' ')+(string.IsNullOrEmpty(line)?"":"\n"+line);
     prompts[actor]+=CookStatus(station,k.At(station.InstanceId));
-    if(station.CatalogId=="grill"&&k.At(station.InstanceId) is KitchenItem onGrill&&!KitchenState.NoFlip(onGrill.Kind))prompts[actor]+="\nClick, flick the mouse up, or RB: flip";
+    if(station.CatalogId=="grill"&&k.At(station.InstanceId) is KitchenItem onGrill&&!KitchenState.NoFlip(onGrill.Kind))prompts[actor]+=p.AssignedGamepad!=null?"\nRB: flip the patty when the underside is golden":"\nClick or flick the mouse up to flip";
     if(station.CatalogId=="trash")prompts[actor]+="\nContents "+station.WasteCount+" / 6";
     // A head of lettuce on a cutting board: E brings the board up close to chop it by hand (sauce keeps hold-to-prep).
     if(station.CatalogId=="prep_bench"&&!p.Elevated&&k.Hold(actor)==null&&k.At(station.InstanceId) is KitchenItem greens&&greens.Kind==KitchenItemKind.RawGreens){

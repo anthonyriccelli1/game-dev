@@ -14,6 +14,8 @@ namespace RestaurantCity {
         public const int CurrentVersion = 7;
         public int Version = CurrentVersion, Cash = 30, Xp, RankEarned, Stock, Served, Missed, Health = 100, Day = 1, Flux, LastStashDay;
         public bool FluxResearch, FluxIntroduced;
+        // The Flux hunt (FluxHunt.cs): tonight's case spots, the night they were rolled, and the midnight strongbox.
+        public int FluxNight = -1; public List<int> FluxCases = new List<int>(); public bool MidnightCaseFound;
         public KitchenState Kitchen = new KitchenState();
         public RestaurantState Restaurant = new RestaurantState();
         public bool StandBuilt, RecipeUnlocked, HasOrder, StandOpen;
@@ -255,6 +257,7 @@ namespace RestaurantCity {
         }
         public void SanitizeAfterLoad() {
             Inventories = Inventories ?? new List<PlayerInventory>(); foreach (var inv in Inventories) foreach (var sl in inv.Slots) if (Weapons.Get(sl.Item) == null) sl.Item = "";
+            FluxCases = FluxCases ?? new List<int>();
             Raids = Raids ?? new List<RaidRecord>(); Raids.RemoveAll(r => r == null || Rivals.Get(r.RivalId) == null);
             // Saves from before reputation existed get credit for what their restaurant already earned.
             // v5 briefly counted dollars as reputation; v6 counts customers, stars and discoveries, so cap the carried-over amount.

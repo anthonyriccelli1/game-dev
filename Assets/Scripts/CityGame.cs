@@ -17,6 +17,7 @@ namespace RestaurantCity {
         public bool Paused { get; private set; } = true;
         public bool Started { get; private set; }
         public bool SmokeMode { get; private set; }
+        public bool ControllerTestMode { get; private set; }
         public bool PreviewMode { get; private set; }
         public string Notice { get; private set; }
         public string SaveStatus { get; private set; } = "Progress saves automatically";
@@ -28,7 +29,8 @@ namespace RestaurantCity {
         void Awake() {
             // Residents locked behind a rival (Frank, after The Alchemist) appear once that rival has been beaten.
             ResidentCast.RivalBeaten = id => State != null && State.Raids.Exists(r => r.RivalId == id && r.Wins > 0);
-            SmokeMode = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--smoke-test" || arg == "--snapshots" || arg.StartsWith("--physical-") || arg.StartsWith("--interaction-"));
+            ControllerTestMode = Array.IndexOf(Environment.GetCommandLineArgs(), "--controller-test") >= 0;
+            SmokeMode = ControllerTestMode || Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--smoke-test" || arg == "--snapshots" || arg.StartsWith("--physical-") || arg.StartsWith("--interaction-"));
             PreviewMode = Array.Exists(Environment.GetCommandLineArgs(), arg => arg == "--dev-zilo");
             if (!SmokeMode) Load(); else State = new GameState();
             if (PreviewMode) SaveStatus = "Developer preview - progress is not saved";
@@ -44,6 +46,7 @@ namespace RestaurantCity {
             if (Array.IndexOf(Environment.GetCommandLineArgs(), "--smoke-test") >= 0) gameObject.AddComponent<PrototypeSmokeTest>().Game = this;
             if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg.StartsWith("--physical-"))) gameObject.AddComponent<PhysicalAcceptance>().Game = this;
             if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg.StartsWith("--interaction-"))) gameObject.AddComponent<InteractionAcceptance>().Game = this;
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "--controller-test") >= 0) gameObject.AddComponent<ControllerAcceptance>().Game = this;
         }
         IEnumerator PreviewZilo() {
             yield return null;
@@ -198,6 +201,7 @@ namespace RestaurantCity {
                     }
                 }
                 if (r.Workers.Count == 0) return "Hire your first worker\nPress P > Crew. Feed a resident once and they join your People book; recruit them to cook, serve or wash.";
+                if (!State.Knows("midnight")) return State.IsNight ? "Find the midnight recipe\nSomething glows purple on the tallest roof on North Avenue. Climb its fire escape." : "Find the midnight recipe\nA secret recipe waits on the tallest roof on North Avenue. It only shows after dark.";
                 if (State.Knows("midnight") && State.ZeebOrders == 0 && r.Stock("midnight_sauce") == 0) return "Call Zeeb\nPress P: Zeeb sells midnight sauce. Then put the Midnight Burger on your menu.";
                 if (State.Raids == null || !State.Raids.Exists(x => x.RivalId == "gus" && x.Wins > 0)) return State.IsNight ? "Raid Greasy Gus\nHis truck is in the vacant lot tonight. Press E on it, pick a rested crew and win his Cyclops Stack." : "Raid Greasy Gus\nGus guards his Cyclops Stack recipe. Rest your crew and visit his truck after dark.";
                 if (r.Stars >= 2 && (State.Raids == null || !State.Raids.Exists(x => x.RivalId == "alchemist" && x.Wins > 0))) return State.IsNight ? "Raid The Alchemist\nThe lab diner on Main Street. Its stitched crew hits hard: bring your best, rested workers." : "Raid The Alchemist\nThe two-star lab diner on Main Street guards its signature dish. Walk in by day to scout; raid it after dark.";

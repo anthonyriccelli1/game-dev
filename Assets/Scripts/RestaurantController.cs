@@ -63,6 +63,7 @@ namespace RestaurantCity {
         Quaternion savedViewRotation;
         int savedPlacementMask;
         int previewX, previewZ, movingId = -1;
+        float nextPadPlacementMove;
         float hudTimer;
         bool previewValid;
         // A shift has a shape: calm opening, a RUSH in the middle (harder at night), then a wind-down.
@@ -162,23 +163,37 @@ namespace RestaurantCity {
             Cursor.visible = Game.Paused || Game.SmokeMode;
             UI.Rebuild(); Game.Save();
         }
-        public bool HandleInput(Keyboard keys, Mouse mouse) {
+        public bool HandleInput(Keyboard keys, Mouse mouse, Gamepad pad = null) {
             if (PlacementActive) {
-                if (keys != null && (keys.escapeKey.wasPressedThisFrame || keys.bKey.wasPressedThisFrame) || mouse != null && mouse.rightButton.wasPressedThisFrame) { CancelPlacement(); return true; }
-                if (FinishBrushActive) return HandleFinishBrushInput(keys, mouse);
-                if (keys != null && keys.rKey.wasPressedThisFrame) PreviewRotation = (PreviewRotation + 1) % 4;
+                if (keys != null && (keys.escapeKey.wasPressedThisFrame || keys.bKey.wasPressedThisFrame) || mouse != null && mouse.rightButton.wasPressedThisFrame || pad != null && pad.buttonEast.wasPressedThisFrame) { CancelPlacement(); return true; }
+                if (FinishBrushActive) return HandleFinishBrushInput(keys, mouse, pad);
+                if (keys != null && keys.rKey.wasPressedThisFrame || pad != null && pad.rightShoulder.wasPressedThisFrame) PreviewRotation = (PreviewRotation + 1) % 4;
                 if (mouse != null) {
                     UpdatePreviewFromPointer(mouse.position.ReadValue());
                     if (mouse.leftButton.wasPressedThisFrame) ConfirmPlacement(previewX, previewZ);
                 }
+                if (PadPlacementStep(pad, out int dx, out int dz)) { previewX = Mathf.Clamp(previewX + dx, 0, 12); previewZ = Mathf.Clamp(previewZ + dz, 0, 12); }
+                if (pad != null) UpdatePreview();
+                if (pad != null && pad.buttonSouth.wasPressedThisFrame) ConfirmPlacement(previewX, previewZ);
                 return true;
             }
-            if (PanelOpen) { if (keys != null && keys.escapeKey.wasPressedThisFrame) ClosePanel(); return true; }
+            if (PanelOpen) { if (keys != null && keys.escapeKey.wasPressedThisFrame || pad != null && pad.buttonEast.wasPressedThisFrame) ClosePanel(); return true; }
             if (!Game.Paused && keys != null && Data.Owned && Inside) {
                 if (keys.bKey.wasPressedThisFrame) { ShowPanel("Catalog"); return true; }
                 if (keys.tabKey.wasPressedThisFrame) { ShowPanel("Service"); return true; }
             }
             return false;
+        }
+        bool PadPlacementStep(Gamepad pad, out int dx, out int dz) {
+            dx = dz = 0;
+            if (pad == null) return false;
+            Vector2 direction = pad.dpad.ReadValue();
+            if (direction.sqrMagnitude < .25f) direction = pad.leftStick.ReadValue();
+            if (direction.sqrMagnitude < .36f || Time.unscaledTime < nextPadPlacementMove) return false;
+            if (Mathf.Abs(direction.x) >= Mathf.Abs(direction.y)) dx = direction.x > 0 ? 1 : -1;
+            else dz = direction.y > 0 ? 1 : -1;
+            nextPadPlacementMove = Time.unscaledTime + .17f;
+            return true;
         }
         public bool UpdatePreviewFromPointer(Vector2 screenPosition) {
             if (!PlacementActive) return false;

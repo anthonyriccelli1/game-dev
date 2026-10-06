@@ -122,6 +122,31 @@ namespace RestaurantCity {
      Check(GameObject.Find("Alchemist crew / Frank")!=null,"his stitched staff wait at the pass");
      Check(GameObject.Find("Alchemist guest 1")!=null&&GameObject.Find("Alchemist plate")!=null,"guests are already eating the Philosopher's Stack when you walk in");
      Game.Player.Teleport(keep);st.Clock=clock0;}
+    // The Flux hunt: 12 hiding spots, 2 humming cases a night, three hits to crack one, gone at sunrise; the midnight strongbox.
+    {var g=st;var rc=Game.Restaurant;float clock0=g.Clock;int flux0=g.Flux;bool owned0=rc.Data.Owned,knew0=g.Knows("midnight");
+     var spots=GameObject.Find("Flux spots");Check(spots!=null&&spots.transform.childCount==FluxHunt.SpotCount,"twelve Flux hiding spots in the city");
+     Check(spots!=null&&spots.transform.Cast<Transform>().Count(t=>t.position.y>2.5f)>=5,"at least five of them are up high (balcony, landings, rooftops)");
+     g.Clock=180;g.FluxNight=-1;rc.Advance(.05f);
+     Check(g.FluxCases.Count==2&&g.FluxCases[0]!=g.FluxCases[1]&&g.FluxCases.All(i=>i>=0&&i<12),"two cases go out tonight ("+string.Join(",",g.FluxCases)+")");
+     var tonight=new System.Collections.Generic.List<int>(g.FluxCases);rc.Advance(.05f);Check(g.FluxCases.SequenceEqual(tonight),"the same night keeps the same spots");
+     bool varied=false;for(int d=1;d<12;d++)if(!FluxHunt.Roll(d).SequenceEqual(FluxHunt.Roll(0)))varied=true;Check(varied,"different nights roll different spots");
+     int spot=tonight[0];var box=GameObject.Find("Flux case "+spot);
+     Check(box&&box.GetComponent<Interactable>()?.Kind==InteractionKind.FluxCase&&box.GetComponent<AudioSource>()?.isPlaying==true&&box.GetComponentInChildren<Light>()!=null,"the case is there, glowing and humming");
+     Check(!rc.CrackFluxCase(spot,Game.Player)&&!rc.CrackFluxCase(spot,Game.Player)&&g.Flux==flux0,"two hits aren't enough");
+     Check(rc.CrackFluxCase(spot,Game.Player)&&g.Flux==flux0+1&&!g.FluxCases.Contains(spot),"the third hit cracks it: +1 Flux");
+     rc.Advance(.05f);Check(GameObject.Find("Flux case "+spot)==null&&GameObject.Find("Flux case "+tonight[1])!=null,"the cracked case is gone, the other still hums");
+     g.Clock=60;rc.Advance(.05f);Check(g.FluxCases.Count==0&&GameObject.Find("Flux case "+tonight[1])==null,"whatever wasn't found is gone at sunrise");
+     rc.Data.Owned=true;g.KnownRecipes.Remove("midnight");g.Clock=180;rc.Advance(.05f);
+     var mbox=GameObject.Find("Midnight recipe box");Check(mbox&&mbox.transform.position.y>25,"the midnight strongbox waits on the tallest roof at night");
+     Check(!rc.PryMidnightBox(Game.Player)&&rc.PryMidnightBox(Game.Player)&&g.Knows("midnight"),"prying it open teaches the Midnight Burger");
+     rc.Advance(.05f);Check(GameObject.Find("Midnight recipe box")==null,"the strongbox doesn't come back once you know the recipe");
+     // Climb both fire escapes for real: walk the player along the route with the normal movement code.
+     foreach(var id in new[]{"B","A"}){var path=GameObject.Find("Climb "+id+" path");var roof=GameObject.Find("Climb "+id+" roof");if(!path||!roof){Check(false,"climb route "+id+" exists");continue;}
+      var pl=Game.Player;pl.Teleport(path.transform.GetChild(0).position+Vector3.up*.05f);float best=0;
+      string stuck="";for(int w=1;w<path.transform.childCount;w++){var target=path.transform.GetChild(w).position;for(int f=0;f<600;f++){var d=target-pl.transform.position;d.y=0;if(d.magnitude<.15f)break;pl.transform.rotation=Quaternion.LookRotation(d);pl.ApplyMovement(new Vector2(0,1),.02f);}best=Mathf.Max(best,pl.transform.position.y);var left=target-pl.transform.position;left.y=0;if(stuck==""&&left.magnitude>.3f){stuck=" stuck before way "+w+" at "+pl.transform.position.ToString("F2")+" heading for "+target.ToString("F2");foreach(var c in Physics.OverlapCapsule(pl.transform.position+Vector3.up*.35f,pl.transform.position+Vector3.up*1.5f,.4f))stuck+=" ["+c.name+"/"+(c.transform.parent?c.transform.parent.name:"")+"]";}}
+      Check(pl.transform.position.y>roof.transform.position.y-.4f,"climbed fire escape "+id+" to its roof (reached y "+pl.transform.position.y.ToString("0.0")+", roof "+roof.transform.position.y.ToString("0.0")+", best "+best.ToString("0.0")+")"+stuck);}
+     Game.Player.Teleport(new Vector3(-10,.15f,-11));
+     g.Clock=clock0;g.Flux=flux0;rc.Data.Owned=owned0;if(knew0)g.Learn("midnight");else g.KnownRecipes.Remove("midnight");g.FluxCases.Clear();g.FluxNight=-1;rc.Advance(.05f);}
     // Hotbar: weapons and carried city items live in slots; kitchen food in your hands blocks switching.
     {var g=st;var inv=Hotbar.For(g,0);var saved=inv.Slots.Select(x=>new InvSlot{Item=x.Item,KitchenItemId=x.KitchenItemId}).ToList();int sel0=inv.Selected;
      foreach(var sl in inv.Slots){sl.Item="";sl.KitchenItemId=-1;}inv.Selected=0;

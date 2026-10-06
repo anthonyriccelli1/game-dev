@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
@@ -31,6 +32,7 @@ namespace RestaurantCity {
         ScrollRect scroll;
         string category = "All", signature = "";
         string finishFilter = "All finishes";
+        int uiPadDeviceId = -2;
         readonly List<Action> tickLabels = new List<Action>();
         readonly string[] categories = { "All", "Kitchen", "Seating", "Finishes", "Lighting", "Decor", "Architecture", "Exterior" };
 
@@ -54,6 +56,7 @@ namespace RestaurantCity {
                 var events = new GameObject("Restaurant input", typeof(EventSystem), typeof(InputSystemUIInputModule));
                 events.transform.SetParent(transform, false);
             }
+            SyncInputDevices();
             hud = Block(canvas.transform, "Restaurant status", 24, 22, 1392, 78, ink);
             Block(hud, "Accent", 0, 0, 7, 78, teal);
             Label(hud, "Little Flame", 24, 10, 242, 32, 27, paper, true);
@@ -76,6 +79,7 @@ namespace RestaurantCity {
         public void Refresh() {
             if (!Owner || Owner.Data == null || !Owner.Game) return;
             if (!canvas) { Rebuild(); return; }
+            SyncInputDevices();
             var s = Owner.Data;
             bool visible = s.Owned && Owner.Game.Started && !Owner.Game.Paused;
             bool full = Owner.Inside || Owner.PanelOpen || Owner.PlacementActive;
@@ -90,8 +94,8 @@ namespace RestaurantCity {
             status.text = "Satisfaction " + s.Satisfaction.ToString("0") + "%    |    " + (s.Open ? "Open for service" : "Closed for arrivals") + "\n" + s.Served + " served    |    Ambience " + s.Ambience + "    |    Cleanliness " + s.Cleanliness.ToString("0") + "%";
             stock.text = "Pantry: " + string.Join(", ", s.Pantry.Where(l => l.Count > 0).Select(l => l.Count + " " + Ingredients.Name(l.Id))) + "\n" + s.Seats + " seats    |    " + s.CookSlots + " cooking stations";
             cash.text = "$" + Owner.Game.State.Cash;
-            hints.text = Owner.FinishBrushActive ? "Click a floor tile, wall section, partition or service window    /    F Quote all    /    Esc, B or right click Return to catalog"
-                : Owner.PlacementActive ? "Place with left click    /    R Rotate " + (Owner.PreviewRotation * 90) + " degrees    /    Esc Cancel    /    B Return to catalog" : "B  Catalog     /     Tab  Manage restaurant     /     E  Interact     /     Esc  Pause";
+            hints.text = Owner.FinishBrushActive ? "Mouse click or pad A paint    /    Stick or D-pad choose surface    /    RB quote all    /    B return"
+                : Owner.PlacementActive ? "Mouse click or pad A place    /    Stick or D-pad move    /    RB rotate " + (Owner.PreviewRotation * 90) + " degrees    /    B return" : "D-pad navigate  /  A select  /  B close  /  View phone  /  Start pause";
             RefreshFinishControls();
             notice.text = Owner.PlacementActive ? Owner.Hint : !string.IsNullOrEmpty(Owner.FocusPrompt) ? Owner.FocusPrompt : Owner.Game.Notice;
             var summary = new StringBuilder(s.Open ? "Service is open\n" : "Doors closed to new guests\n");
@@ -159,7 +163,26 @@ namespace RestaurantCity {
             Text panelNotice = Label(sheet, "", 30, 667, 1156, 29, 14, muted);
             tickLabels.Add(() => { if (panelNotice) panelNotice.text = !string.IsNullOrEmpty(Owner.Game.Notice) ? Owner.Game.Notice : Owner.Panel == "Catalog" ? (Owner.Data.CanCustomize ? "Purchases and layouts save automatically. Choose an item to see it in your restaurant." : "Close service and let the last guest leave before renovating.") : (Owner.Data.Owned ? "B Catalog / Tab Manage / Esc Close" : "Tab Stars / P Phone / Esc Close") + "    |    Your progress saves automatically."; });
             if (scroll) scroll.verticalNormalizedPosition = previousScroll;
-            if(EventSystem.current && !EventSystem.current.currentSelectedGameObject){var first=sheet.GetComponentInChildren<Button>();if(first)EventSystem.current.SetSelectedGameObject(first.gameObject);}
+            if (EventSystem.current) {
+                var buttons = sheet.GetComponentsInChildren<Button>();
+                var first = buttons.FirstOrDefault(b => b.interactable && b.gameObject.name != "Close  x");
+                if (first) EventSystem.current.SetSelectedGameObject(first.gameObject);
+            }
+        }
+
+        void SyncInputDevices() {
+            if (!EventSystem.current || !Owner || !Owner.Game || !Owner.Game.Player) return;
+            var module = EventSystem.current.GetComponent<InputSystemUIInputModule>();
+            if (!module || !module.actionsAsset) return;
+            var pad = Owner.Game.Player.AssignedGamepad;
+            int id = pad != null && pad.added ? pad.deviceId : -1;
+            if (uiPadDeviceId == id) return;
+            var devices = new List<InputDevice>();
+            if (Keyboard.current != null) devices.Add(Keyboard.current);
+            if (Mouse.current != null) devices.Add(Mouse.current);
+            if (id >= 0) devices.Add(pad);
+            module.actionsAsset.devices = devices.ToArray();
+            uiPadDeviceId = id;
         }
 
         void BuildCatalog(RectTransform sheet) {

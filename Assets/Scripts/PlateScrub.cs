@@ -96,7 +96,7 @@ namespace RestaurantCity {
             }
             if (station >= 0) {
                 int pct = Mathf.RoundToInt(CleanRatio / DoneAt * 100); int bars = Mathf.Clamp(pct / 10, 0, 10);
-                Game.Restaurant?.SetPrompt(Player.ActorId, "Scrub the grime off!  " + (mouse != null ? "Move the mouse" : "Move a stick") + " over the dirt\n<color=#4FCB7A>" + new string('|', bars) + "</color>" + new string('.', 10 - bars) + "  " + Mathf.Min(99, pct) + "% clean     Q / B  put it down");
+                Game.Restaurant?.SetPrompt(Player.ActorId, "Scrub the grime off!  " + (pad != null ? "Move either stick" : "Move the mouse") + " over the dirt\n<color=#4FCB7A>" + new string('|', bars) + "</color>" + new string('.', 10 - bars) + "  " + Mathf.Min(99, pct) + "% clean     " + (pad != null ? "B" : "Q") + "  put it down");
             }
             Present(dt, moved);
         }

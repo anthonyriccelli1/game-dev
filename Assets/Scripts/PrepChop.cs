@@ -84,8 +84,8 @@ namespace RestaurantCity {
             if (station >= 0) {
                 int nearest = NearestUncut(knifeX);
                 string aim = nearest >= 0 && Mathf.Abs(SliceX(nearest) - knifeX) <= Reach ? "<color=#4FCB7A>on a slice: chop!</color>" : "line the knife up with an uncut slice";
-                Game.Restaurant?.SetPrompt(Player.ActorId, "Chop the lettuce!  " + (mouse != null ? "Mouse" : "Stick") + " slides the knife, " + (mouse != null ? "click" : "RB") + " chops   " + aim
-                    + "\n" + Cuts + " / " + Slices + " slices     Q / B  put it down");
+                Game.Restaurant?.SetPrompt(Player.ActorId, "Chop the lettuce!  " + (pad != null ? "Move a stick" : "Move the mouse") + " to slide the knife, " + (pad != null ? "RT / RB" : "click") + " to chop   " + aim
+                    + "\n" + Cuts + " / " + Slices + " slices     " + (pad != null ? "B" : "Q") + "  put it down");
             }
             Present(dt);
         }

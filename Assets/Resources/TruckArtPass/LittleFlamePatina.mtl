@@ -1,0 +1,33 @@
+newmtl LF_Pin
+Kd 0.949 0.761 0.188
+
+newmtl LF_Under
+Kd 0.141 0.157 0.173
+
+newmtl LF_Trim
+Kd 0.369 0.400 0.431
+
+newmtl LF_Teal
+Kd 0.180 0.549 0.541
+
+newmtl LF_Cream
+Kd 0.945 0.902 0.812
+
+newmtl LF_Coral
+Kd 0.878 0.376 0.235
+
+newmtl LF_Chrome
+Kd 0.788 0.808 0.827
+
+newmtl LF_Tyre
+Kd 0.106 0.110 0.122
+
+newmtl LF_Floor
+Kd 0.420 0.337 0.275
+
+newmtl LF_Inner
+Kd 0.937 0.894 0.800
+
+newmtl LF_InnerLow
+Kd 0.180 0.549 0.541
+

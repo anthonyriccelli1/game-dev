@@ -129,10 +129,11 @@ public static partial class CityMap {
         else if (k < 6) Put("Buildings/SM_Bld_Shop_Cover_04", OnFace(x0, z0, facing, 0, .45f, 3f), yaw, b);
         string[] flat = { "Sign_Cafe_01", "Sign_Pub_01", "Sign_Bar_01", "Sign_Chinese_Noodles_01" };
         if (g < 4 && k >= 4) Put("Props/SM_Prop_" + flat[g], OnFace(x0, z0, facing, 0, .7f, 2.75f), yaw, b);
-        else if (g == 5) Put("Props/SM_Prop_ATM_01", OnFace(x0, z0, facing, 1.8f, .55f, 1.05f), yaw, b);
+        else if (g == 5 && !ClimbTower(x0, z0, out _, out _)) Put("Props/SM_Prop_ATM_01", OnFace(x0, z0, facing, 1.8f, .55f, 1.05f), yaw, b);
         else if (g == 6) Put("Props/SM_Prop_Sign_DeliPizza_01", OnFace(x0, z0, facing, -2.3f, .9f, 2.6f), yaw + 90, b);
         else if (g == 7) Put("Props/SM_Prop_Sign_Barber_01", OnFace(x0, z0, facing, -2.2f, .55f, 1.3f), yaw, b);
-        if (H(s, 17) % 4 == 0) Put("Props/SM_Prop_Planter_02", OnFace(x0, z0, facing, 1.4f, .9f, 0), yaw, b);
+        if (H(s, 17) % 4 == 0 && !ClimbTower(x0, z0, out _, out _)) Put("Props/SM_Prop_Planter_02",   // never in front of a climbable fire escape
+             OnFace(x0, z0, facing, 1.4f, .9f, 0), yaw, b);
     }
     // Fire escapes climbing the front of an apartment stack.
     static void FireEscapes(Transform b, float x0, float z0, int facing, int stacks) {
@@ -145,10 +146,12 @@ public static partial class CityMap {
     // One 5 m-wide building: shop or apartment ground floor, N apartment stacks (3 floors each), roof.
     static void Tower(float x0, float z0, int facing, int stacks, bool shop, string groundOverride = null, int palette = -1) {
         int s = seed++; int family = s % 3 + 1;
+        bool climb = ClimbTower(x0, z0, out string climbId, out int climbStacks); if (climb) stacks = climbStacks;
         var parent = new GameObject("Building").transform; parent.SetParent(root, false);
         string ground = groundOverride ?? (shop ? "Buildings/SM_Bld_Shop_0" + ShopGround[s % 5]
             : H(s, 3) % 3 == 0 ? "Buildings/SM_Bld_Apartment_Door_0" + (s % 2 + 1) : "Buildings/SM_Bld_Apartment_0" + family);
-        if (shop && groundOverride == null && IsMainStreetShop(x0, z0, facing)) ground = MainShopGround(x0, z0);   // a glass front (never the roller-shutter unit)
+        if (shop && groundOverride == null && IsMainStreetShop(x0, z0, facing)) ground = MainShopGround(x0, z0);
+        if (climb && shop && groundOverride == null) ground = "Buildings/SM_Bld_Shop_05";   // flat front: nothing juts out under the fire escape   // a glass front (never the roller-shutter unit)
         Module(ground, x0, z0, facing, 0, parent);
         for (int i = 0; i < stacks; i++) Module("Buildings/SM_Bld_Apartment_Stack_0" + family, x0, z0, facing, 3 + 9 * i, parent);
         float roofY = 3 + 9 * stacks;
@@ -157,7 +160,8 @@ public static partial class CityMap {
         if (shop && groundOverride == null) { if (IsMainStreetShop(x0, z0, facing)) MainStreetShop(parent, x0, z0, facing); else Storefront(parent, x0, z0, facing, s); }
         if (stacks == 0 && shop) { if (H(s, 19) % 3 == 0) RoofSign(parent, x0, z0, facing, roofY + .5f, s); }
         else RoofClutter(parent, x0, z0, roofY + .5f, s);
-        if (stacks > 0 && groundOverride == null && H(s, 23) % 3 == 0) FireEscapes(parent, x0, z0, facing, stacks);
+        if (climb) ClimbableFireEscape(parent, x0, z0, facing, stacks, climbId);
+        else if (stacks > 0 && groundOverride == null && H(s, 23) % 3 == 0) FireEscapes(parent, x0, z0, facing, stacks);
         if (!shop && H(s, 29) % 2 == 0) foreach (float lat in new[] { -1.7f, 1.7f }) {
             var b = PutGeneric("Environment/SM_Gen_Env_Bush_0" + (H(s, 31) % 4 + 1), OnFace(x0, z0, facing, lat, .7f, 0), s * 33, parent);
             if (b) b.transform.localScale = Vector3.one * .75f;

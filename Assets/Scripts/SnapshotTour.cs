@@ -110,6 +110,11 @@ namespace RestaurantCity {
             ("143_main_shop_threads", new Vector3(17.5f, 0, -7.2f), 180, 6, 60),
             ("144_main_shop_gym", new Vector3(22.5f, 0, -7.2f), 180, 6, 60),
             ("145_main_shop_records", new Vector3(-22.5f, 0, 7.2f), 0, 6, 60),
+            ("150_flux_fireescape_day", new Vector3(-7.5f, 0, 51f), 180, -38, 60),
+            ("151_flux_roof_night", new Vector3(-7.5f, 30.6f, 40.0f), 180, 28, 195),
+            ("152_flux_landing_night", new Vector3(-9.0f, 12.2f, 40.6f), 90, 22, 195),
+            ("153_flux_roof_view_day", new Vector3(-7.5f, 30.6f, 40.2f), 0, 8, 60),
+            ("154_flux_climb_day", new Vector3(-8.6f, 6.2f, 40.5f), 90, -20, 60),
             ("118_flux_vial_night", new Vector3(9, 0, -72), -50, 4, 195),
             ("118_flux_vial_day", new Vector3(9, 0, -72), -50, 4, 60),
             ("116_chop_lettuce", new Vector3(-1.2f, .82f, -62.3f), 90, 6, 66),
@@ -208,6 +213,8 @@ namespace RestaurantCity {
                     Debug.LogWarning("ZILO_STAFF " + (zilo ? "spawned" : "missing") + " cost=" + ResidentCast.Staff("201_TripoAlien")?.FluxCost);
                 }
                 if (rc && shot.name.Contains("phone_map")) rc.ShowPanel("Map");
+                // Flux hunt shots: tonight's cases on the tallest roof and its fire-escape landing, and the midnight strongbox.
+                if (rc && shot.name.Contains("flux")) { var fs = Game.State; rc.Data.Owned = true; fs.KnownRecipes.Remove("midnight"); fs.Clock = shot.clock; fs.FluxNight = fs.Day; fs.FluxCases = new System.Collections.Generic.List<int> { 10, 8 }; rc.Advance(.05f); }
                 // The Alchemist's dining room comes alive as you walk in: let the crew and the first guests settle.
                 if (rc && shot.name.Contains("alchemist") && !shot.name.Contains("front") && !shot.name.Contains("yard")) {
                     var alchP = Game.Player; for (int i = 0; i < 90; i++) { Game.State.Clock = shot.clock; alchP.transform.position = shot.pos; rc.Advance(.1f); yield return null; }

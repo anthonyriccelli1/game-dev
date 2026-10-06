@@ -42,6 +42,7 @@ namespace RestaurantCity {
             savedSpatulaActive = Game.Player.Spatula && Game.Player.Spatula.gameObject.activeSelf;
             savedFoodActive = Game.HandFood && Game.HandFood.activeSelf;
             PanelOpen = false; PlacementActive = true;
+            if (EventSystem.current) EventSystem.current.SetSelectedGameObject(null);
             cam.transform.position = W(-10, 14, -15.5f); cam.transform.rotation = Quaternion.Euler(90, 0, 0);
             cam.orthographic = true; cam.orthographicSize = 8;
             if (Game.CoOp) Game.CoOp.RefreshViews();
@@ -148,9 +149,29 @@ namespace RestaurantCity {
             finishUIHits.Clear(); EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current) { position = position }, finishUIHits);
             return finishUIHits.Count > 0;
         }
-        bool HandleFinishBrushInput(Keyboard keys, Mouse mouse) {
+        bool HandleFinishBrushInput(Keyboard keys, Mouse mouse, Gamepad pad) {
             if (keys != null && keys.fKey.wasPressedThisFrame) RequestFinishFill();
             if (keys != null && keys.enterKey.wasPressedThisFrame && FinishFillPending) ConfirmFinishFill();
+            if (pad != null) {
+                if (pad.rightShoulder.wasPressedThisFrame) RequestFinishFill();
+                if (PadPlacementStep(pad, out int dx, out int dz) && !FinishFillPending) {
+                    var finish = FinishCatalog.Find(SelectedCatalogId);
+                    var parts = FinishSurfaceKey.Split(':');
+                    if (finish != null && finish.IsWall) {
+                        int section = parts.Length == 3 && int.TryParse(parts[2], out int parsed) ? parsed : 5;
+                        string side = parts.Length == 3 && parts[0] == "wall" ? parts[1] : "back";
+                        if (dz != 0) side = side == "back" ? (dz > 0 ? "right" : "left") : "back";
+                        ChooseFinishSurface("wall:" + side + ":" + Mathf.Clamp(section + dx, 0, 11));
+                    } else if (finish != null) {
+                        int x = parts.Length == 3 && int.TryParse(parts[1], out int parsedX) ? parsedX : 5;
+                        int z = parts.Length == 3 && int.TryParse(parts[2], out int parsedZ) ? parsedZ : 4;
+                        ChooseFinishSurface("floor:" + Mathf.Clamp(x + dx, 0, 11) + ":" + Mathf.Clamp(z + dz, 0, 9));
+                    }
+                }
+                if (pad.buttonSouth.wasPressedThisFrame) {
+                    if (FinishFillPending) ConfirmFinishFill(); else ApplySelectedFinish(false);
+                }
+            }
             if (mouse != null && !PointerOverFinishUI(mouse.position.ReadValue()) && !FinishFillPending) {
                 bool target = UpdateFinishFromPointer(mouse.position.ReadValue());
                 if (target && mouse.leftButton.wasPressedThisFrame) ApplySelectedFinish(false);

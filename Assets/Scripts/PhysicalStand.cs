@@ -234,6 +234,7 @@ namespace RestaurantCity {
             var s = Game.State;
             TickPantryDisplays();
             TickNightStash();
+            TickFluxHunt();
             TickGusCrew(seconds);
             TickInspectors(seconds);
             TickGameFeel(seconds);
@@ -335,6 +336,7 @@ namespace RestaurantCity {
         // Prompt + action for Milo's crates and the stand customer. Returns true when handled.
         bool InspectStreet(FirstPersonPlayer p, Interactable city, bool pressed) {
             if (InspectNightStash(p, city, pressed)) return true;
+            if (InspectFluxCase(p, city, pressed)) return true;
             if (InspectRaid(p, city, pressed)) return true;
             if (InspectPawn(p, city, pressed)) return true;
             var k = Game.State.Kitchen; string actor = p.ActorId;

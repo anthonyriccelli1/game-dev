@@ -13,3 +13,12 @@
   LF_Trim (mirrors), LF_Under (wheel wells, underside), LF_Tyre, LF_Floor, LF_Inner / LF_InnerLow (interior).
 - Inside vs outside is decided by the face normal (interior faces point back toward the middle of the truck), so
   the cab's outer skin is painted like the body.
+
+## Approved Little Flame art pass (2026-10-02)
+
+`Tools/generate_little_flame_patina.py` produces a separate UV-mapped copy and original painted/worn textures under
+`Assets/Resources/TruckArtPass`. `LittleFlameArtPreview` installs this look automatically at runtime for the player's
+Little Flame, leaving the source OBJ, Greasy Gus, colliders and kitchen station positions intact. Exterior service and
+awning lights switch off in daylight and on at night. The above-grill extractor hood is reserved for a later upgrade.
+The regular Windows build is `Builds/Windows/RestaurantCity.exe`. The earlier comparison screenshots are in
+`InteractionEvidence/little-flame-preview-*.png`; optional extra art snapshots require `--snapshots --truck-art-shots`.

@@ -57,6 +57,7 @@ public static class PrototypeBuilder {
         if (!city) { Building("Records", 2, -16, 10, 14, teal, world); Building("Bodega", 16, -15, 13, 10, Mat("Mustard", "CEAE70"), world); }
         if (city) {
             CityMap.Build(world); game.gameObject.AddComponent<DistrictLocks>().Game = game;
+            FluxHuntBuilder.Build(world);   // the 12 Flux hiding spots and the case prefabs
             // Rival raid targets (Raids.cs): the rival's truck/door opens the raid planner.
             foreach (var rival in Rivals.All) {
                 var spot = GameObject.Find(rival.Name) ?? new GameObject(rival.Name);
@@ -158,7 +159,7 @@ public static class PrototypeBuilder {
         }
         RenderSettings.fog = true; RenderSettings.fogMode = FogMode.ExponentialSquared; RenderSettings.fogDensity = city ? .0045f : .011f;
         var player = new GameObject("Player / First person"); player.transform.position = game.SpawnPoint;
-        var controller = player.AddComponent<CharacterController>(); controller.height = 1.8f; controller.radius = .3f; controller.center = new Vector3(0, .9f, 0); controller.stepOffset = .3f;
+        var controller = player.AddComponent<CharacterController>(); controller.height = 1.8f; controller.radius = .3f; controller.center = new Vector3(0, .9f, 0); controller.stepOffset = .3f; controller.slopeLimit = 58;   // fire-escape stairs are steep
         game.Player = player.AddComponent<FirstPersonPlayer>(); game.Player.Game = game;
         var camera = new GameObject("Player camera").AddComponent<Camera>(); camera.tag = "MainCamera"; camera.transform.parent = player.transform; camera.transform.localPosition = new Vector3(0, 1.65f, 0);
         camera.nearClipPlane = .05f; camera.farClipPlane = city ? 1400 : 180; camera.fieldOfView = 72; camera.clearFlags = city ? CameraClearFlags.Skybox : CameraClearFlags.SolidColor;
@@ -186,7 +187,7 @@ public static class PrototypeBuilder {
         var kinds = new HashSet<InteractionKind>();
         foreach (var item in UnityEngine.Object.FindObjectsByType<Interactable>(FindObjectsInactive.Include, FindObjectsSortMode.None)) kinds.Add(item.Kind);
         // Milo's supply crates, the stand sign and the sidewalk-table targets are created at runtime by PhysicalStand.
-        foreach (InteractionKind kind in Enum.GetValues(typeof(InteractionKind))) if (kind != InteractionKind.SupplyProtein && kind != InteractionKind.SupplyProduce && kind != InteractionKind.StandSign && kind != InteractionKind.StandTable && kind != InteractionKind.NightStash && kind != InteractionKind.Recipe && !kinds.Contains(kind)) throw new Exception("Missing interaction: " + kind);
+        foreach (InteractionKind kind in Enum.GetValues(typeof(InteractionKind))) if (kind != InteractionKind.SupplyProtein && kind != InteractionKind.SupplyProduce && kind != InteractionKind.StandSign && kind != InteractionKind.StandTable && kind != InteractionKind.NightStash && kind != InteractionKind.Recipe && kind != InteractionKind.FluxCase && kind != InteractionKind.RecipeBox && !kinds.Contains(kind)) throw new Exception("Missing interaction: " + kind);
         foreach (var renderer in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None)) {
             if (!renderer.sharedMaterial || !renderer.sharedMaterial.shader) throw new Exception("Missing material: " + renderer.name);
         }
