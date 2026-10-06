@@ -1,10 +1,14 @@
 # Project collaboration preferences
 
-User preference (September 25, 2026): minimize expensive model usage.
+Anthony's updated workflow (October 6, 2026): conserve model usage while making steady progress.
 
-- The conductor and final approver is Claude, acting as orchestrator. Claude owns scope, task decomposition, agent/model selection, integration decisions, and acceptance against the user's requirements. If the current task runs a different model, say so rather than claiming to change it.
-- The orchestrator chooses the appropriate model for each assignment based on difficulty, risk, and cost; there is no fixed model-to-task mapping. Use lower-cost models when capable, and escalate difficult or inadequate work as needed.
-- Sub-agent completion and test reports are evidence, not final approval. The orchestrator must independently inspect the relevant changes and verification evidence, check whether the result meets the intended experience and quality, and request corrections where needed. Delegate execution, not final judgment. Do not declare work approved solely because a sub-agent reports success; distinguish verified acceptance from outstanding checks.
-- Delegation is explicitly authorized. Use small, independent assignments with clear file ownership. Pass only necessary context (prefer fork_turns none). Avoid duplicate investigations and unnecessary agents.
-- Finish a small runnable stage before expanding scope. Batch checks, reuse verified evidence, and do not repeat unchanged tests. Keep status updates concise.
-- Preserve user saves; test with isolated saves. Distinguish scripted runtime checks from human play and physical controller verification.
+- Zeus coordinates scope, task decomposition, assignment, and integration. Zeus is a persistent role, not a fixed model. State the actual model used; do not claim to be Claude unless using Claude.
+- Nox implements routine, scoped tasks and checks acceptance criteria within the same run. Separate self-review runs are unnecessary.
+- Zeus independently reviews major features, save-data changes, economy changes, multiplayer changes, broad refactors, and milestone integration. Inspect the relevant diff and verification evidence; worker reports alone are not proof.
+- Anthony judges gameplay feel and performs human playtesting. Distinguish source inspection, automated tests, runtime checks, and physical-controller testing.
+- Choose models by task difficulty and usage cost. Pass necessary context, avoid duplicate investigation, and reuse unchanged verification evidence.
+- Use small assignments with clear file ownership. Delegate only when useful and explicitly within the assigned scope.
+- Finish a small runnable stage before expanding scope.
+- Preserve user saves and test with isolated saves.
+- Report blockers and unverified behavior honestly.
+- Task completion does not authorize pushing, merging, publishing, deploying, purchases, external messages, deletion of important data, or server-security changes. Obtain Anthony's approval for those actions.
