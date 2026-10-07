@@ -27,7 +27,13 @@ namespace RestaurantCity {
         public bool Built => X1 > X0;   // later districts are planned (rank ladder) but not on the map yet
         public bool Contains(float x, float z) => Built && x >= X0 && x <= X1 && z >= Z0 && z <= Z1;
     }
-    public class CityPlace { public string Name, Kind; public float X, Z; public CityPlace(string n, string k, float x, float z) { Name = n; Kind = k; X = x; Z = z; } }
+    // A named place in the city: the one registry the phone map, the goal text and the on-screen goal marker all use.
+    // X, Z is where the goal marker points (a door or a counter, not the middle of a building).
+    public class CityPlace {
+        public string Id, Name, Kind, Where; public float X, Z;
+        public CityPlace(string id, string n, string k, string where, float x, float z) { Id = id; Name = n; Kind = k; Where = where; X = x; Z = z; }
+        public UnityEngine.Vector3 Point => new UnityEngine.Vector3(X, 0, Z);
+    }
     // Saffron Bay is built one small, dense district at a time. Old Market is the dressed 160 m block (CityMap);
     // the other districts keep their place on the reputation ladder and open behind their gates once they exist.
     public static class CityDistricts {
@@ -49,14 +55,24 @@ namespace RestaurantCity {
         // Streets as x0, z0, x1, z1 (matches CityMap.Roads).
         public static readonly (float x0, float z0, float x1, float z1)[] Roads = { (-80, -5, 80, 5), (-80, 45, 80, 55), (-80, -55, 80, -45), (-80, -110, 80, -100), (-45, -110, -35, 80), (35, -110, 45, 80) };
         public static readonly CityPlace[] Places = {
-            new CityPlace("Little Flame", "you", 0, -62.5f), new CityPlace("Milo's", "supply", -12, 10), new CityPlace("The Odd Table", "restaurant", -10, -15),
-            new CityPlace("The Alchemist", "rival", 15, 22),
-            new CityPlace("Market stalls", "supply", 0, 64),
-            new CityPlace("Greasy Gus's truck", "rival", 17, -31), new CityPlace("Graffiti alley", "recipe", -22.5f, -33),
-            new CityPlace("The park", "service", 65, -25), new CityPlace("City Hall", "service", -67, 25), new CityPlace("Bus stop", "service", -30, -7),
-            new CityPlace("Truck Park", "service", 0, -80), new CityPlace("Corner courts", "service", 65, -78),
-            new CityPlace("Bridge to The Docks", "gate", -76, -105),
+            new CityPlace("truck", "Little Flame", "you", "your food truck in Truck Park", 0, -62.5f),
+            new CityPlace("rose", "Rose's cart", "supply", "Milo's cart right beside Little Flame", -10.5f, -63.4f),
+            new CityPlace("milos", "Milo's Market", "supply", "Main Street, north side", -15.5f, 12.6f),
+            new CityPlace("oddtable", "The Odd Table", "restaurant", "Main Street, south side", -10, -8.2f),
+            new CityPlace("alchemist", "The Alchemist", "rival", "Main Street, north side", 16.25f, 13.2f),
+            new CityPlace("market", "Market stalls", "supply", "off North Avenue", 0, 62),
+            new CityPlace("gus", "Greasy Gus's truck", "rival", "the vacant lot off South Avenue", 15.2f, -39.4f),
+            new CityPlace("tower", "North Avenue fire escape", "recipe", "the tall building on North Avenue", -4.6f, 41.4f),
+            new CityPlace("alley", "Graffiti alley", "recipe", "off South Avenue", -22.5f, -33),
+            new CityPlace("pawn", "Hock-9's pawn", "service", "East Street", 33.2f, -25),
+            new CityPlace("park", "The park", "service", "east end of Main Street", 65, -25),
+            new CityPlace("cityhall", "City Hall", "service", "west end of Main Street", -67, 25),
+            new CityPlace("busstop", "Bus stop", "service", "Main Street", -30, -7),
+            new CityPlace("truckpark", "Truck Park", "service", "south of South Avenue", 0, -80),
+            new CityPlace("courts", "Corner courts", "service", "south-east corner", 65, -78),
+            new CityPlace("docksgate", "Bridge to The Docks", "gate", "bottom of West Street", -76, -105),
         };
+        public static CityPlace Get(string id) => id == null ? null : System.Array.Find(Places, p => p.Id == id);
     }
     // One line of the "where did my reputation come from" breakdown.
     [System.Serializable] public class RepGain { public string Source; public int Amount, Count; }

@@ -17,7 +17,7 @@ namespace RestaurantCity {
             if (!Game || !Game.Paused || !Game.Player) return;
             var pad = Game.Player.AssignedGamepad;
             if (pad == null || !pad.added || Game.Player.SuppressInputFrame == Time.frameCount) return;
-            int count = Game.Started ? 4 : 2;
+            int count = Game.Started ? 5 : 2;
             float vertical = pad.leftStick.ReadValue().y;
             bool down = pad.dpad.down.wasPressedThisFrame || vertical < -.6f && !stickNavigationHeld;
             bool up = pad.dpad.up.wasPressedThisFrame || vertical > .6f && !stickNavigationHeld;
@@ -33,6 +33,7 @@ namespace RestaurantCity {
                 FirstPersonPlayer.ControllerLookSpeedIndex = (FirstPersonPlayer.ControllerLookSpeedIndex + 1) % FirstPersonPlayer.ControllerLookSpeeds.Length;
                 return;
             }
+            if (selectedAction == 4) { CityGame.GoalMarker = !CityGame.GoalMarker; return; }
             if (selectedAction == 2) {
                 if (confirmReset) { Game.NewGame(); confirmReset = false; selectedAction = 0; }
                 else confirmReset = true;
@@ -85,8 +86,8 @@ namespace RestaurantCity {
 
             if (Game.Paused) {
                 Box(new Rect(0, 105, 1440, 795), new Color(.03f, .07f, .09f, .35f));
-                Panel(new Rect(70, 174, 565, 590));
-                Box(new Rect(70, 174, 5, 590), teal);
+                Panel(new Rect(70, 174, 565, 620));
+                Box(new Rect(70, 174, 5, 620), teal);
                 Text(106, 207, 480, 22, "A SMALL STAND. A BIG AMBITION.", small);
                 Text(103, 246, 510, 143, Game.Started ? "Take a\nbreather." : "Your city.\nYour kitchen.", title);
                 Text(106, 407, 480, 86, "Buy ingredients. Fire up the grill. Earn your first customers, then chase a rare recipe after dark.");
@@ -107,7 +108,9 @@ namespace RestaurantCity {
 #endif
                     }
                 }
-                Text(106, 735, 480, 21, Game.SaveStatus, small);
+                if (Game.Started && Button(new Rect(106, 722, 490, 30), "GOAL MARKER   " + (CityGame.GoalMarker ? "ON" : "OFF") + "   (shows where your next goal is)", cream, selectedAction == 4 && Game.Player.AssignedGamepad != null))
+                    CityGame.GoalMarker = !CityGame.GoalMarker;
+                Text(106, 760, 480, 21, Game.SaveStatus, small);
                 return;
             }
 

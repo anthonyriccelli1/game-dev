@@ -200,8 +200,29 @@ namespace RestaurantCity {
     Act("pantry","soup");Act("stove");st.Kitchen.Tick(st,10);Check(st.Kitchen.At(stove)?.Kind==KitchenItemKind.ScorchedSoup,"an unstirred pot scorches");Act("stove");Check(st.Kitchen.Discard(st,"player:0",out dm),"throw the scorched pot away");
     Game.Player.Teleport(new Vector3(-10,.15f,-11));}catch(Exception e){Fail(e);yield break;}
    yield return new WaitForSecondsRealtime(1);Capture("01-physical-kitchen.png");
+   // Wayfinding: every goal points at a real place, and the HUD goal marker shows the way (on the goal, pinned to the edge when behind, gone on arrival).
+   try{Game.Restaurant.ClosePanel();Game.SetPaused(false);var place=Game.ObjectivePlace;
+    Check(CityDistricts.Places.Select(p=>p.Id).Distinct().Count()==CityDistricts.Places.Length&&CityGame.GoalPlaces.All(gp=>CityDistricts.Get(gp.place)!=null),"every goal points at a real, uniquely named place");
+    Check(CityGame.GoalPlace("Stock the truck\nx")=="rose"&&CityGame.GoalPlace("Buy The Odd Table\nx")=="oddtable"&&CityGame.GoalPlace("Day shift done!\nx")=="truck"&&CityGame.GoalPlace("Find the midnight recipe\nx")=="tower"&&CityGame.GoalPlace("Call Zeeb\nx")==null,"goal titles map to the right places");
+    Check(place!=null,"the current goal has somewhere to go ("+Game.Objective.Split('\n')[0]+")");
+    if(place!=null){Game.Player.Teleport(place.Point+new Vector3(0,.15f,16));Game.Player.LookAt(place.Point+Vector3.up*1.6f);}}catch(Exception e){Fail(e);yield break;}
+   yield return null;yield return null;
+   Capture("08-goal-marker.png");
+   try{var hud=FindFirstObjectByType<PhysicalHud>();Check(hud&&hud.MarkerState(0,out var m1)&&Mathf.Abs(m1.x)<80&&Mathf.Abs(m1.y)<140,"the goal marker sits over the goal when you face it");
+    var pos=Game.Player.transform.position;Game.Player.LookAt(pos+(pos-Game.ObjectivePlace.Point)+Vector3.up*1.6f);}catch(Exception e){Fail(e);yield break;}
+   yield return null;yield return null;
+   Capture("09-goal-marker-edge.png");Game.Restaurant.ShowPanel("Map");yield return new WaitForSecondsRealtime(.3f);Capture("10-map.png");Game.Restaurant.ClosePanel();Game.SetPaused(false);yield return null;yield return null;
+   try{var hud=FindFirstObjectByType<PhysicalHud>();Check(hud.MarkerState(0,out var m2)&&m2.y<-150,"with the goal behind you the marker pins to the bottom edge ("+m2+")");Game.Player.Teleport(Game.ObjectivePlace.Point+new Vector3(0,.15f,1));}catch(Exception e){Fail(e);yield break;}
+   yield return null;yield return null;
+   try{var hud=FindFirstObjectByType<PhysicalHud>();Check(!hud.MarkerState(0,out _),"the marker hides once you're there");Game.Player.Teleport(new Vector3(-10,.15f,-11));Game.Player.LookAt(new Vector3(-11,1,-18));}catch(Exception e){Fail(e);yield break;}
    try{var pos=Game.Player.transform.position;Game.CoOp.ToggleElevated(Game.Player);Check(Vector3.Distance(pos,Game.Player.transform.position)<.01f,"camera preserves position");Game.CoOp.Join(null);Game.CoOp.SecondPlayer.LookAt(new Vector3(-11,1,-18));Check(Game.CoOp.PlayerCount==2,"two independent players created");var hostPosition=Game.Player.transform.position;var partnerPosition=Game.CoOp.SecondPlayer.transform.position;Game.CoOp.SecondPlayer.ApplyMovement(new Vector2(1,0),.2f);Check(Vector3.Distance(hostPosition,Game.Player.transform.position)<.01f&&Vector3.Distance(partnerPosition,Game.CoOp.SecondPlayer.transform.position)>.05f,"partner movement leaves host independent");Game.Restaurant.ToggleService();Game.Restaurant.ClosePanel();Game.Restaurant.Advance(5);}catch(Exception e){Fail(e);yield break;}
    yield return new WaitForSecondsRealtime(1);Capture("02-local-coop.png");
+   {var g0=Game.ObjectivePlace;var h0=Game.Player.transform.position;var s0=Game.CoOp.SecondPlayer.transform.position;
+    if(g0!=null){Game.Player.Teleport(g0.Point+new Vector3(0,.15f,13));Game.Player.LookAt(g0.Point+Vector3.up*1.6f);Game.CoOp.SecondPlayer.Teleport(g0.Point+new Vector3(14,.15f,12));Game.CoOp.SecondPlayer.LookAt(g0.Point+new Vector3(-30,1.6f,12));
+     yield return null;yield return null;var hud=FindFirstObjectByType<PhysicalHud>();
+     bool b0=hud.MarkerState(0,out var c0),b1=hud.MarkerState(1,out var c1);Check(b0&&Mathf.Abs(c0.x)<80&&b1&&c1.x<-150,"in co-op each player gets their own marker (P1 on the goal, P2 pinned left: "+c1+")");
+     yield return new WaitForSecondsRealtime(.4f);Capture("11-coop-markers.png");
+     Game.Player.Teleport(h0);Game.Player.LookAt(new Vector3(-11,1,-18));Game.CoOp.SecondPlayer.Teleport(s0);Game.CoOp.SecondPlayer.LookAt(new Vector3(-11,1,-18));yield return null;}}
    try{Game.Restaurant.ClosePanel();Game.State.Clock=180;Game.Player.Teleport(new Vector3(11,.15f,18));Game.State.RecipeUnlocked=true;Game.State.Learn("midnight");Check(Game.State.Knows("midnight"),"midnight recipe granted (its city home comes later)");
     {var z=Game.State;z.Cash=Math.Max(z.Cash,100);int cash0=z.Cash;
      Check(z.OrderFromZeeb(6,out var zm),"call Zeeb for 6 bottles: "+zm);Check(z.Cash==cash0-NightStashes.DepositFor(6)&&z.ZeebDebt==NightStashes.Cost(6)-NightStashes.DepositFor(6),"deposit now, the rest owed");

@@ -158,6 +158,29 @@ namespace RestaurantCity {
         // The goal ladder. Truck phase: fire up, stock, open, first customer, first star, save $350, buy The Odd Table.
         // Restaurant phase: furnish, hire, then the city opens up (raid Gus > earn two stars > raid The Alchemist).
         // Nothing about raids or map secrets shows until you own a restaurant.
+        // Where the current goal is: a place id from CityDistricts.Places, picked from the goal's title line.
+        // (Kept as a table so a new goal can't silently lose its marker: the acceptance test checks every entry.)
+        public static readonly (string title, string place)[] GoalPlaces = {
+            ("Fire up Little Flame", "truck"), ("Unpack your groceries", "truck"), ("Restock now", "rose"), ("Stock the truck", "rose"),
+            ("Serve your first customer", "truck"), ("They want", "truck"), ("Last call", "truck"), ("Open for business", "truck"),
+            ("Earn your first star", "truck"), ("Save $", "truck"), ("Buy The Odd Table", "oddtable"), ("Earn money for your kitchen", "truck"),
+            ("Furnish your kitchen", "oddtable"), ("Hire your first worker", "oddtable"), ("Find the midnight recipe", "tower"),
+            ("Raid Greasy Gus", "gus"), ("Raid The Alchemist", "alchemist"), ("Earn ", "oddtable"), ("Your restaurant", "oddtable"),
+        };
+        public static string GoalPlace(string objective) {
+            if (string.IsNullOrEmpty(objective)) return null;
+            int cut = objective.IndexOf('\n'); string title = cut < 0 ? objective : objective.Substring(0, cut);
+            if (title.EndsWith(" done!")) return "truck";   // a truck shift report
+            foreach (var (t, place) in GoalPlaces) if (title.StartsWith(t)) return place;
+            return null;   // e.g. "Call Zeeb": done from the phone, nowhere to walk to
+        }
+        public CityPlace ObjectivePlace => CityDistricts.Get(GoalPlace(Objective));
+        // The on-screen goal marker (Schedule I style). On by default; toggled in the pause menu, remembered on this PC.
+        static int goalMarker = -1;
+        public static bool GoalMarker {
+            get { if (goalMarker < 0) goalMarker = PlayerPrefs.GetInt("GoalMarker", 1); return goalMarker == 1; }
+            set { goalMarker = value ? 1 : 0; PlayerPrefs.SetInt("GoalMarker", goalMarker); }
+        }
         public string Objective {
             get {
                 var r = State.Restaurant; int price = RestaurantSites.StarterPrice;

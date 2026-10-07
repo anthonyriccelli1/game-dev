@@ -666,10 +666,18 @@ namespace RestaurantCity {
                 Block(sheet, "Stash area", c.x - r, c.y - r, r * 2, r * 2, new Color(.62f, .45f, .9f, .35f));
                 Label(sheet, "Zeeb's drop: near " + spot.Hint, c.x + r + 2, c.y - 8, 190, 16, 10, new Color(.85f, .75f, 1f), true);
             }
+            // The current goal: a gold diamond with its name, so "go to Rose's cart" has a place on the map.
+            var goal = Owner.Game.ObjectivePlace;
+            if (goal != null) {
+                var g = P(goal.X, goal.Z);
+                var pin = Block(sheet, "Goal pin", g.x - 8, g.y - 8, 16, 16, new Color(.95f, .76f, .42f)); pin.pivot = new Vector2(.5f, .5f); pin.anchoredPosition += new Vector2(8, -8); pin.localRotation = Quaternion.Euler(0, 0, 45);
+                Label(sheet, "GOAL: " + goal.Name, g.x - 90, g.y + 10, 180, 16, 12, new Color(.55f, .32f, .05f), true, TextAnchor.UpperCenter);
+            }
+            // You (and your partner): an arrow that points the way you're facing.
             var markers = new System.Collections.Generic.List<(RectTransform, Transform)>();
-            if (LocalCoop.Instance != null && LocalCoop.Instance.PlayerCount > 0) { int n = 0; foreach (var pl in LocalCoop.Instance.Players) if (pl) markers.Add((Block(sheet, "P" + (++n), 0, 0, 12, 12, n == 1 ? coral : new Color(.3f, .8f, 1f)), pl.transform)); }
-            else if (Owner.Game.Player) markers.Add((Block(sheet, "You", 0, 0, 12, 12, coral), Owner.Game.Player.transform));
-            tickLabels.Add(() => { foreach (var (m, t) in markers) if (m && t) { var q = P(t.position.x, t.position.z); m.anchoredPosition = new Vector2(q.x - 6, -(q.y - 6)); } });
+            if (LocalCoop.Instance != null && LocalCoop.Instance.PlayerCount > 0) { int n = 0; foreach (var pl in LocalCoop.Instance.Players) if (pl) markers.Add((Arrow(sheet, (++n) == 1 ? "YOU" : "P2", n == 1 ? coral : new Color(.3f, .8f, 1f)), pl.transform)); }
+            else if (Owner.Game.Player) markers.Add((Arrow(sheet, "YOU", coral), Owner.Game.Player.transform));
+            tickLabels.Add(() => { foreach (var (m, t) in markers) if (m && t) { var q = P(t.position.x, t.position.z); m.anchoredPosition = new Vector2(q.x, -q.y); var arrow = m.Find("Arrow"); if (arrow) arrow.localRotation = Quaternion.Euler(0, 0, -t.eulerAngles.y); } });
             tickLabels[tickLabels.Count - 1]();
 
             float rx = mx + mw + 26, rw = 1190 - rx;
@@ -693,7 +701,7 @@ namespace RestaurantCity {
                 Label(sheet, (got ? "OPEN   " : Reputation.Thresholds[i] + "   ") + Reputation.Titles[i], rx + 10, y + 3, rw - 20, 18, 14, got ? teal : ink, true);
                 Label(sheet, d != null ? d.Name : "", rx + 10, y + 20, rw - 20, 16, 12, muted);
             }
-            Label(sheet, "Map key:  red rival   green supplier   gold restaurant   purple recipe   blue place   black gate", rx, 588, rw, 36, 11, muted);
+            Label(sheet, "Map key:  \u25B2 you   gold \u25C6 your goal   red rival   green supplier   gold restaurant   purple secret   blue place   black gate", rx, 588, rw, 36, 11, muted);
         }
 
         void BuildReviews(RectTransform sheet) {
@@ -753,6 +761,15 @@ namespace RestaurantCity {
         RectTransform Box(Transform parent, string name, float x, float y, float width, float height) {
             var go = new GameObject(name, typeof(RectTransform)); go.layer = 5; go.transform.SetParent(parent, false);
             var rect = go.GetComponent<RectTransform>(); rect.anchorMin = rect.anchorMax = new Vector2(0, 1); rect.pivot = new Vector2(0, 1); rect.anchoredPosition = new Vector2(x, -y); rect.sizeDelta = new Vector2(width, height); return rect;
+        }
+        // A map marker for a player: a filled arrow (rotated to their facing each tick) and a small name tag.
+        RectTransform Arrow(Transform parent, string name, Color color) {
+            var root = new GameObject("Map marker " + name, typeof(RectTransform)).GetComponent<RectTransform>(); root.gameObject.layer = 5; root.SetParent(parent, false);
+            root.anchorMin = root.anchorMax = new Vector2(0, 1); root.pivot = new Vector2(.5f, .5f); root.sizeDelta = new Vector2(22, 22);
+            var a = Label(root, "\u25B2", 0, 0, 22, 22, 20, color, true, TextAnchor.MiddleCenter); a.name = "Arrow"; var ar = a.rectTransform; ar.anchorMin = ar.anchorMax = new Vector2(.5f, .5f); ar.pivot = new Vector2(.5f, .5f); ar.anchoredPosition = Vector2.zero;
+            var o = a.gameObject.AddComponent<Outline>(); o.effectColor = new Color(0, 0, 0, .8f);
+            var tag = Label(root, name, 0, 0, 40, 14, 10, color, true, TextAnchor.UpperCenter); var tr = tag.rectTransform; tr.anchorMin = tr.anchorMax = new Vector2(.5f, .5f); tr.pivot = new Vector2(.5f, 1); tr.anchoredPosition = new Vector2(0, -11);
+            return root;
         }
         RectTransform Block(Transform parent, string name, float x, float y, float width, float height, Color color) {
             var rect = Box(parent, name, x, y, width, height); var image = rect.gameObject.AddComponent<Image>(); image.color = color; image.raycastTarget = false; return rect;

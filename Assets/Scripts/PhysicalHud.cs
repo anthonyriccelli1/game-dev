@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace RestaurantCity {
  public class PhysicalHud:MonoBehaviour {
   public CityGame Game;
-  sealed class View {public Canvas Canvas;public Text Top,Goal,Tickets,Prompt,Notice,HealthText,WeaponText;public Image[] Slots;public Text[] SlotText;public RectTransform HealthFill,ChargeFill;public Image Hurt;}
+  sealed class View {public Canvas Canvas;public Text Top,Goal,Tickets,Prompt,Notice,HealthText,WeaponText,MarkerText;public RectTransform Marker;public bool MarkerShown;public Image[] Slots;public Text[] SlotText;public RectTransform HealthFill,ChargeFill;public Image Hurt;}
   readonly List<View> views=new List<View>();
   static readonly Color Ink=new Color(.035f,.095f,.12f,.62f), Cream=new Color(1,.95f,.82f);
   // Compact HUD: small status chip top-left, ticket column top-right (hidden when empty),
@@ -31,7 +31,7 @@ namespace RestaurantCity {
      Tickets=Card(go.transform,"Tickets",new Vector2(.7f,.5f),new Vector2(1,1),14,true,TextAnchor.UpperLeft),
      Prompt=Card(go.transform,"Prompt",new Vector2(.25f,.3f),new Vector2(.75f,.46f),19,false,TextAnchor.UpperCenter),
      Notice=Card(go.transform,"Notice",new Vector2(.2f,.15f),new Vector2(.8f,.23f),15,false,TextAnchor.LowerCenter)};
-    BuildHotbar(go.transform,v);
+    BuildHotbar(go.transform,v);BuildMarker(go.transform,v);
     views.Add(v);
     var dot=new GameObject("Aim",typeof(RectTransform),typeof(Text),typeof(Outline));dot.transform.SetParent(go.transform,false);var dr=(RectTransform)dot.transform;dr.anchorMin=dr.anchorMax=new Vector2(.5f,.5f);dr.sizeDelta=new Vector2(48,48);dr.anchoredPosition=Vector2.zero;
     var dt=dot.GetComponent<Text>();dt.font=Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");dt.fontSize=24;dt.text="+";dt.alignment=TextAnchor.MiddleCenter;dt.color=Cream;dt.raycastTarget=false;dot.GetComponent<Outline>().effectColor=new Color(.03f,.1f,.13f,.9f);
@@ -65,6 +65,34 @@ namespace RestaurantCity {
    var hurt=new GameObject("Hurt",typeof(RectTransform),typeof(Image));hurt.transform.SetParent(canvas,false);var hr=(RectTransform)hurt.transform;hr.anchorMin=Vector2.zero;hr.anchorMax=Vector2.one;hr.offsetMin=hr.offsetMax=Vector2.zero;
    v.Hurt=hurt.GetComponent<Image>();v.Hurt.color=new Color(.8f,.05f,.05f,0);v.Hurt.raycastTarget=false;hurt.transform.SetAsFirstSibling();
   }
+  // Schedule I-style goal marker: a small gold diamond over where the current goal is, with its name and distance.
+  // It slides to the screen edge when the goal is off to the side or behind you, and hides once you're there.
+  void BuildMarker(Transform canvas,View v){
+   var root=new GameObject("Goal marker",typeof(RectTransform));root.transform.SetParent(canvas,false);var rt=(RectTransform)root.transform;rt.anchorMin=rt.anchorMax=new Vector2(.5f,.5f);rt.sizeDelta=new Vector2(220,60);
+   var d=new GameObject("Diamond",typeof(RectTransform),typeof(Image),typeof(Outline));d.transform.SetParent(root.transform,false);var dr=(RectTransform)d.transform;dr.anchorMin=dr.anchorMax=new Vector2(.5f,.5f);dr.sizeDelta=new Vector2(15,15);dr.anchoredPosition=new Vector2(0,10);dr.localRotation=Quaternion.Euler(0,0,45);
+   var di=d.GetComponent<Image>();di.color=new Color(.95f,.76f,.42f);di.raycastTarget=false;d.GetComponent<Outline>().effectColor=new Color(.05f,.08f,.1f,.9f);d.GetComponent<Outline>().effectDistance=new Vector2(1.5f,-1.5f);
+   var l=new GameObject("Label",typeof(RectTransform));l.transform.SetParent(root.transform,false);var lr=(RectTransform)l.transform;lr.anchorMin=lr.anchorMax=new Vector2(.5f,.5f);lr.sizeDelta=new Vector2(220,22);lr.anchoredPosition=new Vector2(0,-12);
+   v.MarkerText=Label(l.transform,"Text",13,TextAnchor.MiddleCenter);v.Marker=rt;
+  }
+  void UpdateMarker(View v,FirstPersonPlayer p){
+   if(v.Marker==null)return;var place=Game.ObjectivePlace;var cam=p.View;
+   bool show=CityGame.GoalMarker&&place!=null&&cam;
+   Vector3 target=place!=null?place.Point+Vector3.up*1.6f:Vector3.zero;var flat=target-p.transform.position;flat.y=0;float dist=flat.magnitude;
+   if(dist<4)show=false;   // you're there
+   v.MarkerShown=show;v.Marker.gameObject.SetActive(show);if(!show)return;
+   var size=((RectTransform)v.Canvas.transform).rect.size;var vp=cam.WorldToViewportPoint(target);bool behind=vp.z<0;
+   if(behind){vp.x=1-vp.x;vp.y=1-vp.y;}
+   var pos=new Vector2((vp.x-.5f)*size.x,(vp.y-.5f)*size.y);
+   float hx=size.x*.44f,hy=size.y*.36f;
+   if(behind||Mathf.Abs(pos.x)>hx||Mathf.Abs(pos.y)>hy){   // off screen: pin it to the edge in the goal's direction
+    var dir=pos;if(behind&&dir.y>-1)dir.y=-Mathf.Abs(dir.y)-1;if(dir.sqrMagnitude<1)dir=new Vector2(0,-1);
+    float k=Mathf.Min(hx/Mathf.Max(.001f,Mathf.Abs(dir.x)),hy/Mathf.Max(.001f,Mathf.Abs(dir.y)));pos=dir*k;}
+   v.Marker.anchoredPosition=pos;
+   float edge=size.x/2-118;((RectTransform)v.MarkerText.transform.parent).anchoredPosition=new Vector2(Mathf.Clamp(0,-edge-pos.x,edge-pos.x),-12);   // keep the label on screen
+   v.MarkerText.text=place.Name+"  <color=#F2C27A>"+Mathf.RoundToInt(dist)+" m</color>";
+  }
+  // For tests: is player i's goal marker showing, and where (canvas units from the centre).
+  public bool MarkerState(int player,out Vector2 position){position=Vector2.zero;if(player<0||player>=views.Count||views[player].Marker==null)return false;position=views[player].Marker.anchoredPosition;return views[player].MarkerShown;}
   void UpdateHotbar(View v,FirstPersonPlayer p){
    if(v.Slots==null)return;var inv=Hotbar.For(Game.State,p.PlayerId);var combat=p.GetComponent<PlayerCombat>();
    for(int i=0;i<v.Slots.Length;i++){bool sel=i==inv.Selected;var s=inv.Slots[i];
@@ -95,7 +123,7 @@ namespace RestaurantCity {
     string holding=held==null?"":"<size=14><color=#9FD8C8>Holding: "+k.Label(held)+(checklist==""?"":"  |  "+checklist)+"</color></size>\n";
     v.Prompt.text=holding+prompt;
     v.Notice.text=Game.Notice;
-    UpdateHotbar(v,p);
+    UpdateHotbar(v,p);UpdateMarker(v,p);
    }
   }
   static string StandTicket(GameState s){
