@@ -51,7 +51,7 @@ namespace RestaurantCity {
         public static readonly CityPlace[] Places = {
             new CityPlace("Little Flame", "you", 0, -62.5f), new CityPlace("Milo's", "supply", -12, 10), new CityPlace("The Odd Table", "restaurant", -10, -15),
             new CityPlace("The Alchemist", "rival", 15, 22),
-            new CityPlace("The Tin Diner", "rival", -22, 38), new CityPlace("Market stalls", "supply", 0, 64),
+            new CityPlace("Market stalls", "supply", 0, 64),
             new CityPlace("Greasy Gus's truck", "rival", 17, -31), new CityPlace("Graffiti alley", "recipe", -22.5f, -33),
             new CityPlace("The park", "service", 65, -25), new CityPlace("City Hall", "service", -67, 25), new CityPlace("Bus stop", "service", -30, -7),
             new CityPlace("Truck Park", "service", 0, -80), new CityPlace("Corner courts", "service", 65, -78),
