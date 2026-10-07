@@ -12,6 +12,8 @@ using RestaurantCity;
 // Gameplay hooks (staff, customers, raid) are runtime; named anchors here tell them where things are.
 public static class AlchemistBuilder {
     public const float X0 = 5, X1 = 25, Z0 = 14, Z1 = 31.5f, Storey = 3.01f, Loft = 26.5f, YardZ = 40, DoorX = 16.25f;
+    // Three floors of apartments (one 9 m stack) sit on the hall, so it reads as part of the Main Street block.
+    public const float StackBase = 2 * Storey + .03f, RoofTop = StackBase + 9.5f;
     const string Shops = "Assets/Synty/PolygonShops/Prefabs/", City = "Assets/Synty/PolygonCity/Prefabs/", Gen = "Assets/Synty/PolygonGeneric/Prefabs/";
     static Transform root, shell, inside, loft, yard, colliders;
     static Material brickOut, brickIn, floorMat, roofMat, ceilingMat;
@@ -50,10 +52,10 @@ public static class AlchemistBuilder {
             for (int y = 0; y < 2; y++) Skin(S("Buildings/SM_Bld_Base_Pillar_01", c + Vector3.up * y * Storey, 0, shell), brickOut);
         for (int k = 0; k < 8; k++) { Edge(new Vector3(X0 + 2.5f * (k + 1), 2 * Storey, Z0), 0); Edge(new Vector3(X0 + 2.5f * k, 2 * Storey, Z1), 180); }
         for (int k = 0; k < 7; k++) { Edge(new Vector3(X0, 2 * Storey, Z0 + 2.5f * k), 90); Edge(new Vector3(X1, 2 * Storey, Z0 + 2.5f * (k + 1)), 270); }
-        // Roof clutter: a water tower and vents, so the silhouette reads as an old works building.
-        P(City + "Buildings/SM_Prop_Water_Tower_01", new Vector3(21.5f, 2 * Storey + .03f, 28.5f), 20, shell);
-        P(City + "Props/SM_Prop_Roof_Aircon_02", new Vector3(8.5f, 2 * Storey + .03f, 27.5f), 0, shell);
-        P(City + "Props/SM_Prop_Roof_Aircon_03", new Vector3(11.5f, 2 * Storey + .03f, 29.5f), 90, shell);
+        // Roof clutter on top of the apartments built over the hall (CityMap.AlchemistBuilding).
+        P(City + "Buildings/SM_Prop_Water_Tower_01", new Vector3(21.5f, RoofTop, 28.5f), 20, shell);
+        P(City + "Props/SM_Prop_Roof_Aircon_02", new Vector3(8.5f, RoofTop, 27.5f), 0, shell);
+        P(City + "Props/SM_Prop_Roof_Aircon_03", new Vector3(11.5f, RoofTop, 29.5f), 90, shell);
         // Collision: walls (door gaps open), balcony, stairs.
         Box("Front wall west", new Vector3((X0 + 15) / 2, 3, Z0), new Vector3(15 - X0, 6, .3f));
         Box("Front wall east", new Vector3((17.5f + X1) / 2, 3, Z0), new Vector3(X1 - 17.5f, 6, .3f));

@@ -281,6 +281,21 @@ public static partial class CityMap {
         Narrow(-5f, -15, 0, .68f, 1, true, 9);
         ShutteredUnit(-20f, 3.4f, -9.27f, p); ShutteredUnit(-3.4f, 3.4f, -9.27f, p);
     }
+    // The Alchemist belongs to the block: three floors of apartments over the double-height hall (like your restaurant),
+    // facades to Main Street and to the courtyard, a deep middle row so the roof is closed. The hall, its sign below the
+    // first apartment floor, and the open courtyard are untouched; roof clutter is placed by AlchemistBuilder.
+    static void AlchemistBuilding() {
+        var p = new GameObject("The Alchemist's building").transform; p.SetParent(root, false);
+        float y = AlchemistBuilder.StackBase, x0 = AlchemistBuilder.X0, z0 = AlchemistBuilder.Z0, z1 = AlchemistBuilder.Z1;
+        var deep = new Vector3(1, 1, (z1 - z0 - 10) / 5);   // the middle row fills what the front and back rows leave
+        for (float x = x0; x < AlchemistBuilder.X1 - .1f; x += 5) {
+            Module("Buildings/SM_Bld_Apartment_Stack_01", x, z0, 2, y, p); Module("Buildings/SM_Bld_Apartment_Roof_01", x, z0, 2, y + 9, p);
+            ModuleS("Buildings/SM_Bld_Apartment_Stack_01", x, z0 + 5, 2, y, deep, p); ModuleS("Buildings/SM_Bld_Apartment_Roof_01", x, z0 + 5, 2, y + 9, deep, p);
+            Module("Buildings/SM_Bld_Apartment_Stack_01", x, z1 - 5, 0, y, p); Module("Buildings/SM_Bld_Apartment_Roof_01", x, z1 - 5, 0, y + 9, p);
+        }
+        Recolor(p, 4);
+        StripColliders(p);
+    }
     // A slim building squeezed into a gap: modules scaled along the facade (sx).
     static void Narrow(float x0, float z0, int facing, float sx, int stacks, bool shop, int palette) {
         int s = seed++; int family = s % 3 + 1; var sc = new Vector3(sx, 1, 1);
@@ -762,6 +777,7 @@ public static partial class CityMap {
         MilosStore();
         foreach (var x0 in new[] { -5f, 0f }) Tower(x0, 15f, 2, 2, false, "Buildings/SM_Bld_Apartment_Door_0" + (x0 < -1 ? 1 : 2), 0);
         RestaurantBuilding();
+        AlchemistBuilding();
         PoleSign("THE ODD TABLE", new Vector3(-1.6f, 0, -7.6f), "C8553D");
         // City blocks: storefront rows on every street side, corner buildings where two streets meet.
         //      x range        z range      N      S      E      W     shops  stacks  low-rise %
