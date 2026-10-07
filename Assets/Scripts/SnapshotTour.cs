@@ -19,6 +19,11 @@ namespace RestaurantCity {
         // name, position, yaw, pitch, clock (0-240; >150 is night)
         public static (string name, Vector3 pos, float yaw, float pitch, float clock)[] Shots = {
             ("01_street_day", new Vector3(-2, 0, -3), 20, 0, 60),
+            ("160_sign_main_west", new Vector3(-28, 0, 2), 300, -10, 60),
+            ("161_sign_truckpark", new Vector3(-7, 0, -63), 29, -8, 60),
+            ("162_sign_west_south", new Vector3(-38, 0, -62), 38, -8, 60),
+            ("163_sign_main_odd", new Vector3(-14, 0, -2), 250, -6, 60),
+            ("164_sign_main_west_night", new Vector3(-28, 0, 2), 300, -10, 195),
             ("02_stand_day", new Vector3(3, 0, -.5f), -20, 8, 60),
             ("03_milo_day", new Vector3(-12, 0, 3.5f), 0, 5, 60),
             ("04_rival_day", new Vector3(16, 0, 8), 35, -8, 60),

@@ -786,7 +786,7 @@ public static partial class CityMap {
         Put("Buildings/SM_Bld_Station_01", new Vector3(0, 0, -30), 0);
         Put("Environments/Custom/SM_Env_Skyline_01", Vector3.zero, 0);
         // Old Market's own places (Market Row, The Flats) and the street ends.
-        MarketStalls(); MarketRowUnits(); GraffitiAlley(); VacantLot(); PawnShop(); TruckPark(); LittleFlame(); MarketCart(); CornerCourts(); Harbour(); Crosswalks(); StreetEnds();
+        MarketStalls(); MarketRowUnits(); GraffitiAlley(); VacantLot(); PawnShop(); TruckPark(); LittleFlame(); MarketCart(); CornerCourts(); Harbour(); Crosswalks(); StreetEnds(); StreetSigns();
         // Street life: parked cars, trees, benches, hydrants, a hotdog cart, bus stop, rooftop signs.
         string[] cars = { "SM_Veh_Car_Sedan_01", "SM_Veh_Car_Taxi_01", "SM_Veh_Car_Van_01", "SM_Veh_Car_Small_01", "SM_Veh_Car_Medium_01", "SM_Veh_Car_Muscle_01" };
         int c = 0;
