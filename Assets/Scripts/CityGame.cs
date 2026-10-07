@@ -43,7 +43,6 @@ namespace RestaurantCity {
             gameObject.AddComponent<PhysicalHud>().Game = this;
             SyncWorld();
             if (PreviewMode) StartCoroutine(PreviewZilo());
-            if (Array.IndexOf(Environment.GetCommandLineArgs(), "--smoke-test") >= 0) gameObject.AddComponent<PrototypeSmokeTest>().Game = this;
             if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg.StartsWith("--physical-"))) gameObject.AddComponent<PhysicalAcceptance>().Game = this;
             if (Array.Exists(Environment.GetCommandLineArgs(), arg => arg.StartsWith("--interaction-"))) gameObject.AddComponent<InteractionAcceptance>().Game = this;
             if (Array.IndexOf(Environment.GetCommandLineArgs(), "--controller-test") >= 0) gameObject.AddComponent<ControllerAcceptance>().Game = this;

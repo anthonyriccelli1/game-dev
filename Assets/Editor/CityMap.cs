@@ -32,7 +32,7 @@ public static partial class CityMap {
         Rect.MinMaxRect(-20, 60, 20, 70),         // Market Row: the street-market square off North Avenue
         Rect.MinMaxRect(-25, -40, -20, -25),      // The Flats: graffiti alley off South Avenue
         Rect.MinMaxRect(10, -40, 25, -25),        // The Flats: vacant lot where Greasy Gus parks his truck
-        Rect.MinMaxRect(-25, 35, -15, 40),        // Market Row: The Tin Diner (a one-storey chrome diner)
+        Rect.MinMaxRect(-25, 35, -15, 40),        // Market Row: two one-storey shop units, shuttered and to let
         Rect.MinMaxRect(25, -30, 30, -20),        // The Flats: the pawn shop on East Street
         Rect.MinMaxRect(-30, -95, 30, -60),       // Truck Park: the plaza around your food truck
         Rect.MinMaxRect(50, -95, 80, -60),        // Corner courts
@@ -335,14 +335,12 @@ public static partial class CityMap {
         foreach (float x in new[] { -12f, 0, 12 }) Put("Props/SM_Prop_ParkBench_01", new Vector3(x, 0, 69.2f), 180, p);
         PoleSign("MARKET ROW", new Vector3(-21.5f, 0, 57.6f), "B9703C");
     }
-    // Market Row: The Tin Diner, a chrome one-storey diner and the two-star rival you can raid.
-    static void TinDiner() {
-        Tower(-25, 35, 0, 0, true, "Buildings/SM_Bld_Shop_02", 7);
+    // Market Row: two one-storey shop units facing North Avenue, roller shutters down and to let.
+    static void MarketRowUnits() {
+        Tower(-25, 35, 0, 0, true, "Buildings/SM_Bld_Shop_05", 7);
         Tower(-20, 35, 0, 0, true, "Buildings/SM_Bld_Shop_05", 7);
-        var p = new GameObject("The Tin Diner").transform; p.SetParent(root, false);
-        var da = FitPack("PolygonShops", "Buildings/SM_Bld_Awning_02_Small", OnFace(-25, 35, 0, 2.5f, .05f, 2.7f), 0, 6f, p); if (da) StripColliders(da.transform);
-        Put("Props/SM_Prop_LargeSign_Milkshake_01", OnFace(-25, 35, 0, 2.5f, -2.2f, 3.6f), 0, p);
-        PoleSign("THE TIN DINER", new Vector3(-29, 0, 42.6f), "8FA9BD");
+        var p = new GameObject("Market Row units (to let)").transform; p.SetParent(root, false);
+        foreach (float x in new[] { -25f, -20 }) ShutteredUnit(x + .5f, 4f, 40.4f, p);
     }
     // The Flats: a dead-end alley off South Avenue behind your restaurant, tagged by Zeeb.
     static void GraffitiAlley() {
@@ -788,7 +786,7 @@ public static partial class CityMap {
         Put("Buildings/SM_Bld_Station_01", new Vector3(0, 0, -30), 0);
         Put("Environments/Custom/SM_Env_Skyline_01", Vector3.zero, 0);
         // Old Market's own places (Market Row, The Flats) and the street ends.
-        MarketStalls(); TinDiner(); GraffitiAlley(); VacantLot(); PawnShop(); TruckPark(); LittleFlame(); MarketCart(); CornerCourts(); Harbour(); Crosswalks(); StreetEnds();
+        MarketStalls(); MarketRowUnits(); GraffitiAlley(); VacantLot(); PawnShop(); TruckPark(); LittleFlame(); MarketCart(); CornerCourts(); Harbour(); Crosswalks(); StreetEnds();
         // Street life: parked cars, trees, benches, hydrants, a hotdog cart, bus stop, rooftop signs.
         string[] cars = { "SM_Veh_Car_Sedan_01", "SM_Veh_Car_Taxi_01", "SM_Veh_Car_Van_01", "SM_Veh_Car_Small_01", "SM_Veh_Car_Medium_01", "SM_Veh_Car_Muscle_01" };
         int c = 0;

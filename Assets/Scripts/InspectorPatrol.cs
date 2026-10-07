@@ -33,7 +33,7 @@ namespace RestaurantCity {
                 inspectorsOut = night;
                 foreach (var i in Inspectors) if (i.Root) Destroy(i.Root);
                 Inspectors.Clear();
-                if (night) { for (int r = 0; r < Routes.Length; r++) SpawnInspector(r); Game.Notify("Night falls. Health inspectors are out on patrol. Don't get caught carrying Zeeb's sauce.", 7); }
+                if (night) { for (int r = 0; r < Routes.Length; r++) SpawnInspector(r); Game.Notify(Game.State.Knows("midnight") ? "Night falls. Health inspectors are out on patrol. Don't get caught carrying Zeeb's sauce." : "Night falls. Health inspectors are out on patrol.", 7); }
             }
             foreach (var i in Inspectors) if (i.Root) TickInspector(i, seconds);
         }
