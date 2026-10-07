@@ -643,22 +643,52 @@ namespace RestaurantCity {
             var st = Owner.Game.State; int xp = st.Xp, rank = st.RankEarned;
             float mx = 30, my = 138, mh = 520, sc = mh / (CityDistricts.MaxZ - CityDistricts.MinZ), mw = (CityDistricts.MaxX - CityDistricts.MinX) * sc;
             Vector2 P(float x, float z) => new Vector2(mx + (x - CityDistricts.MinX) * sc, my + (CityDistricts.MaxZ - z) * sc);
-            // Old Market: the block, its three areas, and the five streets.
-            Block(sheet, "Old Market", mx, my, mw, mh, new Color(.80f, .74f, .64f));
-            for (int i = 0; i < CityDistricts.Areas.Length; i++) {
-                var (areaName, z0, z1) = CityDistricts.Areas[i]; var a = P(CityDistricts.MinX, z1);
-                Block(sheet, areaName, a.x, a.y, mw, (z1 - z0) * sc, i == 1 ? new Color(.95f, .80f, .55f, .28f) : i == 0 ? new Color(.85f, .55f, .35f, .22f) : new Color(.45f, .45f, .52f, .25f));
-                Label(sheet, areaName, a.x + 8, a.y + 4, 240, 18, 11, new Color(.30f, .24f, .20f), true);
+            // Old Market as a city map: land and blocks, open spaces tinted, streets with sidewalks and names, area
+            // names, and every registry place as a badge by kind (labels placed per place so neighbours never collide).
+            RectTransform Area(string n, float x0, float z0, float x1, float z1, Color c) { var a = P(x0, z1); return Block(sheet, n, a.x, a.y, (x1 - x0) * sc, (z1 - z0) * sc, c); }
+            Block(sheet, "Map frame", mx - 3, my - 3, mw + 6, mh + 6, new Color(.16f, .14f, .13f));
+            Area("Blocks", CityDistricts.MinX, CityDistricts.MinZ, CityDistricts.MaxX, CityDistricts.MaxZ, new Color(.84f, .74f, .60f));
+            var paving = new Color(.93f, .89f, .80f);
+            Area("Park", 50, -40, 80, -10, new Color(.55f, .70f, .44f)); Area("Park path", 64, -40, 66, -10, new Color(.80f, .76f, .62f)); Area("Park path", 50, -31, 80, -29, new Color(.80f, .76f, .62f));
+            Area("Corner courts", 50, -95, 80, -60, new Color(.56f, .66f, .50f)); Area("Court", 56, -90, 74, -72, new Color(.82f, .52f, .34f));
+            Area("Truck Park", -30, -95, 30, -60, paving);
+            Area("Market Row square", -20, 60, 20, 70, paving);
+            Area("Gus's lot", 10, -40, 25, -25, new Color(.70f, .66f, .58f));
+            Area("Alchemist courtyard", 5, 31, 25, 40, new Color(.62f, .70f, .55f));
+            Area("Promenade", CityDistricts.MinX, -116, CityDistricts.MaxX, -110, paving);
+            Area("Water", CityDistricts.MinX, CityDistricts.MinZ, CityDistricts.MaxX, -116, new Color(.38f, .60f, .72f));
+            foreach (var (x0, z0, x1, z1) in CityDistricts.Roads) Area("Sidewalk", x0 - (x1 - x0 > 20 ? 0 : 2.5f), z0 - (x1 - x0 > 20 ? 2.5f : 0), x1 + (x1 - x0 > 20 ? 0 : 2.5f), z1 + (x1 - x0 > 20 ? 2.5f : 0), paving);
+            var asphalt = new Color(.27f, .29f, .32f);
+            foreach (var (x0, z0, x1, z1) in CityDistricts.Roads) Area("Street", x0, z0, x1, z1, asphalt);
+            // Centre lines, dashed, and the street names along them.
+            var dash = new Color(.85f, .80f, .62f, .55f);
+            foreach (var (x0, z0, x1, z1) in CityDistricts.Roads) {
+                bool ew = x1 - x0 > z1 - z0; float mid = ew ? (z0 + z1) / 2 : (x0 + x1) / 2;
+                for (float t = ew ? x0 + 2 : z0 + 2; t < (ew ? x1 : z1) - 2; t += 6) { if (ew) Area("Dash", t, mid - .25f, t + 3, mid + .25f, dash); else Area("Dash", mid - .25f, t, mid + .25f, t + 3, dash); }
             }
-            foreach (var (x0, z0, x1, z1) in CityDistricts.Roads) { var a = P(x0, z1); Block(sheet, "Street", a.x, a.y, (x1 - x0) * sc, (z1 - z0) * sc, new Color(.24f, .26f, .29f)); }
+            var streetInk = new Color(.97f, .94f, .86f);
+            foreach (var (n, z) in new[] { ("MAIN STREET", 0f), ("NORTH AVENUE", 50f), ("SOUTH AVENUE", -50f), ("HARBOR ROAD", -105f) }) {
+                foreach (float x in new[] { -62.5f, 20 }) { var q = P(x, z); var t = Label(sheet, n, q.x - 60, q.y - 7, 120, 14, 9, streetInk, true, TextAnchor.MiddleCenter); t.gameObject.AddComponent<Outline>().effectColor = asphalt; }
+            }
+            foreach (var (n, x) in new[] { ("WEST STREET", -40f), ("EAST STREET", 40f) }) foreach (float z in new[] { 25f, -77.5f }) {
+                var q = P(x, z); var t = Label(sheet, n, q.x - 60, q.y - 7, 120, 14, 9, streetInk, true, TextAnchor.MiddleCenter);
+                var r = t.rectTransform; r.pivot = new Vector2(.5f, .5f); r.anchoredPosition += new Vector2(60, -7); r.localRotation = Quaternion.Euler(0, 0, 90);
+            }
+            // Area names, set in the corners of their blocks.
+            var areaInk = new Color(.42f, .32f, .24f, .85f);
+            foreach (var (n, x, z) in new[] { ("MARKET ROW", -79f, 79f), ("THE HOME STREET", -79f, 41.5f), ("THE FLATS", -79f, -8.5f), ("THE HARBOUR", -34f, -110.4f) }) {
+                var q = P(x, z); Label(sheet, n, q.x + 2, q.y + 1, 200, 16, 9, n == "THE HARBOUR" ? new Color(.35f, .30f, .26f) : areaInk, true);
+            }
+            string goalId = Owner.Game.ObjectivePlace != null ? Owner.Game.ObjectivePlace.Id : null;
             foreach (var place in CityDistricts.Places) {
                 if (!Owner.Data.Owned && place.Kind == "recipe") continue;   // secrets show up once you own a restaurant
                 var d = CityDistricts.At(place.X, place.Z); bool open = CityDistricts.Unlocked(d, rank);
-                Color k = place.Kind == "rival" ? coral : place.Kind == "supply" ? teal : place.Kind == "restaurant" ? new Color(.95f, .76f, .3f) : place.Kind == "recipe" ? new Color(.62f, .45f, .9f) : place.Kind == "you" ? white : place.Kind == "gate" ? new Color(.2f, .2f, .22f) : new Color(.35f, .55f, .9f);
+                var (k, glyph) = MapBadge(place.Kind);
                 var q = P(place.X, place.Z);
-                Block(sheet, place.Name, q.x - 5, q.y - 5, 10, 10, open ? k : new Color(k.r, k.g, k.b, .45f));
-                bool right = place.X > 40;
-                Label(sheet, place.Name, right ? q.x - 146 : q.x + 8, q.y - 8, 140, 16, 11, new Color(.13f, .12f, .12f), true, right ? TextAnchor.UpperRight : TextAnchor.UpperLeft);
+                var badge = Block(sheet, place.Name, q.x - 8, q.y - 8, 16, 16, new Color(.12f, .11f, .1f));
+                Block(badge, "Fill", 1.5f, 1.5f, 13, 13, open ? k : new Color(k.r, k.g, k.b, .45f));
+                Label(badge, glyph, 0, 0, 16, 16, 11, Color.white, true, TextAnchor.MiddleCenter);
+                MapPlaceLabel(sheet, place, q, goalId == place.Id ? 13 : 0);
             }
             // Tonight's stash: a purple circle around the rough area, not the exact spot.
             if (st.StashActive && Owner.Data.Owned) {
@@ -670,8 +700,10 @@ namespace RestaurantCity {
             var goal = Owner.Game.ObjectivePlace;
             if (goal != null) {
                 var g = P(goal.X, goal.Z);
-                var pin = Block(sheet, "Goal pin", g.x - 8, g.y - 8, 16, 16, new Color(.95f, .76f, .42f)); pin.pivot = new Vector2(.5f, .5f); pin.anchoredPosition += new Vector2(8, -8); pin.localRotation = Quaternion.Euler(0, 0, 45);
-                Label(sheet, "GOAL: " + goal.Name, g.x - 90, g.y + 10, 180, 16, 12, new Color(.55f, .32f, .05f), true, TextAnchor.UpperCenter);
+                var ring = Block(sheet, "Goal ring", g.x - 14, g.y - 14, 28, 28, new Color(.12f, .11f, .1f)); ring.pivot = new Vector2(.5f, .5f); ring.anchoredPosition += new Vector2(14, -14); ring.localRotation = Quaternion.Euler(0, 0, 45);
+                var pin = Block(ring, "Goal pin", 2, 2, 24, 24, new Color(.98f, .78f, .36f));
+                var (k2, glyph2) = MapBadge(goal.Kind); var center = Block(sheet, "Goal badge", g.x - 6, g.y - 6, 12, 12, k2); Label(center, glyph2, 0, 0, 12, 12, 9, Color.white, true, TextAnchor.MiddleCenter);
+                var tag = Block(sheet, "Goal tag", g.x - 22, g.y - 31, 44, 14, new Color(.98f, .78f, .36f)); Label(tag, "GOAL", 0, 0, 44, 14, 10, new Color(.18f, .12f, .05f), true, TextAnchor.MiddleCenter);
             }
             // You (and your partner): an arrow that points the way you're facing.
             var markers = new System.Collections.Generic.List<(RectTransform, Transform)>();
@@ -701,7 +733,14 @@ namespace RestaurantCity {
                 Label(sheet, (got ? "OPEN   " : Reputation.Thresholds[i] + "   ") + Reputation.Titles[i], rx + 10, y + 3, rw - 20, 18, 14, got ? teal : ink, true);
                 Label(sheet, d != null ? d.Name : "", rx + 10, y + 20, rw - 20, 16, 12, muted);
             }
-            Label(sheet, "Map key:  \u25B2 you   gold \u25C6 your goal   red rival   green supplier   gold restaurant   purple secret   blue place   black gate", rx, 588, rw, 36, 11, muted);
+            // Map key: the badges as drawn on the map.
+            float kx = rx; Label(sheet, "MAP KEY", rx, 586, 80, 16, 11, muted, true); kx += 70;
+            foreach (var (kind, name) in new[] { ("restaurant", "your places"), ("supply", "suppliers"), ("rival", "rivals"), ("recipe", "secrets"), ("service", "places"), ("gate", "gates") }) {
+                if (kind == "recipe" && !Owner.Data.Owned) continue;
+                var (kc, kg) = MapBadge(kind); var kb = Block(sheet, "Key " + kind, kx, 586, 14, 14, kc); Label(kb, kg, 0, 0, 14, 14, 10, Color.white, true, TextAnchor.MiddleCenter);
+                Label(sheet, name, kx + 18, 586, 90, 16, 11, ink); kx += 24 + name.Length * 6.2f;
+            }
+            Label(sheet, "\u25B2 you (and P2)     gold diamond: your goal (follow the marker on your screen)", rx, 606, rw, 16, 11, muted);
         }
 
         void BuildReviews(RectTransform sheet) {
@@ -763,6 +802,23 @@ namespace RestaurantCity {
             var rect = go.GetComponent<RectTransform>(); rect.anchorMin = rect.anchorMax = new Vector2(0, 1); rect.pivot = new Vector2(0, 1); rect.anchoredPosition = new Vector2(x, -y); rect.sizeDelta = new Vector2(width, height); return rect;
         }
         // A map marker for a player: a filled arrow (rotated to their facing each tick) and a small name tag.
+        // Map badge colour and glyph by place kind.
+        (Color, string) MapBadge(string kind) => kind == "rival" ? (coral, "!") : kind == "supply" ? (teal, "$") : kind == "restaurant" ? (new Color(.86f, .62f, .18f), "\u2665") :
+            kind == "you" ? (new Color(.86f, .62f, .18f), "\u2665") : kind == "recipe" ? (new Color(.55f, .38f, .85f), "?") : kind == "gate" ? (new Color(.2f, .2f, .22f), "\u2192") : (new Color(.30f, .50f, .82f), "i");
+        // Where each place's name sits around its badge: R right, L left, B below, A above.
+        static readonly System.Collections.Generic.Dictionary<string, char> MapLabelSide = new System.Collections.Generic.Dictionary<string, char> {
+            { "truck", 'R' }, { "rose", 'L' }, { "milos", 'L' }, { "oddtable", 'R' }, { "alchemist", 'R' }, { "market", 'R' }, { "gus", 'R' }, { "tower", 'R' },
+            { "alley", 'L' }, { "pawn", 'L' }, { "park", 'B' }, { "cityhall", 'R' }, { "busstop", 'B' }, { "truckpark", 'B' }, { "courts", 'B' }, { "docksgate", 'R' },
+        };
+        void MapPlaceLabel(RectTransform sheet, CityPlace place, Vector2 q, float pad) {
+            if (!MapLabelSide.TryGetValue(place.Id, out char side)) side = 'R';
+            var ink = new Color(.13f, .11f, .10f);
+            Text t = side == 'L' ? Label(sheet, place.Name, q.x - 152 - pad, q.y - 8, 142, 16, 10, ink, true, TextAnchor.MiddleRight)
+                   : side == 'B' ? Label(sheet, place.Name, q.x - 70, q.y + 9 + pad, 140, 14, 10, ink, true, TextAnchor.UpperCenter)
+                   : side == 'A' ? Label(sheet, place.Name, q.x - 70, q.y - 23 - pad, 140, 14, 10, ink, true, TextAnchor.LowerCenter)
+                   : Label(sheet, place.Name, q.x + 10 + pad, q.y - 8, 142, 16, 10, ink, true, TextAnchor.MiddleLeft);
+            var o = t.gameObject.AddComponent<Outline>(); o.effectColor = new Color(.98f, .95f, .88f, .9f); o.effectDistance = new Vector2(1, -1);
+        }
         RectTransform Arrow(Transform parent, string name, Color color) {
             var root = new GameObject("Map marker " + name, typeof(RectTransform)).GetComponent<RectTransform>(); root.gameObject.layer = 5; root.SetParent(parent, false);
             root.anchorMin = root.anchorMax = new Vector2(0, 1); root.pivot = new Vector2(.5f, .5f); root.sizeDelta = new Vector2(22, 22);
