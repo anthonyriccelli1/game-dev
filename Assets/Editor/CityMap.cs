@@ -146,7 +146,7 @@ public static partial class CityMap {
         Recolor(parent, palette >= 0 ? palette : H(s, 1) % 12);
         if (shop && groundOverride == null) { if (IsMainStreetShop(x0, z0, facing)) MainStreetShop(parent, x0, z0, facing); else StreetFront(parent, ground, x0, z0, facing, s, climb); }
         if (stacks == 0 && shop) { if (H(s, 19) % 3 == 0) RoofSign(parent, x0, z0, facing, roofY + .5f, s); }
-        else RoofClutter(parent, x0, z0, roofY + .5f, s);
+        else if (!climb) RoofClutter(parent, x0, z0, roofY + .5f, s);   // climbable roofs stay clear to walk on
         if (climb) ClimbableFireEscape(parent, x0, z0, facing, stacks, climbId);
         else if (stacks > 0 && groundOverride == null && H(s, 23) % 3 == 0) FireEscapes(parent, x0, z0, facing, stacks);
         if (!shop && H(s, 29) % 2 == 0) foreach (float lat in new[] { -1.7f, 1.7f }) {

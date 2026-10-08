@@ -10,15 +10,15 @@ public static class FluxHuntBuilder {
         MakeCase(); MakeRecipeBox();
         var spots = new GameObject("Flux spots").transform; spots.SetParent(world, false);
         Vector3 Anchor(string name, Vector3 fallback) { var a = GameObject.Find(name); return a ? a.transform.position : fallback; }
-        var aRoof = Anchor("Climb A roof", new Vector3(-7.5f, 30.5f, 37.5f)); var bRoof = Anchor("Climb B roof", new Vector3(-7.5f, 12.5f, -37.5f));
+        var aRoof = Anchor("Climb A roof", new Vector3(-7.5f, 30.5f, 37.5f)); var bRoof = Anchor("Climb B roof", new Vector3(-7.5f, 12.5f, -37.5f)); var dRoof = Anchor("Climb D roof", new Vector3(-27.5f, 12.5f, -27.5f));
         var positions = new[] {
             new Vector3(-24.2f, 0, -36.6f),                 // graffiti alley
-            new Vector3(-32.6f, 0, -8.7f),                  // beside the bus shelter
+            Anchor("Climb C landing 3", new Vector3(30.3f, 9.15f, 22f)),     // fire-escape landing, East Street (~9 m)
             new Vector3(22.6f, 0, -28.4f),                  // behind Gus's truck
             new Vector3(6.3f, 0, 38.8f),                    // the Alchemist's courtyard
             new Vector3(-50f, 0, -116f),                    // harbour promenade
             new Vector3(65.8f, 0, -29.6f),                  // the park statue
-            new Vector3(22f, 0, -91f),                      // Truck Park bike racks
+            dRoof + new Vector3(0, 0, 1.2f),                // the West Street roof by the graffiti alley
             new Vector3(21.6f, AlchemistBuilder.Storey, 30.7f),   // The Alchemist's lab balcony
             Anchor("Climb A landing 4", new Vector3(-8f, 12.15f, 40.3f)),   // fire-escape landing, North Avenue (~12 m)
             Anchor("Climb B landing 2", new Vector3(-8f, 6.15f, -40.3f)),   // fire-escape landing, South Avenue (~6 m)

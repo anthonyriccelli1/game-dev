@@ -2,15 +2,19 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-// Elevation: two buildings get working fire escapes you can climb, flight by flight, to the roof.
+// Elevation: four buildings get working fire escapes you can climb, flight by flight, to the roof.
 //   A  North Avenue (x -10..-5, facing north): the tallest on the block, ten flights to a 30 m roof.
 //   B  South Avenue (x -10..-5, facing south): four flights to a 12 m roof.
+//   C  East Street (z 20..25, facing east): seven flights to a 21 m roof.
+//   D  West Street (z -30..-25, facing west): four flights to a 12 m roof.
 // The pack's fire-escape piece (a landing with a steep stair up to the next landing) is visual only; each piece gets
 // simple invisible floors, rails and a ramp under the stair, so climbing is smooth for the character controller.
 // Named anchors mark landings, roofs and the climbing route (used by the Flux hunt and the climb test).
 public static partial class CityMap {
     static readonly Dictionary<(int x, int z), (string id, int stacks)> ClimbTowers = new Dictionary<(int, int), (string, int)> {
         { (-10, 35), ("A", 3) }, { (-10, -40), ("B", 1) },
+        { (25, 20), ("C", 2) },    // East Street, facing the street: a 21 m roof over the Alchemist's block
+        { (-30, -30), ("D", 1) },  // West Street by the graffiti alley: a 12 m roof
     };
     static bool ClimbTower(float x0, float z0, out string id, out int stacks) {
         if (ClimbTowers.TryGetValue(((int)x0, (int)z0), out var c)) { id = c.id; stacks = c.stacks; return true; }

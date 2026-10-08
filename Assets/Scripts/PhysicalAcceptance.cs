@@ -141,10 +141,30 @@ namespace RestaurantCity {
      Check(!rc.PryMidnightBox(Game.Player)&&rc.PryMidnightBox(Game.Player)&&g.Knows("midnight"),"prying it open teaches the Midnight Burger");
      rc.Advance(.05f);Check(GameObject.Find("Midnight recipe box")==null,"the strongbox doesn't come back once you know the recipe");
      // Climb both fire escapes for real: walk the player along the route with the normal movement code.
-     foreach(var id in new[]{"B","A"}){var path=GameObject.Find("Climb "+id+" path");var roof=GameObject.Find("Climb "+id+" roof");if(!path||!roof){Check(false,"climb route "+id+" exists");continue;}
+     foreach(var id in new[]{"B","A","C","D"}){var path=GameObject.Find("Climb "+id+" path");var roof=GameObject.Find("Climb "+id+" roof");if(!path||!roof){Check(false,"climb route "+id+" exists");continue;}
       var pl=Game.Player;pl.Teleport(path.transform.GetChild(0).position+Vector3.up*.05f);float best=0;
       string stuck="";for(int w=1;w<path.transform.childCount;w++){var target=path.transform.GetChild(w).position;for(int f=0;f<600;f++){var d=target-pl.transform.position;d.y=0;if(d.magnitude<.15f)break;pl.transform.rotation=Quaternion.LookRotation(d);pl.ApplyMovement(new Vector2(0,1),.02f);}best=Mathf.Max(best,pl.transform.position.y);var left=target-pl.transform.position;left.y=0;if(stuck==""&&left.magnitude>.3f){stuck=" stuck before way "+w+" at "+pl.transform.position.ToString("F2")+" heading for "+target.ToString("F2");foreach(var c in Physics.OverlapCapsule(pl.transform.position+Vector3.up*.35f,pl.transform.position+Vector3.up*1.5f,.4f))stuck+=" ["+c.name+"/"+(c.transform.parent?c.transform.parent.name:"")+"]";}}
       Check(pl.transform.position.y>roof.transform.position.y-.4f,"climbed fire escape "+id+" to its roof (reached y "+pl.transform.position.y.ToString("0.0")+", roof "+roof.transform.position.y.ToString("0.0")+", best "+best.ToString("0.0")+")"+stuck);}
+     // Every Flux spot can be reached on foot. Street level: a flood fill over walkable ground from Main Street.
+     // Up high: on a climbed fire escape (landing or roof, walked from its anchor) or up the Alchemist's stairs.
+     {var pl=Game.Player;pl.Teleport(new Vector3(0,300,0));Physics.SyncTransforms();const float cs=.5f,ox=-80,oz=-120;const int nx=320,nz=400;
+      var hy=new float[nx,nz];var state=new byte[nx,nz];var q=new System.Collections.Generic.Queue<(int,int)>();
+      bool Open(int i,int j){if(i<0||j<0||i>=nx||j>=nz)return false;if(state[i,j]!=0)return state[i,j]==1;var c=new Vector3(ox+i*cs,2.2f,oz+j*cs);
+       if(!Physics.Raycast(c,Vector3.down,out var hit,3.5f,~0,QueryTriggerInteraction.Ignore)||hit.point.y>1f){state[i,j]=2;return false;}
+       var f=hit.point;bool free=!Physics.CheckCapsule(f+Vector3.up*.42f,f+Vector3.up*1.6f,.28f,~0,QueryTriggerInteraction.Ignore);state[i,j]=(byte)(free?1:2);hy[i,j]=f.y;return free;}
+      int si=(int)((0-ox)/cs),sj=(int)((-2-oz)/cs);if(Open(si,sj)){state[si,sj]=3;q.Enqueue((si,sj));}
+      while(q.Count>0){var (i,j)=q.Dequeue();foreach(var (di,dj) in new[]{(1,0),(-1,0),(0,1),(0,-1)}){int a2=i+di,b2=j+dj;if(a2<0||b2<0||a2>=nx||b2>=nz||state[a2,b2]==3)continue;if(!Open(a2,b2))continue;if(Mathf.Abs(hy[a2,b2]-hy[i,j])>.4f)continue;state[a2,b2]=3;q.Enqueue((a2,b2));}}
+      bool Reached(Vector3 p){int i=Mathf.RoundToInt((p.x-ox)/cs),j=Mathf.RoundToInt((p.z-oz)/cs);for(int a2=i-2;a2<=i+2;a2++)for(int b2=j-2;b2<=j+2;b2++)if(a2>=0&&b2>=0&&a2<nx&&b2<nz&&state[a2,b2]==3)return true;return false;}
+      string lastWalk="";      bool WalkTo(Vector3 from,params Vector3[] way){pl.Teleport(from+Vector3.up*.05f);foreach(var t in way){for(int f=0;f<500;f++){var d=t-pl.transform.position;d.y=0;if(d.magnitude<.15f)break;pl.transform.rotation=Quaternion.LookRotation(d);pl.ApplyMovement(new Vector2(0,1),.02f);}}var e=way[way.Length-1]-pl.transform.position;lastWalk=" ended "+pl.transform.position.ToString("F2")+" for "+way[way.Length-1].ToString("F2");foreach(var c in Physics.OverlapCapsule(pl.transform.position+Vector3.up*.35f,pl.transform.position+Vector3.up*1.5f,.45f))lastWalk+=" ["+c.name+"]";return new Vector2(e.x,e.z).magnitude<.6f&&Mathf.Abs(e.y)<.8f;}
+      var anchors=FindObjectsByType<Transform>(FindObjectsSortMode.None).Where(t=>t.name.StartsWith("Climb ")&&(t.name.Contains(" landing ")||t.name.EndsWith(" roof"))).ToList();
+      var spotsT=GameObject.Find("Flux spots").transform;var unreached=new System.Collections.Generic.List<string>();
+      for(int k=0;k<spotsT.childCount;k++){var p=spotsT.GetChild(k).position;bool ok;
+       if(p.y<1f)ok=Reached(p);
+       else if(p.x>5&&p.x<25&&p.z>26&&p.z<32)ok=WalkTo(new Vector3(16.25f,.15f,16f),new Vector3(21.8f,0,20.8f),new Vector3(23.75f,0,21.2f),new Vector3(23.75f,0,27.6f),new Vector3(p.x,p.y,p.z));
+       else{var an=anchors.Where(t=>Mathf.Abs(t.position.y-p.y)<.7f).OrderBy(t=>Vector3.Distance(t.position,p)).FirstOrDefault();ok=an&&Vector3.Distance(an.position,p)<4f&&WalkTo(an.position,p);}
+       if(!ok)unreached.Add(k+" ("+FluxHunt.Hints[k]+")"+(p.y>=1f?lastWalk:""));}
+      var mid=GameObject.Find("Midnight case spot");var aRoofT=anchors.FirstOrDefault(t=>t.name=="Climb A roof");if(!(mid&&aRoofT&&WalkTo(aRoofT.position,mid.transform.position)))unreached.Add("the midnight strongbox");
+      Check(unreached.Count==0,"every Flux spot (and the midnight strongbox) can be reached on foot"+(unreached.Count>0?": not "+string.Join(", ",unreached):""));}
      Game.Player.Teleport(new Vector3(-10,.15f,-11));
      g.Clock=clock0;g.Flux=flux0;rc.Data.Owned=owned0;if(knew0)g.Learn("midnight");else g.KnownRecipes.Remove("midnight");g.FluxCases.Clear();g.FluxNight=-1;rc.Advance(.05f);}
     // Hotbar: weapons and carried city items live in slots; kitchen food in your hands blocks switching.

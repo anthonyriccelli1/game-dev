@@ -10,8 +10,8 @@ namespace RestaurantCity {
     public static class FluxHunt {
         public const int SpotCount = 12, PerNight = 2, Hits = 3, MidnightHits = 2;
         public static readonly string[] Hints = {
-            "the graffiti alley off South Avenue", "beside the bus shelter on Main Street", "behind Gus's truck in the vacant lot",
-            "the Alchemist's back courtyard", "the harbour promenade", "the park, by the statue", "the bike racks in Truck Park",
+            "the graffiti alley off South Avenue", "a fire-escape landing on East Street", "behind Gus's truck in the vacant lot",
+            "the Alchemist's back courtyard", "the harbour promenade", "the park, by the statue", "a rooftop on West Street, by the graffiti alley",
             "the lab balcony inside The Alchemist", "a fire-escape landing on North Avenue", "a fire-escape landing on South Avenue",
             "the tallest roof on North Avenue", "a rooftop on South Avenue",
         };
