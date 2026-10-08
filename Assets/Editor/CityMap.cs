@@ -121,20 +121,7 @@ public static partial class CityMap {
             default: Put("Props/SM_Prop_Billboard_Roof_01", OnFace(x0, z0, facing, 0, -2f, roofY), yaw, b); return true;
         }
     }
-    // Awnings, shop signs and the odd ATM on a street-level shop.
-    static void Storefront(Transform b, float x0, float z0, int facing, int s) {
-        float yaw = 90 * facing; int k = H(s, 7) % 10, g = H(s, 11) % 12;
-        // Street rule: awnings hang on the shopfront above head height; they never reach across the sidewalk.
-        if (k < 4) ShopAwning(b, x0, z0, facing, s);
-        else if (k < 6) Put("Buildings/SM_Bld_Shop_Cover_04", OnFace(x0, z0, facing, 0, .45f, 3f), yaw, b);
-        string[] flat = { "Sign_Cafe_01", "Sign_Pub_01", "Sign_Bar_01", "Sign_Chinese_Noodles_01" };
-        if (g < 4 && k >= 4) Put("Props/SM_Prop_" + flat[g], OnFace(x0, z0, facing, 0, .7f, 2.75f), yaw, b);
-        else if (g == 5 && !ClimbTower(x0, z0, out _, out _)) Put("Props/SM_Prop_ATM_01", OnFace(x0, z0, facing, 1.8f, .55f, 1.05f), yaw, b);
-        else if (g == 6) Put("Props/SM_Prop_Sign_DeliPizza_01", OnFace(x0, z0, facing, -2.3f, .9f, 2.6f), yaw + 90, b);
-        else if (g == 7) Put("Props/SM_Prop_Sign_Barber_01", OnFace(x0, z0, facing, -2.2f, .55f, 1.3f), yaw, b);
-        if (H(s, 17) % 4 == 0 && !ClimbTower(x0, z0, out _, out _)) Put("Props/SM_Prop_Planter_02",   // never in front of a climbable fire escape
-             OnFace(x0, z0, facing, 1.4f, .9f, 0), yaw, b);
-    }
+
     // Fire escapes climbing the front of an apartment stack.
     static void FireEscapes(Transform b, float x0, float z0, int facing, int stacks) {
         int floors = stacks * 3;
@@ -157,7 +144,7 @@ public static partial class CityMap {
         float roofY = 3 + 9 * stacks;
         Module("Buildings/SM_Bld_Apartment_Roof_0" + family, x0, z0, facing, roofY, parent);
         Recolor(parent, palette >= 0 ? palette : H(s, 1) % 12);
-        if (shop && groundOverride == null) { if (IsMainStreetShop(x0, z0, facing)) MainStreetShop(parent, x0, z0, facing); else Storefront(parent, x0, z0, facing, s); }
+        if (shop && groundOverride == null) { if (IsMainStreetShop(x0, z0, facing)) MainStreetShop(parent, x0, z0, facing); else StreetFront(parent, ground, x0, z0, facing, s, climb); }
         if (stacks == 0 && shop) { if (H(s, 19) % 3 == 0) RoofSign(parent, x0, z0, facing, roofY + .5f, s); }
         else RoofClutter(parent, x0, z0, roofY + .5f, s);
         if (climb) ClimbableFireEscape(parent, x0, z0, facing, stacks, climbId);
@@ -190,6 +177,7 @@ public static partial class CityMap {
         for (int i = 0; i < stacks * 3; i++) Module("Buildings/SM_Bld_Apartment_Corner_0" + family, x0, z0, facing, 3 + 3 * i, parent);
         Module("Buildings/SM_Bld_Apartment_Roof_Corner_0" + family, x0, z0, facing, 3 + 9 * stacks, parent);
         Recolor(parent, H(s, 1) % 12);
+        if (shop) CornerFront(parent, x0, z0, facing, s);
         RoofClutter(parent, x0, z0, 3 + 9 * stacks + .5f, s);
     }
     // A fenced neighbourhood park: lawns, a crossing path with a statue, trees, benches and picnic tables.
@@ -232,17 +220,16 @@ public static partial class CityMap {
             int r = H((int)x, (int)z, 5) % 100; float yaw = 90 * f;
             if (r < 6) { Put("Props/SM_Prop_Newspaper_02", OnFace(x, z, f, -1, -.8f, 0), yaw + 180, p); Put("Props/SM_Prop_Mailbox_01", OnFace(x, z, f, .2f, -.8f, 0), yaw + 180, p); }
             else if (r < 11) { Put("Props/SM_Prop_ParkingMeter_01", OnFace(x, z, f, -1.2f, -.5f, 0), yaw, p); Put("Props/SM_Prop_ParkingMeter_01", OnFace(x, z, f, 1.3f, -.5f, 0), yaw, p); }
-            else if (r < 14) Put("Props/SM_Prop_Phones_01", OnFace(x, z, f, 0, -4.3f, 0), yaw, p);
-            else if (r < 19) { Put("Props/SM_Prop_TrashBag_01", OnFace(x, z, f, -1.4f, -4.4f, 0), r * 30, p); Put("Props/SM_Prop_TrashBag_03", OnFace(x, z, f, -.8f, -4.2f, 0), r * 70, p); Put("Props/SM_Prop_TrashCan_01", OnFace(x, z, f, .3f, -4.4f, 0), 0, p); }
+            // Street rule: everything stands in the curb strip; the lane against the shopfronts stays clear.
+            else if (r < 14) Put("Props/SM_Prop_Phones_01", OnFace(x, z, f, 0, -.75f, 0), yaw + 180, p);
+            else if (r < 19) { Put("Props/SM_Prop_TrashBag_01", OnFace(x, z, f, -1.4f, -.55f, 0), r * 30, p); Put("Props/SM_Prop_TrashBag_03", OnFace(x, z, f, -.8f, -.6f, 0), r * 70, p); Put("Props/SM_Prop_TrashCan_01", OnFace(x, z, f, .3f, -.6f, 0), 0, p); }
             else if (r < 23) Put("Props/SM_Prop_Trashbin_02", OnFace(x, z, f, 0, -.7f, 0), yaw, p);
             else if (r < 25) {
                 for (int i = -1; i <= 1; i++) Put("Props/SM_Prop_Cone_01", OnFace(x, z, f, i * 1.3f, .7f, RoadY + .12f), 0, p);
                 Put("Props/SM_Prop_Barrier_01", OnFace(x, z, f, 0, 2.1f, RoadY + .12f), yaw, p);
                 Put("Props/SM_Prop_Manhole_02", OnFace(x, z, f, 0, 1.4f, RoadY + .15f), 0, p);
             }
-            else if (r < 28) Put("Props/SM_Prop_PowerBox_01", OnFace(x, z, f, 0, -4.5f, 0), yaw, p);
-            else if (r < 31) Put("Props/SM_Prop_Skip_02", OnFace(x, z, f, 0, -4.2f, 0), yaw, p);
-            else if (r < 34) Put("Props/SM_Prop_Planter_01", OnFace(x, z, f, 0, -4.5f, 0), yaw, p);
+            else if (r < 28) Put("Props/SM_Prop_PowerBox_01", OnFace(x, z, f, 0, -.6f, 0), yaw + 180, p);
             else if (r < 37) Put("Props/SM_Prop_Hydrant_01", OnFace(x, z, f, 0, -.6f, 0), yaw, p);
         }
     }
@@ -401,10 +388,6 @@ public static partial class CityMap {
         SignText("WEAPONS  /  CASH ONLY", new Vector3(31.9f, 1.55f, -25), 1, .07f, new Color(1f, .9f, .6f), p);
     }
 
-    static void ShopAwning(Transform b, float x0, float z0, int facing, int s) {
-        var a = FitPack("PolygonShops", "Buildings/SM_Bld_Awning_0" + (H(s, 41) % 5 + 1) + "_Small", OnFace(x0, z0, facing, 0, .05f, 2.7f), 90 * facing, 3.6f, b);
-        if (a) StripColliders(a.transform);
-    }
 
     // ---------- v3: Truck Park, Harbor Road, the harbour (see the Old Market layout map v3) ----------
     // Truck Park: the plaza between South Avenue and Harbor Road, laid out around your food truck. The truck parks
@@ -629,7 +612,7 @@ public static partial class CityMap {
         // Bridge to The Docks off the west end of Harbor Road (locked; the gate is in StreetEnds).
         Slab("Bridge deck", new Vector3(-110, -.2f, HarborZ), new Vector3(60, .4f, 10), stone, p, false);
         foreach (float dz in new[] { -5f, 5 }) Slab("Bridge rail", new Vector3(-110, .5f, HarborZ + dz), new Vector3(60, 1, .2f), InteriorMat("BridgeRail", "D9D4C8"), p, false);
-        Put("Props/SM_Prop_BusStop_01", new Vector3(-65, 0, -97.2f), 180, p);
+        Put("Props/SM_Prop_BusStop_01", new Vector3(-65, 0, -98.4f), 180, p);
     }
     // Zebra crossings at every corner (street rule), plus the mid-block one from Truck Park to Gus's lot.
     static void Crosswalks() {
@@ -816,9 +799,10 @@ public static partial class CityMap {
         }
         for (float x = -75; x <= 75; x += 20) { if (Mathf.Abs(Mathf.Abs(x) - 40) < 6) continue; StreetTree(new Vector3(x, 0, 56.3f), t++); if (Mathf.Abs(x) > 32) StreetTree(new Vector3(x, 0, -56.3f), t++); }
         for (float z = -95; z <= 75; z += 20) { if (Mathf.Abs(z) < 12 || Mathf.Abs(Mathf.Abs(z) - 50) < 6) continue; StreetTree(new Vector3(-33.7f, 0, z), t++); StreetTree(new Vector3(33.7f, 0, z), t++); }
-        Put("Props/SM_Prop_HotdogStand_01", new Vector3(30, 0, 8), 180);
-        Put("Props/SM_Prop_BusStop_01", new Vector3(-30, 0, -7.2f), 0);
-        foreach (float x in new[] { -28f, 27, -55, 60 }) { Put("Props/SM_Prop_ParkBench_01", new Vector3(x, 0, x > 0 ? 8.6f : -8.6f), x > 0 ? 180 : 0); }
+        // Street rule: carts, shelters and benches stand in the curb strip, clear of trees and lamps, never in the walking lane.
+        Put("Props/SM_Prop_HotdogStand_01", new Vector3(12.5f, 0, 6.1f), 180);
+        Put("Props/SM_Prop_BusStop_01", new Vector3(-30, 0, -6.2f), 0);
+        foreach (float x in new[] { -14.5f, 17.5f, -52, 63 }) { Put("Props/SM_Prop_ParkBench_01", new Vector3(x, 0, x > 0 ? 6.7f : -6.7f), x > 0 ? 180 : 0); }
         foreach (float x in new[] { -34f, 34, -48, 48 }) Put("Props/SM_Prop_Hydrant_01", new Vector3(x, 0, x > 0 ? 6 : -6), 0);
         foreach (float x in new[] { -26f, 26, -60, 60 }) Put("Props/SM_Prop_Trashbin_01", new Vector3(x, 0, -6.2f), 0);
         foreach (float x in new[] { -60f, -20, 20, 60 }) { Put("Props/SM_Prop_LightPole_Base_01", new Vector3(x, 0, 44.2f), 0); Put("Props/SM_Prop_LightPole_Base_01", new Vector3(x, 0, -44.2f), 180); }

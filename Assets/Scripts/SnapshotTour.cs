@@ -30,6 +30,22 @@ namespace RestaurantCity {
             ("168_alcblock_front", new Vector3(16.25f, 0, -3), 0, -18, 60),
             ("169_alcblock_front_night", new Vector3(16.25f, 0, -3), 0, -18, 195),
             ("170_alcblock_yard", new Vector3(15, 0, 50), 180, -14, 60),
+            ("171_street_main_corner_w", new Vector3(-33, 0, 2), 135, -4, 60),
+            ("172_street_main_corner_e", new Vector3(33, 0, -2), 315, -4, 60),
+            ("173_street_north_ave", new Vector3(-12, 0, 43.5f), 270, 2, 60),
+            ("174_street_north_ave_e", new Vector3(12, 0, 46), 80, 2, 60),
+            ("175_street_south_ave", new Vector3(-12, 0, -43.5f), 270, 2, 60),
+            ("176_street_south_ave_e", new Vector3(28, 0, -43.5f), 90, 2, 60),
+            ("177_street_west_st", new Vector3(-36.5f, 0, 25), 0, 2, 60),
+            ("178_street_east_st", new Vector3(36.5f, 0, 25), 180, 2, 60),
+            ("179_street_west_st_s", new Vector3(-36.5f, 0, -25), 180, 2, 60),
+            ("180_street_east_st_s", new Vector3(36.5f, 0, -20), 180, 2, 60),
+            ("181_street_north_ave_night", new Vector3(-12, 0, 43.5f), 270, 2, 195),
+            ("182_street_east_st_night", new Vector3(36.5f, 0, 25), 180, 2, 195),
+            ("183_street_cityhall_blk", new Vector3(-55, 0, -7.5f), 90, 2, 60),
+            ("184_street_far_north", new Vector3(-12, 0, 56.5f), 90, 2, 60),
+            ("185_fps_main_night", new Vector3(0, 0, -2), 90, 0, 195),
+            ("186_fps_main_night_w", new Vector3(0, 0, 2), 270, 0, 195),
             ("02_stand_day", new Vector3(3, 0, -.5f), -20, 8, 60),
             ("03_milo_day", new Vector3(-12, 0, 3.5f), 0, 5, 60),
             ("04_rival_day", new Vector3(16, 0, 8), 35, -8, 60),
@@ -538,6 +554,10 @@ namespace RestaurantCity {
                     for (int i = 0; i < 70; i++) { rc.Advance(.15f); p.transform.position = pos; yield return null; }
                 }
                 for (int i = 0; i < 20; i++) yield return null;
+                if (shot.name.Contains("night")) {   // frame-rate check where the city is busiest with lights
+                    float t0 = Time.realtimeSinceStartup; for (int i = 0; i < 90; i++) yield return null;
+                    File.AppendAllText(Path.Combine(dir, "fps.txt"), shot.name + " " + (90f / (Time.realtimeSinceStartup - t0)).ToString("0") + " fps\n");
+                }
                 ScreenCapture.CaptureScreenshot(Path.Combine(dir, shot.name + ".png"));
                 for (int i = 0; i < 5; i++) yield return null;
                 if (rc && rc.PanelOpen) rc.ClosePanel();

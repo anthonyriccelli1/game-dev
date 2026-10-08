@@ -29,6 +29,7 @@ public static partial class CityMap {
         Finger(p, new Vector3(-34.3f, 0, -57.2f), ("MAIN ST", Vector3.forward), ("TRUCK PARK", Vector3.right));
         Finger(p, new Vector3(-34.3f, 0, -7.2f), ("TRUCK PARK", Vector3.back), ("THE ODD TABLE", Vector3.right));
         Finger(p, new Vector3(-19f, 0, -5.7f), ("TRUCK PARK", Vector3.left), null);
+        Debug.Log("STREET_FRONTS shops=" + StreetShopCount + " lights=" + StreetShopLights + " shuttered=" + StreetLeaseCount);
     }
     static void Finger(Transform p, Vector3 post, (string text, Vector3 dir) a, (string text, Vector3 dir)? b) {
         var lamp = Put("Props/SM_Prop_LightPole_Base_02", post, a.dir.x != 0 ? 0 : 90, p); if (lamp) lamp.name = "Finger post " + a.text;

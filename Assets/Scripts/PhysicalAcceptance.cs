@@ -211,7 +211,19 @@ namespace RestaurantCity {
    try{var hud=FindFirstObjectByType<PhysicalHud>();Check(hud&&hud.MarkerState(0,out var m1)&&Mathf.Abs(m1.x)<80&&Mathf.Abs(m1.y)<140,"the goal marker sits over the goal when you face it");
     var pos=Game.Player.transform.position;Game.Player.LookAt(pos+(pos-Game.ObjectivePlace.Point)+Vector3.up*1.6f);}catch(Exception e){Fail(e);yield break;}
    yield return null;yield return null;
-   Capture("09-goal-marker-edge.png");Game.Restaurant.ShowPanel("Map");yield return new WaitForSecondsRealtime(.3f);Capture("10-map.png");{var rts=FindObjectsByType<RectTransform>(FindObjectsSortMode.None);var missing=CityDistricts.Places.Where(pl=>!rts.Any(r=>r.name==pl.Name&&r.GetComponent<UnityEngine.UI.Image>())).Select(pl=>pl.Name).ToList();Check(missing.Count==0,"every registry place has a badge on the map"+(missing.Count>0?" (missing: "+string.Join(", ",missing)+")":""));}Game.Restaurant.ClosePanel();Game.SetPaused(false);yield return null;yield return null;
+   Capture("09-goal-marker-edge.png");Game.Restaurant.ShowPanel("Map");yield return new WaitForSecondsRealtime(.3f);Capture("10-map.png");
+   // Street rule: the walking lane 1.5 m in front of the buildings is clear on every street (reported, with what's in the way).
+   {Physics.SyncTransforms();var blocked=new System.Collections.Generic.List<string>();
+    void Lane(Vector3 a,Vector3 b){var d=b-a;foreach(var h in Physics.CapsuleCastAll(a+Vector3.up*.4f,a+Vector3.up*1.6f,.3f,d.normalized,d.magnitude,~0,QueryTriggerInteraction.Ignore)){if(h.collider.GetComponentInParent<FirstPersonPlayer>()||h.distance<=0)continue;var q=h.point;blocked.Add(h.collider.name+" @("+q.x.ToString("0")+","+q.z.ToString("0")+")");}}
+    bool Cross(float v,float[] at)=>at.Any(c=>Mathf.Abs(v-c)<6.5f);
+    foreach(var (x0,z0,x1,z1) in CityDistricts.Roads){bool ew=x1-x0>z1-z0;
+     foreach(float side in new[]{-1f,1f}){
+      if(ew){float z=side>0?z1+3.5f:z0-3.5f;if(z<-110)continue;for(float x=-77;x<77;x+=4){if(Cross(x,new[]{-40f,40})||Cross(x+4,new[]{-40f,40}))continue;Lane(new Vector3(x,0,z),new Vector3(x+4,0,z));}}
+      else{float x=side>0?x1+3.5f:x0-3.5f;for(float z=-104;z<77;z+=4){if(Cross(z,new[]{-105f,-50,0,50})||Cross(z+4,new[]{-105f,-50,0,50}))continue;Lane(new Vector3(x,0,z),new Vector3(x,0,z+4));}}}}
+    var uniq=blocked.Distinct().ToList();Debug.Log("LANE_REPORT "+uniq.Count+" obstacles: "+string.Join(" | ",uniq));
+    // Allowed in the lane: the climbable fire escapes' ground landings and Hock-9's sidewalk counter.
+    var bad=uniq.Where(n=>!(n.StartsWith("Stair ramp")||n.StartsWith("Rail")||n.StartsWith("Landing")||n.StartsWith("Pawn counter")||n.Contains("@(31,-2")||n.Contains("@(32,-2"))).ToList();
+    Check(bad.Count==0,"every street's walking lane is clear"+(bad.Count>0?" (blocked: "+string.Join(", ",bad)+")":""));}{var rts=FindObjectsByType<RectTransform>(FindObjectsSortMode.None);var missing=CityDistricts.Places.Where(pl=>!rts.Any(r=>r.name==pl.Name&&r.GetComponent<UnityEngine.UI.Image>())).Select(pl=>pl.Name).ToList();Check(missing.Count==0,"every registry place has a badge on the map"+(missing.Count>0?" (missing: "+string.Join(", ",missing)+")":""));}Game.Restaurant.ClosePanel();Game.SetPaused(false);yield return null;yield return null;
    try{var hud=FindFirstObjectByType<PhysicalHud>();Check(hud.MarkerState(0,out var m2)&&m2.y<-150,"with the goal behind you the marker pins to the bottom edge ("+m2+")");Game.Player.Teleport(Game.ObjectivePlace.Point+new Vector3(0,.15f,1));}catch(Exception e){Fail(e);yield break;}
    yield return null;yield return null;
    try{var hud=FindFirstObjectByType<PhysicalHud>();Check(!hud.MarkerState(0,out _),"the marker hides once you're there");Game.Player.Teleport(new Vector3(-10,.15f,-11));Game.Player.LookAt(new Vector3(-11,1,-18));}catch(Exception e){Fail(e);yield break;}
